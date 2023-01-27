@@ -1,0 +1,24 @@
+#!/bin/bash
+###############################################################################
+#
+# Build a Docker container to run the test suite for the Harmony Regridding
+# service.
+#
+# 2020-05-07: Adapted from SwotRepr.
+# 2022-01-03: Updated Dockerfile path.
+# 2023-01-26: Updated for the Harmony Regridding service.
+#
+###############################################################################
+
+image="sds/harmony-regridder-test"
+tag=${1:-latest}
+
+
+# Look for old version of image and remove
+old=$(docker images | grep "$image" | grep "$tag" | awk '{print $3}')
+if [ ! -z "$old" ] && [ "$2" != "--no-delete" ]; then
+    docker rmi "$old"
+fi
+
+# Build the image
+docker build -t ${image}:${tag} -f docker/tests.Dockerfile .
