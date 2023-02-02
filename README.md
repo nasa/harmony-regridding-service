@@ -13,7 +13,7 @@ GPM/IMERGHH and MERRA collections.
 |- README.md
 |- bin
 |- docker
-|- harmony_service
+|- harmony_regridding_service
 |- pip_requirements.txt
 |- tests
 ```
@@ -31,9 +31,9 @@ GPM/IMERGHH and MERRA collections.
   have an accompanying service image release, this file should be updated.
 * docs - A directory containing Jupyter notebook documentation showing an
   end-user how to use the service.
-* harmony_service - The directory containing Python source code for the Harmony
-  Regridding Service. `adapter.py` contains the `HarmonyAdapter` class that is
-  invoked by calls to the service.
+* harmony_regridding_service - The directory containing Python source code for
+  the Harmony Regridding Service. `adapter.py` contains the `HarmonyAdapter`
+  class that is invoked by calls to the service.
 * pip_requirements.txt - A list of service Python package dependencies.
 * tests - A directory containing the service unit test suite.
 
@@ -93,7 +93,7 @@ organisation, service images will be published to ghcr.io, instead.
 ## Releasing a new version of the service:
 
 Once a new Docker image has been published with a new semantic version tag,
-that service version can be released to a Harmony environment by updated the
+that service version can be released to a Harmony environment by updating the
 main Harmony Bamboo deployment project. Find the environment you wish to
 release the service version to and update the associated environment variable
 to update the semantic version tag at the end of the full Docker image name.

@@ -4,6 +4,10 @@
 # Build a Docker container to run the test suite for the Harmony Regridding
 # service.
 #
+# To build the sds/harmony-regridder-test image, the sds/harmony-regridder
+# image must also be present locally, as it is used as the base image in
+# `docker/tests.Dockerfile`.
+#
 # 2020-05-07: Adapted from SwotRepr.
 # 2022-01-03: Updated Dockerfile path.
 # 2023-01-26: Updated for the Harmony Regridding service.

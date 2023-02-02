@@ -9,13 +9,13 @@ from harmony.message import Message
 from harmony.util import config
 from pystac import Catalog
 
-from harmony_service.adapter import HarmonyAdapter
+from harmony_regridding_service.adapter import HarmonyAdapter
 
 from tests.utilities import create_stac, Granule
 
 
 class TestAdapter(TestCase):
-    """ A class for testing the harmony_service.utilities module. """
+    """ A class testing the harmony_regridding_service.utilities module. """
     @classmethod
     def setUpClass(cls):
         """ Define test fixtures that can be shared between tests. """
@@ -56,10 +56,10 @@ class TestAdapter(TestCase):
              'roles': ['data']}
         )
 
-    @patch('harmony_service.adapter.rmtree')
-    @patch('harmony_service.adapter.mkdtemp')
-    @patch('harmony_service.adapter.download')
-    @patch('harmony_service.adapter.stage')
+    @patch('harmony_regridding_service.adapter.rmtree')
+    @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.download')
+    @patch('harmony_regridding_service.adapter.stage')
     def test_valid_request(self, mock_stage, mock_download, mock_mkdtemp,
                            mock_rmtree):
         """ Ensure a request with a correctly formatted message is fully
@@ -112,10 +112,10 @@ class TestAdapter(TestCase):
         # Ensure container clean-up was requested:
         mock_rmtree.assert_called_once_with(self.temp_dir)
 
-    @patch('harmony_service.adapter.rmtree')
-    @patch('harmony_service.adapter.mkdtemp')
-    @patch('harmony_service.adapter.download')
-    @patch('harmony_service.adapter.stage')
+    @patch('harmony_regridding_service.adapter.rmtree')
+    @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.download')
+    @patch('harmony_regridding_service.adapter.stage')
     def test_invalid_request(self, mock_stage, mock_download, mock_mkdtemp,
                              mock_rmtree):
         """ Ensure a request that raises an exception correctly captures that

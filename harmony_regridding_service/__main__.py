@@ -5,7 +5,7 @@ from typing import List
 
 from harmony import is_harmony_cli, run_cli, setup_cli
 
-from harmony_service.adapter import HarmonyAdapter
+from harmony_regridding_service.adapter import HarmonyAdapter
 
 
 def main(arguments: List[str]):

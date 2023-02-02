@@ -6,7 +6,7 @@ from tests.utilities import create_stac, Granule
 
 
 class TestAdapter(TestCase):
-    """ A class for testing the harmony_service.utilities module. """
+    """ A class testing the harmony_regridding_service.utilities module. """
     @classmethod
     def setUpClass(cls):
         """ Define test fixtures that can be shared between tests. """

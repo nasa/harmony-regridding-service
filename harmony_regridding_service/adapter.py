@@ -17,7 +17,7 @@ from harmony.util import (bbox_to_geometry, download, generate_output_filename,
 from pystac import Asset, Catalog, Item
 
 
-from harmony_service.utilities import get_file_mime_type
+from harmony_regridding_service.utilities import get_file_mime_type
 
 
 class HarmonyAdapter(BaseHarmonyAdapter):

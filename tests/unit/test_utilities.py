@@ -1,10 +1,10 @@
 from unittest import TestCase
 
-from harmony_service.utilities import get_file_mime_type
+from harmony_regridding_service.utilities import get_file_mime_type
 
 
 class TestUtilities(TestCase):
-    """ A class for testing the harmony_service.utilities module. """
+    """ A class testing the harmony_regridding_service.utilities module. """
 
     def test_get_file_mime_type(self):
         """ Ensure a MIME type can be retrieved from an input file path. """
@@ -17,4 +17,4 @@ class TestUtilities(TestCase):
                              'application/x-netcdf4')
 
         with self.subTest('File with entirely unknown MIME type.'):
-            self.assertIsNone(get_file_mime_type('file.xyz'))
+            self.assertIsNone(get_file_mime_type('file.xyzzyx'))
