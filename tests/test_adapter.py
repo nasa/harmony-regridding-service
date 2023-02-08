@@ -10,6 +10,9 @@ from harmony.util import config
 from pystac import Catalog
 
 from harmony_regridding_service.adapter import HarmonyAdapter
+from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
+                                                   InvalidTargetCRS,
+                                                   InvalidTargetGrid)
 
 from tests.utilities import create_stac, Granule
 
@@ -79,6 +82,12 @@ class TestAdapter(TestCase):
         message = Message({
             'accessToken': self.access_token,
             'callback': 'https://example.com/',
+            'format': {
+                'height': 181,
+                'scaleExtent': {'x': {'min': -180, 'max': 180},
+                                'y': {'min': -90, 'max': 90}},
+                'width': 361
+            },
             'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
             'stagingLocation': self.staging_location,
             'user': self.user,
@@ -116,20 +125,19 @@ class TestAdapter(TestCase):
     @patch('harmony_regridding_service.adapter.mkdtemp')
     @patch('harmony_regridding_service.adapter.download')
     @patch('harmony_regridding_service.adapter.stage')
-    def test_invalid_request(self, mock_stage, mock_download, mock_mkdtemp,
-                             mock_rmtree):
-        """ Ensure a request that raises an exception correctly captures that
-            exception, re-raises it, before attempting clean-up of the working
-            directory.
-
-            This test will need updating when the service functions fully.
+    def test_missing_grid(self, mock_stage, mock_download, mock_mkdtemp,
+                          mock_rmtree):
+        """ Ensure a request that fails message validation correctly raises an
+            exception that is reported at the top level of invocation. Message
+            validation occurs prior to the `HarmonyAdapter.process_item`
+            method, so none of the functions or methods within that method
+            should be called. In this test there are no target grid parameters,
+            so the validation should raise an `InvalidTargetGrid` exception.
 
         """
-        error_message = 'Test exception'
-        mock_mkdtemp.return_value = self.temp_dir
-        mock_download.side_effect = Exception(error_message)
+        error_message = 'Insufficient or invalid target grid parameters.'
 
-        message = Message({
+        harmony_message = Message({
             'accessToken': self.access_token,
             'callback': 'https://example.com/',
             'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
@@ -137,23 +145,156 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(message, config=self.config,
+        regridder = HarmonyAdapter(harmony_message, config=self.config,
                                    catalog=self.input_stac)
 
-        with self.assertRaises(Exception) as context_manager:
+        with self.assertRaises(InvalidTargetGrid) as context_manager:
             regridder.invoke()
 
         # Ensure exception message was propagated back to the end-user:
-        self.assertEqual(str(context_manager.exception), error_message)
-
-        # Ensure a download was requested via harmony-service-lib:
-        mock_download.assert_called_once_with(self.granule_url, self.temp_dir,
-                                              logger=regridder.logger,
-                                              cfg=regridder.config,
-                                              access_token=self.access_token)
+        self.assertEqual(context_manager.exception.message, error_message)
 
         # Ensure no additional functions were called after the exception:
+        mock_mkdtemp.assert_not_called()
+        mock_download.assert_not_called()
         mock_stage.assert_not_called()
+        mock_rmtree.assert_not_called()
 
-        # Ensure container clean-up was still requested in finally block:
-        mock_rmtree.assert_called_once_with(self.temp_dir)
+    @patch('harmony_regridding_service.adapter.rmtree')
+    @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.download')
+    @patch('harmony_regridding_service.adapter.stage')
+    def test_invalid_grid(self, mock_stage, mock_download, mock_mkdtemp,
+                          mock_rmtree):
+        """ Ensure a request that fails message validation correctly raises an
+            exception that is reported at the top level of invocation. Message
+            validation occurs prior to the `HarmonyAdapter.process_item`
+            method, so none of the functions or methods within that method
+            should be called. In this test there ae target grid parameters that
+            are inconsistent with one another, so the validation should raise
+            an `InvalidTargetGrid` exception.
+
+        """
+        error_message = 'Insufficient or invalid target grid parameters.'
+
+        harmony_message = Message({
+            'accessToken': self.access_token,
+            'callback': 'https://example.com/',
+            'format': {
+                'height': 234,
+                'scaleExtent': {'x': {'min': -180, 'max': 180},
+                                'y': {'min': -90, 'max': 90}},
+                'scaleSize': {'x': 0.5, 'y': 0.5},
+                'width': 123
+            },
+            'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
+            'stagingLocation': self.staging_location,
+            'user': self.user,
+        })
+
+        regridder = HarmonyAdapter(harmony_message, config=self.config,
+                                   catalog=self.input_stac)
+
+        with self.assertRaises(InvalidTargetGrid) as context_manager:
+            regridder.invoke()
+
+        # Ensure exception message was propagated back to the end-user:
+        self.assertEqual(context_manager.exception.message, error_message)
+
+        # Ensure no additional functions were called after the exception:
+        mock_mkdtemp.assert_not_called()
+        mock_download.assert_not_called()
+        mock_stage.assert_not_called()
+        mock_rmtree.assert_not_called()
+
+    @patch('harmony_regridding_service.adapter.rmtree')
+    @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.download')
+    @patch('harmony_regridding_service.adapter.stage')
+    def test_invalid_interpolation(self, mock_stage, mock_download,
+                                   mock_mkdtemp, mock_rmtree):
+        """ Ensure a request that fails message validation correctly raises an
+            exception that is reported at the top level of invocation. Message
+            validation occurs prior to the `HarmonyAdapter.process_item`
+            method, so none of the functions or methods within that method
+            should be called. In this test there is an invalid interpolation in
+            the Harmony message, so the validation should raise an
+            `InvalidInterpolationMethod` exception.
+
+        """
+        error_message = 'Interpolation method not supported: "Bilinear"'
+
+        harmony_message = Message({
+            'accessToken': self.access_token,
+            'callback': 'https://example.com/',
+            'format': {
+                'interpolation': 'Bilinear',
+                'scaleExtent': {'x': {'min': -180, 'max': 180},
+                                'y': {'min': -90, 'max': 90}},
+                'scaleSize': {'x': 0.5, 'y': 0.5},
+            },
+            'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
+            'stagingLocation': self.staging_location,
+            'user': self.user,
+        })
+
+        regridder = HarmonyAdapter(harmony_message, config=self.config,
+                                   catalog=self.input_stac)
+
+        with self.assertRaises(InvalidInterpolationMethod) as context_manager:
+            regridder.invoke()
+
+        # Ensure exception message was propagated back to the end-user:
+        self.assertEqual(context_manager.exception.message, error_message)
+
+        # Ensure no additional functions were called after the exception:
+        mock_mkdtemp.assert_not_called()
+        mock_download.assert_not_called()
+        mock_stage.assert_not_called()
+        mock_rmtree.assert_not_called()
+
+    @patch('harmony_regridding_service.adapter.rmtree')
+    @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.download')
+    @patch('harmony_regridding_service.adapter.stage')
+    def test_invalid_crs(self, mock_stage, mock_download, mock_mkdtemp,
+                         mock_rmtree):
+        """ Ensure a request that fails message validation correctly raises an
+            exception that is reported at the top level of invocation. Message
+            validation occurs prior to the `HarmonyAdapter.process_item`
+            method, so none of the functions or methods within that method
+            should be called. In this test there is an invalid target CRS
+            specified in the Harmony message, so the validation should raise an
+            `InvalidTargetCRS` exception.
+
+        """
+        error_message = 'Target CRS not supported: "invalid CRS"'
+
+        harmony_message = Message({
+            'accessToken': self.access_token,
+            'callback': 'https://example.com/',
+            'format': {
+                'crs': 'invalid CRS',
+                'scaleExtent': {'x': {'min': -180, 'max': 180},
+                                'y': {'min': -90, 'max': 90}},
+                'scaleSize': {'x': 0.5, 'y': 0.5},
+            },
+            'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
+            'stagingLocation': self.staging_location,
+            'user': self.user,
+        })
+
+        regridder = HarmonyAdapter(harmony_message, config=self.config,
+                                   catalog=self.input_stac)
+
+        with self.assertRaises(InvalidTargetCRS) as context_manager:
+            regridder.invoke()
+
+        # Ensure exception message was propagated back to the end-user:
+        self.assertEqual(context_manager.exception.message, error_message)
+
+        # Ensure no additional functions were called after the exception:
+        mock_mkdtemp.assert_not_called()
+        mock_download.assert_not_called()
+        mock_stage.assert_not_called()
+        mock_rmtree.assert_not_called()

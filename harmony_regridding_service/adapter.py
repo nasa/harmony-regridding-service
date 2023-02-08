@@ -17,7 +17,13 @@ from harmony.util import (bbox_to_geometry, download, generate_output_filename,
 from pystac import Asset, Catalog, Item
 
 
-from harmony_regridding_service.utilities import get_file_mime_type
+from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
+                                                   InvalidTargetCRS,
+                                                   InvalidTargetGrid)
+from harmony_regridding_service.utilities import (get_file_mime_type,
+                                                  has_valid_crs,
+                                                  has_valid_interpolation,
+                                                  has_self_consistent_grid)
 
 
 class HarmonyAdapter(BaseHarmonyAdapter):
@@ -37,6 +43,14 @@ class HarmonyAdapter(BaseHarmonyAdapter):
             Validation rules will be added as part of DAS-1759.
 
         """
+        if not has_valid_crs(self.message):
+            raise InvalidTargetCRS(self.message.format.crs)
+
+        if not has_valid_interpolation(self.message):
+            raise InvalidInterpolationMethod(self.message.format.interpolation)
+
+        if not has_self_consistent_grid(self.message):
+            raise InvalidTargetGrid()
 
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """ Processes a single input STAC item. """
