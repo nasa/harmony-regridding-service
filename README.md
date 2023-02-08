@@ -69,6 +69,11 @@ $ ./bin/run-test
 The `tests/run_tests.sh` script will also generate a coverage report, rendered
 in HTML, and scan the code with `pylint`.
 
+Currently, the `unittest` suite is run automatically within Bamboo as part of a
+CI/CD pipeline. In future, this project will be migrated from Bitbucket to
+GitHub, at which point the CI/CD will be migrated to workflows that use GitHub
+Actions.
+
 ## Versioning:
 
 Service Docker images for the Harmony Regridding Service adhere to semantic
