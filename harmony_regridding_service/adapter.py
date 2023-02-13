@@ -40,7 +40,18 @@ class HarmonyAdapter(BaseHarmonyAdapter):
         """ Validates that the contents of the Harmony message provides all
             necessary parameters.
 
-            Validation rules will be added as part of DAS-1759.
+            For an input Harmony message to be considered valid it must:
+
+            * Contain a valid target grid, with `format.scaleExtent` and either
+              `format.scaleSize` or both `format.height` and `format.width`
+              fully populated.
+            * Not specify an incompatible target CRS. Initially, the target CRS
+              is limited to geographic. The message should either specify a
+              geographic CRS, or not specify one at all.
+            * Not specify an incompatible interpolation method. Initially, the
+              Harmony Regridding Service will use Elliptical Weighted Averaging
+              to interpolate when needed. The message should either specify
+              this interpolation method, or not specify one at all.
 
         """
         if not has_valid_crs(self.message):
