@@ -87,6 +87,11 @@ def has_self_consistent_grid(message: Message) -> bool:
         If all three pieces of information are supplied, they will be checked
         to ensure they are consistent with one another.
 
+        If scaleExtent and scaleSize are defined, along with only one of
+        height or width, the grid will be considered consistent if the three
+        values for scaleExtent, scaleSize and specified dimension length,
+        height or width, are consistent.
+
     """
     if (
         has_scale_extents(message) and has_scale_sizes(message)
@@ -94,6 +99,16 @@ def has_self_consistent_grid(message: Message) -> bool:
     ):
         consistent_grid = (_has_consistent_dimension(message, 'x')
                            and _has_consistent_dimension(message, 'y'))
+    elif (
+        has_scale_extents(message) and has_scale_sizes(message)
+        and rgetattr(message, 'format.height') is not None
+    ):
+        consistent_grid = _has_consistent_dimension(message, 'y')
+    elif (
+        has_scale_extents(message) and has_scale_sizes(message)
+        and rgetattr(message, 'format.width') is not None
+    ):
+        consistent_grid = _has_consistent_dimension(message, 'x')
     elif (
         has_scale_extents(message)
         and (has_scale_sizes(message) or has_dimensions(message))
@@ -161,12 +176,12 @@ def _has_consistent_dimension(message: Message, dimension_name: str) -> bool:
     scale_extent = getattr(message.format.scaleExtent, dimension_name)
 
     if dimension_name == 'x':
-        dimension_length = message.format.width
+        dimension_elements = message.format.width
     else:
-        dimension_length = message.format.height
+        dimension_elements = message.format.height
 
     derived_scale_size = divide((scale_extent.max - scale_extent.min),
-                                (dimension_length - 1))
+                                (dimension_elements - 1))
 
     return isclose(message_scale_size, derived_scale_size, rtol=1e-3, atol=0)
 

@@ -217,6 +217,83 @@ class TestUtilities(TestCase):
             })
             self.assertFalse(has_self_consistent_grid(test_message))
 
+    def test_self_has_self_consistent_grid_missing_height_or_width(self):
+        """ Ensure that the function correctly determines if the supplied
+            Harmony message defines a valid target grid. These test cases check
+            when only one of height or width are specified.
+
+            If there is sufficient other grid information, and the one listed
+            dimension with all three pieces of information is self consistent,
+            then the message passes validation.
+
+        """
+        valid_scale_extents = {'x': {'min': -180, 'max': 180},
+                               'y': {'min': -90, 'max': 90}}
+
+        valid_scale_sizes = {'x': 0.5, 'y': 1.0}
+        valid_height = 181
+        valid_width = 721
+
+        with self.subTest('Only height and scaleExtent returns False'):
+            test_message = Message({
+                'format': {'height': valid_height,
+                           'scaleExtent': valid_scale_extents}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Only width and scaleExtent returns False'):
+            test_message = Message({
+                'format': {'scaleExtent': valid_scale_extents,
+                           'width': valid_width}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Only height and scaleSize returns False'):
+            test_message = Message({
+                'format': {'height': valid_height,
+                           'scaleSize': valid_scale_sizes}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Only width and scaleSize returns False'):
+            test_message = Message({
+                'format': {'scaleSize': valid_scale_sizes,
+                           'width': valid_width}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Width, scaleSize, scaleExtent inconsistent, False'):
+            test_message = Message({
+                'format': {'scaleExtent': valid_scale_extents,
+                           'scaleSize': valid_scale_sizes,
+                           'width': valid_width - 150}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Height, scaleSize, scaleExtent inconsistent, False'):
+            test_message = Message({
+                'format': {'height': valid_height + 150,
+                           'scaleExtent': valid_scale_extents,
+                           'scaleSize': valid_scale_sizes}
+            })
+            self.assertFalse(has_self_consistent_grid(test_message))
+
+        with self.subTest('Width, scaleSize, scaleExtent consistent, True'):
+            test_message = Message({
+                'format': {'scaleExtent': valid_scale_extents,
+                           'scaleSize': valid_scale_sizes,
+                           'width': valid_width}
+            })
+            self.assertTrue(has_self_consistent_grid(test_message))
+
+        with self.subTest('Height, scaleSize, scaleExtent consistent, True'):
+            test_message = Message({
+                'format': {'height': valid_height,
+                           'scaleExtent': valid_scale_extents,
+                           'scaleSize': valid_scale_sizes}
+            })
+            self.assertTrue(has_self_consistent_grid(test_message))
+
     def test_has_consistent_dimension(self):
         """ Ensure, given a scale size (resolution), scale extent (range) and
             dimension size, the function can correctly determine if all three
