@@ -41,6 +41,22 @@ class TestAdapter(TestCase):
             except HarmonyException as exception:
                 self.fail(f'Unexpected exception: {exception.message}')
 
+        with self.subTest('Valid grid (scaleExtent and height/width) is valid'):
+            test_message = Message({
+                'format': {'crs': 'EPSG:4326',
+                           'height': valid_height,
+                           'interpolation': 'Elliptical Weighted Averaging',
+                           'scaleExtent': valid_scale_extents,
+                           'width': valid_width}
+            })
+            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
+                                             catalog=self.input_stac)
+
+            try:
+                harmony_adapter.validate_message()
+            except HarmonyException as exception:
+                self.fail(f'Unexpected exception: {exception.message}')
+
         with self.subTest('Valid grid and CRS, no interpolation is valid'):
             test_message = Message({
                 'format': {'crs': 'EPSG:4326',
