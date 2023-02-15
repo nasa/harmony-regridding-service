@@ -17,7 +17,13 @@ from harmony.util import (bbox_to_geometry, download, generate_output_filename,
 from pystac import Asset, Catalog, Item
 
 
-from harmony_regridding_service.utilities import get_file_mime_type
+from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
+                                                   InvalidTargetCRS,
+                                                   InvalidTargetGrid)
+from harmony_regridding_service.utilities import (get_file_mime_type,
+                                                  has_valid_crs,
+                                                  has_valid_interpolation,
+                                                  has_self_consistent_grid)
 
 
 class HarmonyAdapter(BaseHarmonyAdapter):
@@ -34,9 +40,28 @@ class HarmonyAdapter(BaseHarmonyAdapter):
         """ Validates that the contents of the Harmony message provides all
             necessary parameters.
 
-            Validation rules will be added as part of DAS-1759.
+            For an input Harmony message to be considered valid it must:
+
+            * Contain a valid target grid, with `format.scaleExtent` and either
+              `format.scaleSize` or both `format.height` and `format.width`
+              fully populated.
+            * Not specify an incompatible target CRS. Initially, the target CRS
+              is limited to geographic. The message should either specify a
+              geographic CRS, or not specify one at all.
+            * Not specify an incompatible interpolation method. Initially, the
+              Harmony Regridding Service will use Elliptical Weighted Averaging
+              to interpolate when needed. The message should either specify
+              this interpolation method, or not specify one at all.
 
         """
+        if not has_valid_crs(self.message):
+            raise InvalidTargetCRS(self.message.format.crs)
+
+        if not has_valid_interpolation(self.message):
+            raise InvalidInterpolationMethod(self.message.format.interpolation)
+
+        if not has_self_consistent_grid(self.message):
+            raise InvalidTargetGrid()
 
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """ Processes a single input STAC item. """
