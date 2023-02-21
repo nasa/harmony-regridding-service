@@ -32,6 +32,10 @@ class TestUtilities(TestCase):
         with self.subTest('File with entirely unknown MIME type.'):
             self.assertIsNone(get_file_mime_type('file.xyzzyx'))
 
+        with self.subTest('Upper case letters handled.'):
+            self.assertEqual(get_file_mime_type('file.HDF5'),
+                             'application/x-hdf5')
+
     def test_has_valid_crs(self):
         """ Ensure the function correctly determines if the input Harmony
             message has a target Coordinate Reference System (CRS) that is
