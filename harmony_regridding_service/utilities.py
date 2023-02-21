@@ -15,7 +15,8 @@ from harmony_regridding_service.exceptions import InvalidTargetCRS
 
 
 KNOWN_MIME_TYPES = {'.nc4': 'application/x-netcdf4',
-                    '.h5': 'application/x-hdf5'}
+                    '.h5': 'application/x-hdf5',
+                    '.hdf5': 'application/x-hdf5'}
 VALID_INTERPOLATION_METHODS = ('Elliptical Weighted Averaging', )
 
 
@@ -30,7 +31,8 @@ def get_file_mime_type(file_name: str) -> Optional[str]:
     mime_type = guess_mime_type(file_name, False)
 
     if not mime_type or mime_type[0] is None:
-        mime_type = (KNOWN_MIME_TYPES.get(splitext(file_name)[1]), None)
+        mime_type = (KNOWN_MIME_TYPES.get(splitext(file_name)[1].lower()),
+                     None)
 
     return mime_type[0]
 
