@@ -1,4 +1,4 @@
-""" `HarmonyAdapter` for Harmony Regridding Service.
+""" `RegriddingServiceAdapter` for Harmony Regridding Service.
 
     The class in this file is the top level of abstraction for a service that
     will accept a gridded input file (e.g., L3/L4) and transform the data to
@@ -26,7 +26,7 @@ from harmony_regridding_service.utilities import (get_file_mime_type,
                                                   has_self_consistent_grid)
 
 
-class HarmonyAdapter(BaseHarmonyAdapter):
+class RegriddingServiceAdapter(BaseHarmonyAdapter):
     """ This class extends the BaseHarmonyAdapter class from the
         harmony-service-lib package to implement regridding operations.
 

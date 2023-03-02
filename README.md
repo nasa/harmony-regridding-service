@@ -32,7 +32,7 @@ GPM/IMERGHH and MERRA collections.
 * docs - A directory containing Jupyter notebook documentation showing an
   end-user how to use the service.
 * harmony_regridding_service - The directory containing Python source code for
-  the Harmony Regridding Service. `adapter.py` contains the `HarmonyAdapter`
+  the Harmony Regridding Service. `adapter.py` contains the `RegriddingServiceAdapter`
   class that is invoked by calls to the service.
 * pip_requirements.txt - A list of service Python package dependencies.
 * tests - A directory containing the service unit test suite.

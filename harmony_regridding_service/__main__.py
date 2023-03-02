@@ -5,7 +5,7 @@ from typing import List
 
 from harmony import is_harmony_cli, run_cli, setup_cli
 
-from harmony_regridding_service.adapter import HarmonyAdapter
+from harmony_regridding_service.adapter import RegriddingServiceAdapter
 
 
 def main(arguments: List[str]):
@@ -20,7 +20,7 @@ def main(arguments: List[str]):
     harmony_arguments, _ = parser.parse_known_args(arguments[1:])
 
     if is_harmony_cli(harmony_arguments):
-        run_cli(parser, harmony_arguments, HarmonyAdapter)
+        run_cli(parser, harmony_arguments, RegriddingServiceAdapter)
     else:
         parser.error('Only --harmony CLIs are supported')
 
