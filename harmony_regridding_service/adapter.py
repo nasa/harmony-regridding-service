@@ -86,8 +86,8 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
             staged_url = self.stage_output(transformed_file_name, asset.href,
                                            transformed_mime_type)
 
-            return self.create_output_stac_item(item, staged_url,
-                                                transformed_mime_type)
+            return create_output_stac_item(item, staged_url,
+                                           transformed_mime_type)
         except Exception as exception:
             self.logger.exception(exception)
             raise exception
@@ -109,23 +109,24 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
                      location=self.message.stagingLocation,
                      logger=self.logger, cfg=self.config)
 
-    def create_output_stac_item(self, input_stac_item: Item, staged_url: str,
-                                transformed_mime_type: str) -> Item:
-        """ Create an output STAC item used to access the transformed and
-            staged output in S3.
 
-        """
-        output_stac_item = input_stac_item.clone()
-        output_stac_item.assets = {}
-        # The output bounding box will vary by grid, so the following line
-        # will need to be updated when the service has access to the output
-        # grid specification.
-        output_stac_item.bbox = input_stac_item.bbox
-        output_stac_item.geometry = bbox_to_geometry(output_stac_item.bbox)
+def create_output_stac_item(input_stac_item: Item, staged_url: str,
+                            transformed_mime_type: str) -> Item:
+    """ Create an output STAC item used to access the transformed and
+        staged output in S3.
 
-        output_stac_item.assets['data'] = Asset(
-            staged_url, title=basename(staged_url),
-            media_type=transformed_mime_type, roles=['data']
-        )
+    """
+    output_stac_item = input_stac_item.clone()
+    output_stac_item.assets = {}
+    # The output bounding box will vary by grid, so the following line
+    # will need to be updated when the service has access to the output
+    # grid specification.
+    output_stac_item.bbox = input_stac_item.bbox
+    output_stac_item.geometry = bbox_to_geometry(output_stac_item.bbox)
 
-        return output_stac_item
+    output_stac_item.assets['data'] = Asset(
+        staged_url, title=basename(staged_url),
+        media_type=transformed_mime_type, roles=['data']
+    )
+
+    return output_stac_item
