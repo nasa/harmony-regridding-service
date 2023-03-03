@@ -9,7 +9,7 @@ from harmony.message import Message
 from harmony.util import config
 from pystac import Catalog
 
-from harmony_regridding_service.adapter import HarmonyAdapter
+from harmony_regridding_service.adapter import RegriddingServiceAdapter
 from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
                                                    InvalidTargetCRS,
                                                    InvalidTargetGrid)
@@ -93,8 +93,8 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(message, config=self.config,
-                                   catalog=self.input_stac)
+        regridder = RegriddingServiceAdapter(message, config=self.config,
+                                             catalog=self.input_stac)
 
         _, output_catalog = regridder.invoke()
 
@@ -129,7 +129,7 @@ class TestAdapter(TestCase):
                           mock_rmtree):
         """ Ensure a request that fails message validation correctly raises an
             exception that is reported at the top level of invocation. Message
-            validation occurs prior to the `HarmonyAdapter.process_item`
+            validation occurs prior to the `RegriddingServiceAdapter.process_item`
             method, so none of the functions or methods within that method
             should be called. In this test there are no target grid parameters,
             so the validation should raise an `InvalidTargetGrid` exception.
@@ -145,8 +145,8 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(harmony_message, config=self.config,
-                                   catalog=self.input_stac)
+        regridder = RegriddingServiceAdapter(harmony_message, config=self.config,
+                                             catalog=self.input_stac)
 
         with self.assertRaises(InvalidTargetGrid) as context_manager:
             regridder.invoke()
@@ -168,7 +168,7 @@ class TestAdapter(TestCase):
                           mock_rmtree):
         """ Ensure a request that fails message validation correctly raises an
             exception that is reported at the top level of invocation. Message
-            validation occurs prior to the `HarmonyAdapter.process_item`
+            validation occurs prior to the `RegriddingServiceAdapter.process_item`
             method, so none of the functions or methods within that method
             should be called. In this test there ae target grid parameters that
             are inconsistent with one another, so the validation should raise
@@ -192,8 +192,8 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(harmony_message, config=self.config,
-                                   catalog=self.input_stac)
+        regridder = RegriddingServiceAdapter(harmony_message, config=self.config,
+                                             catalog=self.input_stac)
 
         with self.assertRaises(InvalidTargetGrid) as context_manager:
             regridder.invoke()
@@ -215,7 +215,7 @@ class TestAdapter(TestCase):
                                    mock_mkdtemp, mock_rmtree):
         """ Ensure a request that fails message validation correctly raises an
             exception that is reported at the top level of invocation. Message
-            validation occurs prior to the `HarmonyAdapter.process_item`
+            validation occurs prior to the `RegriddingServiceAdapter.process_item`
             method, so none of the functions or methods within that method
             should be called. In this test there is an invalid interpolation in
             the Harmony message, so the validation should raise an
@@ -238,8 +238,8 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(harmony_message, config=self.config,
-                                   catalog=self.input_stac)
+        regridder = RegriddingServiceAdapter(harmony_message, config=self.config,
+                                             catalog=self.input_stac)
 
         with self.assertRaises(InvalidInterpolationMethod) as context_manager:
             regridder.invoke()
@@ -261,7 +261,7 @@ class TestAdapter(TestCase):
                          mock_rmtree):
         """ Ensure a request that fails message validation correctly raises an
             exception that is reported at the top level of invocation. Message
-            validation occurs prior to the `HarmonyAdapter.process_item`
+            validation occurs prior to the `RegriddingServiceAdapter.process_item`
             method, so none of the functions or methods within that method
             should be called. In this test there is an invalid target CRS
             specified in the Harmony message, so the validation should raise an
@@ -284,8 +284,8 @@ class TestAdapter(TestCase):
             'user': self.user,
         })
 
-        regridder = HarmonyAdapter(harmony_message, config=self.config,
-                                   catalog=self.input_stac)
+        regridder = RegriddingServiceAdapter(harmony_message, config=self.config,
+                                             catalog=self.input_stac)
 
         with self.assertRaises(InvalidTargetCRS) as context_manager:
             regridder.invoke()

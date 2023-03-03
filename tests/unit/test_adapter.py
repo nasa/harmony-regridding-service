@@ -3,7 +3,7 @@ from unittest import skip, TestCase
 from harmony.message import Message
 from harmony.util import config, HarmonyException
 
-from harmony_regridding_service.adapter import HarmonyAdapter
+from harmony_regridding_service.adapter import RegriddingServiceAdapter
 from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
                                                    InvalidTargetCRS,
                                                    InvalidTargetGrid)
@@ -33,8 +33,8 @@ class TestAdapter(TestCase):
                 'format': {'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             try:
                 harmony_adapter.validate_message()
@@ -49,8 +49,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'width': valid_width}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             try:
                 harmony_adapter.validate_message()
@@ -63,8 +63,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             try:
                 harmony_adapter.validate_message()
@@ -77,8 +77,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             try:
                 harmony_adapter.validate_message()
@@ -92,8 +92,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             try:
                 harmony_adapter.validate_message()
@@ -107,8 +107,8 @@ class TestAdapter(TestCase):
                            'scaleSize': valid_scale_sizes,
                            'width': valid_width - 150}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             with self.assertRaises(InvalidTargetGrid) as context:
                 harmony_adapter.validate_message()
@@ -124,8 +124,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             with self.assertRaises(InvalidTargetCRS) as context:
                 harmony_adapter.validate_message()
@@ -139,8 +139,8 @@ class TestAdapter(TestCase):
                            'scaleExtent': valid_scale_extents,
                            'scaleSize': valid_scale_sizes}
             })
-            harmony_adapter = HarmonyAdapter(test_message, config=self.config,
-                                             catalog=self.input_stac)
+            harmony_adapter = RegriddingServiceAdapter(test_message, config=self.config,
+                                                       catalog=self.input_stac)
 
             with self.assertRaises(InvalidInterpolationMethod) as context:
                 harmony_adapter.validate_message()
