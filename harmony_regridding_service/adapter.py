@@ -20,6 +20,7 @@ from pystac import Asset, Catalog, Item
 from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
                                                    InvalidTargetCRS,
                                                    InvalidTargetGrid)
+from harmony_regridding_service.regridding_service import regrid
 from harmony_regridding_service.utilities import (get_file_mime_type,
                                                   has_valid_crs,
                                                   has_valid_interpolation,
@@ -31,6 +32,10 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
         harmony-service-lib package to implement regridding operations.
 
     """
+    def __init__(self, message, catalog=None, config=None):
+        super().__init__(message, catalog=catalog, config=config)
+        self.cache = {'grids': {}}
+
     def invoke(self) -> Catalog:
         """ Adds validation to process_item based invocations. """
         self.validate_message()
@@ -74,12 +79,11 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
                           if 'data' in (item_asset.roles or [])))
 
             # Download the input:
-            input_data = download(asset.href, working_directory,
-                                  logger=self.logger, cfg=self.config,
-                                  access_token=self.message.accessToken)
+            input_filepath = download(asset.href, working_directory,
+                                      logger=self.logger, cfg=self.config,
+                                      access_token=self.message.accessToken)
 
-            # The following line would be replaced by invoking service logic
-            transformed_file_name = regrid(self.message, input_data, self.logger)
+            transformed_file_name = regrid(self, input_filepath)
 
             # Stage the transformed output:
             transformed_mime_type = get_file_mime_type(transformed_file_name)
