@@ -18,7 +18,7 @@ class TestCodeFormat(TestCase):
     """
     @classmethod
     def setUpClass(cls):
-        cls.python_files = Path('harmony_adapter').rglob('*.py')
+        cls.python_files = Path('harmony_regridding_service').rglob('*.py')
 
     def test_pycodestyle_adherence(self):
         """ Ensure all code in the `pymods` directory adheres to PEP8
