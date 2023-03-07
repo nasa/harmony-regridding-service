@@ -16,8 +16,6 @@ if TYPE_CHECKING:
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
 from harmony_regridding_service.utilities import has_dimensions
 
-DIMENSION_CACHE = {}
-
 
 def regrid(adapter: RegriddingServiceAdapter, input_filepath: str) -> str:
     """Regrid the input data at input_filepath."""
@@ -30,11 +28,11 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
                       filepath: str) -> None:
     """Precompute the resampling weights.
 
-    Determine the desired ouptut Target Area from the Harmony Message.
-    Use this target area in conjunction with each each shared horizontal
-    dimension in the inupt source file to create an EWA Resampler and
-    precompute the weights to be used in a resample from the shared horizontal
-    dimension to the output target area.
+    Determine the desired ouptut Target Area from the Harmony Message.  Use
+    this target area in conjunction with each shared horizontal dimension in
+    the inupt source file to create an EWA Resampler and precompute the weights
+    to be used in a resample from the shared horizontal dimension to the output
+    target area.
 
     """
     var_info = VarInfoFromNetCDF4(filepath, adapter.logger)

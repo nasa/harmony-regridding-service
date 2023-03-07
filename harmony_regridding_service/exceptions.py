@@ -34,6 +34,6 @@ class InvalidTargetGrid(RegridderException):
         super().__init__('Insufficient or invalid target grid parameters.')
 
 class InvalidSourceDimensions(RegridderException):
-    """ Raised when a source granules does not meet the expected dimension shapes. """
+    """ Raised when a source granule does not meet the expected dimension shapes. """
     def __init__(self, message: str):
         super().__init__(message)
