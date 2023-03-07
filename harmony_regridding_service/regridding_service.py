@@ -1,20 +1,21 @@
 """Regridding service code."""
 from __future__ import annotations
+from typing import Tuple, TYPE_CHECKING
 
 import numpy as np
-from netCDF4 import Dataset
+from netCDF4 import Dataset  # pylint: disable=no-name-in-module
+
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from pyresample.ewa import DaskEWAResampler
 
 from harmony.message import Message
 from varinfo import VarInfoFromNetCDF4
 
-from typing import Tuple, TYPE_CHECKING
-if TYPE_CHECKING:
-    from harmony_regridding_service.adapter import RegriddingServiceAdapter
-
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
 from harmony_regridding_service.utilities import has_dimensions
+
+if TYPE_CHECKING:
+    from harmony_regridding_service.adapter import RegriddingServiceAdapter
 
 
 def regrid(adapter: RegriddingServiceAdapter, input_filepath: str) -> str:
@@ -41,14 +42,17 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
 
     target_area = _compute_target_area(adapter.message)
 
-    for dimensions, variable_list in dimension_variables_mapping.items():
+    for dimensions in dimension_variables_mapping:
         # create source swath definition from 2D grids
         if len(dimensions) != 2:
             continue
 
         source_swath = _compute_source_swath(dimensions, filepath, var_info)
         adapter.cache['grids'][dimensions] = DaskEWAResampler(
-            source_swath, target_area).precompute(rows_per_scan=0)
+            source_swath, target_area)
+
+    for _, resampler in adapter.cache['grids'].values():
+        resampler.precompute(rows_per_scan=0)
 
     adapter.logger.info(
         f'cached resamplers for {adapter.cache["grids"].keys()}')
@@ -103,23 +107,28 @@ def _compute_num_elements(message: Message, dimension_name: str) -> int:
 def _get_column_dim(dims: Tuple[str, str],
                     var_info: VarInfoFromNetCDF4) -> str:
     """Return name for horizontal grid dimension [column/longitude/x]."""
+    column_dim = None
     try:
         for dim in dims:
-            if (var_info.get_variable(dim).is_longitude()):
-                return dim
-    except AttributeError:
+            if var_info.get_variable(dim).is_longitude():
+                column_dim = dim
+    except AttributeError as error:
         raise InvalidSourceDimensions(
-            f'No longitude dimension found in {dims}')
+            f'No longitude dimension found in {dims}') from error
+    return column_dim
 
 
 def _get_row_dim(dims: Tuple[str, str], var_info: VarInfoFromNetCDF4) -> str:
     """Return name for vertical grid dimension [row/latitude/y]."""
+    row_dim = None
     try:
         for dim in dims:
-            if (var_info.get_variable(dim).is_latitude()):
-                return dim
-    except AttributeError:
-        raise InvalidSourceDimensions(f'No latitude dimension found in {dims}')
+            if var_info.get_variable(dim).is_latitude():
+                row_dim = dim
+    except AttributeError as error:
+        raise InvalidSourceDimensions(
+            f'No latitude dimension found in {dims}') from error
+    return row_dim
 
 
 def _compute_source_swath(grid_dimensions: Tuple[str, str], filepath: str,
@@ -138,17 +147,17 @@ def _compute_horizontal_source_grids(
     row_dim = _get_row_dim(grid_dimensions, var_info)
     column_dim = _get_column_dim(grid_dimensions, var_info)
 
-    with Dataset(filepath, mode='r') as ds:
-        row_shape = ds[row_dim].shape
-        column_shape = ds[column_dim].shape
+    with Dataset(filepath, mode='r') as data_set:
+        row_shape = data_set[row_dim].shape
+        column_shape = data_set[column_dim].shape
 
         if (len(row_shape) == 1 and len(column_shape) == 1):
             num_rows = row_shape[0]
             num_columns = column_shape[0]
-            longitudes = np.broadcast_to(ds[column_dim],
+            longitudes = np.broadcast_to(data_set[column_dim],
                                          (num_rows, num_columns))
             latitudes = np.broadcast_to(
-                np.broadcast_to(ds[row_dim], (1, num_rows)).T,
+                np.broadcast_to(data_set[row_dim], (1, num_rows)).T,
                 (num_rows, num_columns))
             longitudes = np.ascontiguousarray(longitudes)
             latitudes = np.ascontiguousarray(latitudes)
