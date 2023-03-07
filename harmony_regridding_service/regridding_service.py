@@ -28,16 +28,20 @@ def regrid(adapter: RegriddingServiceAdapter, input_filepath: str) -> str:
 
 def _cache_resamplers(adapter: RegriddingServiceAdapter,
                       filepath: str) -> None:
+    """Precompute the resampling weights.
+
+    Determine the desired ouptut Target Area from the Harmony Message.
+    Use this target area in conjunction with each each shared horizontal
+    dimension in the inupt source file to create an EWA Resampler and
+    precompute the weights to be used in a resample from the shared horizontal
+    dimension to the output target area.
+
+    """
     var_info = VarInfoFromNetCDF4(filepath, adapter.logger)
     dimension_variables_mapping = \
         var_info.group_variables_by_horizontal_dimensions()
 
-    adapter.logger.info(f'dimension_variables_mapping: {dimension_variables_mapping}')
-
-    # Create target Area Definition that the input variables will resampled to
-    # adapter.message has that infomration
     target_area = _compute_target_area(adapter.message)
-    adapter.logger.info(f'target_area: {target_area}')
 
     for dimensions, variable_list in dimension_variables_mapping.items():
         # create source swath definition from 2D grids
@@ -45,10 +49,8 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
             continue
 
         source_swath = _compute_source_swath(dimensions, filepath, var_info)
-        adapter.logger.info(f'source_swath: {source_swath.corners}')
-        adapter.logger.info(f'Caching dimensions: {dimensions}')
         adapter.cache['grids'][dimensions] = DaskEWAResampler(
-            source_swath, target_area)
+            source_swath, target_area).precompute(rows_per_scan=0)
 
     adapter.logger.info(
         f'cached resamplers for {adapter.cache["grids"].keys()}')
@@ -62,47 +64,42 @@ def _compute_target_area(message: Message) -> AreaDefinition:
                    message.format.scaleExtent.x.max,
                    message.format.scaleExtent.x.min)
 
-    if has_dimensions(message):
-        height = message.format.height
-        width = message.format.width
-    else:
-        height = _grid_height(message)
-        width = _grid_width(message)
-
+    height = _grid_height(message)
+    width = _grid_width(message)
     projection = message.format.crs
 
-    return AreaDefinition('target_area_id',
-                          'target area definition',
-                          None,
-                          projection,
-                          width,
-                          height,
-                          area_extent)
+    return AreaDefinition('target_area_id', 'target area definition', None,
+                          projection, width, height, area_extent)
 
 
 def _grid_height(message: Message) -> int:
+    """Compute grid height from Message.
+
+    Compute the height of grid from the scaleExtents and scale_sizes.
     """
-    Compute grid height from Message.
-    compute the height of grid from the scaleExtents and scale_sizes
-    """
-    return _compute_num_gridcells(message, 'y')
+    if has_dimensions(message):
+        return message.format.height
+    return _compute_num_elements(message, 'y')
 
 
 def _grid_width(message: Message) -> int:
     """Compute grid height from Message.
 
-    compute the height of grid from the scaleExtents and scale_sizes"""
-    return _compute_num_gridcells(message, 'x')
+    Compute the height of grid from the scaleExtents and scale_sizes.
+    """
+    if has_dimensions(message):
+        return message.format.width
+    return _compute_num_elements(message, 'x')
 
 
-def _compute_num_gridcells(message: Message, dimension_name: str) -> int:
+def _compute_num_elements(message: Message, dimension_name: str) -> int:
     """Compute the number of gridcells based on scaleExtents and scaleSize."""
     scale_extent = getattr(message.format.scaleExtent, dimension_name)
     scale_size = getattr(message.format.scaleSize, dimension_name)
 
-    num_gridcells = int(
+    num_elements = int(
         np.round((scale_extent.max - scale_extent.min) / scale_size) + 1)
-    return num_gridcells
+    return num_elements
 
 
 def _get_column_dim(dims: Tuple[str, str],
@@ -159,6 +156,8 @@ def _compute_horizontal_source_grids(
             latitudes = np.ascontiguousarray(latitudes)
         else:
             # Only handling the case of 1-Dimensional dimensions on MVP
-            raise InvalidSourceDimensions('Incorrect source data dimensions.')
+            raise InvalidSourceDimensions(
+                'Incorrect source data dimensions. '
+                'rows:{row_shape}, columns:{columns_shape}')
 
     return (longitudes, latitudes)
