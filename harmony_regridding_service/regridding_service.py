@@ -164,7 +164,7 @@ def _compute_horizontal_source_grids(
         else:
             # Only handling the case of 1-Dimensional dimensions on MVP
             raise InvalidSourceDimensions(
-                'Incorrect source data dimensions. '
-                'rows:{row_shape}, columns:{columns_shape}')
+                f'Incorrect source data dimensions. '
+                f'rows:{row_shape}, columns:{column_shape}')
 
     return (longitudes, latitudes)
