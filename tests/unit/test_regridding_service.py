@@ -13,8 +13,9 @@ from harmony.message import Message
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.regridding_service import (
-    _compute_horizontal_source_grids, _compute_target_area,
-    _compute_source_swath)
+    _compute_horizontal_source_grids, _compute_num_elements,
+    _compute_source_swath, _compute_target_area, _get_row_dim, _get_column_dim,
+    _grid_height, _grid_width)
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
 
 
@@ -61,6 +62,43 @@ class TestRegriddingService(TestCase):
         dataset['lon'][:] = np.broadcast_to(longitudes, (5, 6)).T
         dataset.close()
 
+        # Set up test Harmony messages
+        cls.test_message_with_scale_size = Message({
+            'format': {
+                'scaleSize': {
+                    'x': 10,
+                    'y': 10
+                },
+                'scaleExtent': {
+                    'x': {
+                        'min': 0,
+                        'max': 1000
+                    },
+                    'y': {
+                        'min': 0,
+                        'max': 500
+                    }
+                }
+            }
+        })
+
+        cls.test_message_with_height_width = Message({
+            'format': {
+                'height': 80,
+                'width': 40,
+                'scaleExtent': {
+                    'x': {
+                        'min': 0,
+                        'max': 1000
+                    },
+                    'y': {
+                        'min': 0,
+                        'max': 500
+                    }
+                }
+            }
+        })
+
     @classmethod
     def tearDownCass(cls):
         rmtree(cls.tmp_dir)
@@ -102,8 +140,90 @@ class TestRegriddingService(TestCase):
             expected_width, expected_height,
             (expected_xmin, expected_ymin, expected_xmax, expected_ymax))
 
+    def test_grid_height(self):
+        expected_grid_height = 50
+        actual_grid_height = _grid_height(self.test_message_with_scale_size)
+        self.assertEqual(expected_grid_height, actual_grid_height)
+
+    def test_grid_height_message_includes_height(self):
+        expected_grid_height = 80
+        actual_grid_height = _grid_height(self.test_message_with_height_width)
+        self.assertEqual(expected_grid_height, actual_grid_height)
+
+    def test_grid_width(self):
+        expected_grid_width = 100
+        actual_grid_width = _grid_width(self.test_message_with_scale_size)
+        self.assertEqual(expected_grid_width, actual_grid_width)
+
+    def test_grid_width_message_includes_width(self):
+        expected_grid_width = 40
+        actual_grid_width = _grid_width(self.test_message_with_height_width)
+        self.assertEqual(expected_grid_width, actual_grid_width)
+
     def test_compute_num_elements(self):
-        pass
+        xmin = 0
+        xmax = 1000
+        ymin = 0
+        ymax = 500
+
+        message = Message({
+            'format': {
+                'scaleSize': {
+                    'x': 10,
+                    'y': 10
+                },
+                'scaleExtent': {
+                    'x': {
+                        'min': xmin,
+                        'max': xmax
+                    },
+                    'y': {
+                        'min': ymin,
+                        'max': ymax
+                    }
+                }
+            }
+        })
+
+        expected_x_elements = 100
+        expected_y_elements = 50
+        actual_x_elements = _compute_num_elements(message, 'x')
+        actual_y_elements = _compute_num_elements(message, 'y')
+
+        self.assertEqual(expected_x_elements, actual_x_elements)
+        self.assertEqual(expected_y_elements, actual_y_elements)
+
+    def test_get_row_dim(self):
+        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        dims = ('/lat', '/lon')
+        expected_dim = '/lat'
+
+        actual = _get_row_dim(dims, var_info)
+        self.assertEqual(expected_dim, actual)
+
+    def test_get_column_dim(self):
+        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        dims = ('/lat', '/lon')
+        expected_dim = '/lon'
+
+        actual = _get_column_dim(dims, var_info)
+        self.assertEqual(expected_dim, actual)
+
+    def test_get_column_dim_no_variable(self):
+        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        dims = ('/baddim1', '/baddim2')
+
+        with self.assertRaisesRegex(InvalidSourceDimensions,
+                                    "No longitude dimension found"):
+            _get_column_dim(dims, var_info)
+
+    def test_get_row_dim_no_variable(self):
+        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        dims = ('/baddim1', '/baddim2')
+
+        with self.assertRaisesRegex(InvalidSourceDimensions,
+                                    "No latitude dimension found"):
+            _get_row_dim(dims, var_info)
 
     @patch('harmony_regridding_service.regridding_service.SwathDefinition')
     @patch(
@@ -154,7 +274,7 @@ class TestRegriddingService(TestCase):
                 np.testing.assert_array_equal(expected_latitudes, latitudes)
                 np.testing.assert_array_equal(expected_longitudes, longitudes)
 
-    def test_2D_lat_lons_compute_horizontal_source_grids(self):
+    def test_2D_lat_lon_input_compute_horizontal_source_grids(self):
         var_info = VarInfoFromNetCDF4(self.bad_ncfile, self.logger)
         grid_dimensions = ('/lat', '/lon')
 

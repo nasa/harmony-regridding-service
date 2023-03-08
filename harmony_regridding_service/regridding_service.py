@@ -100,7 +100,7 @@ def _compute_num_elements(message: Message, dimension_name: str) -> int:
     scale_size = getattr(message.format.scaleSize, dimension_name)
 
     num_elements = int(
-        np.round((scale_extent.max - scale_extent.min) / scale_size) + 1)
+        np.round((scale_extent.max - scale_extent.min) / scale_size))
     return num_elements
 
 
