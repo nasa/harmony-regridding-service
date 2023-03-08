@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import patch, MagicMock
 
 from netCDF4 import Dataset
 import numpy as np
@@ -8,9 +9,12 @@ import re
 from tempfile import mkdtemp
 from shutil import rmtree
 
+from harmony.message import Message
 from varinfo import VarInfoFromNetCDF4
 
-from harmony_regridding_service.regridding_service import _compute_horizontal_source_grids
+from harmony_regridding_service.regridding_service import (
+    _compute_horizontal_source_grids, _compute_target_area,
+    _compute_source_swath)
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
 
 
@@ -19,23 +23,17 @@ class TestRegriddingService(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pass
-
-
-class Test_ComputeHorizontalSourceGrids(TestCase):
-    """Exercises the single function for computing horizontal grids."""
-
-    @classmethod
-    def setUpClass(cls):
         """fixtures for all class tests."""
         cls.tmp_dir = mkdtemp()
+        cls.logger = getLogger()
+
         cls.test_ncfile = Path(cls.tmp_dir, 'valid_test.nc')
         cls.bad_ncfile = Path(cls.tmp_dir, 'invalid_test.nc')
-        cls.logger = getLogger()
 
         longitudes = np.array([-180, -80, -45, 45, 80, 180])
         latitudes = np.array([90, 45, 0, -46, -89])
 
+        # Set up a file with one dimensional /lon and /lat variables.
         dataset = Dataset(cls.test_ncfile, 'w')
         dataset.createDimension('lon', size=len(longitudes))
         dataset.createDimension('lat', size=len(latitudes))
@@ -47,6 +45,7 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
         dataset['lon'][:] = longitudes
         dataset.close()
 
+        # Set up a file with two dimensional /lon and /lat variables.
         dataset = Dataset(cls.bad_ncfile, 'w')
         dataset.createDimension('lon', size=(len(longitudes)))
         dataset.createDimension('lat', size=(len(latitudes)))
@@ -66,7 +65,70 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
     def tearDownCass(cls):
         rmtree(cls.tmp_dir)
 
-    def test_expected_result(self):
+    @patch('harmony_regridding_service.regridding_service.AreaDefinition')
+    def test_compute_target_area(self, mock_area):
+        """Ensure Area Definition correctly generated"""
+        expected_width = 100
+        expected_height = 50
+        expected_crs = 'the crs string'
+        expected_xmin = -180
+        expected_xmax = 180
+
+        expected_ymin = -90
+        expected_ymax = 90
+
+        message = Message({
+            'format': {
+                'crs': expected_crs,
+                'width': expected_width,
+                'height': expected_height,
+                'scaleExtent': {
+                    'x': {
+                        'min': expected_xmin,
+                        'max': expected_xmax
+                    },
+                    'y': {
+                        'min': expected_ymin,
+                        'max': expected_ymax
+                    }
+                }
+            }
+        })
+
+        _compute_target_area(message)
+
+        mock_area.assert_called_once_with(
+            'target_area_id', 'target area definition', None, expected_crs,
+            expected_width, expected_height,
+            (expected_xmin, expected_ymin, expected_xmax, expected_ymax))
+
+    def test_compute_num_elements(self):
+        pass
+
+    @patch('harmony_regridding_service.regridding_service.SwathDefinition')
+    @patch(
+        'harmony_regridding_service.regridding_service._compute_horizontal_source_grids'
+    )
+    def test_compute_source_swath(self, mock_horiz_source_grids, mock_swath):
+        """Ensure source swaths are correctly generated."""
+        grid_dims = ('/lon', '/lat')
+        filepath = 'path to a file'
+        var_info = {"fake": "varinfo object"}
+        lons = np.array([[1, 1], [1, 1], [1, 1]])
+        lats = np.array([[2, 2], [2, 2], [2, 2]])
+
+        mock_horiz_source_grids.return_value = (lons, lats)
+
+        _compute_source_swath(grid_dims, filepath, var_info)
+
+        # horizontal grids were called successfully
+        mock_horiz_source_grids.assert_called_with(grid_dims, filepath,
+                                                   var_info)
+        # swath was called with the horizontal 2d grids.
+        mock_swath.assert_called_with(lons=lons, lats=lats)
+
+    def test_expected_result_compute_horizontal_source_grids(self):
+        """Exercises the single function for computing horizontal grids."""
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
 
         expected_longitudes = np.array([[-180, -80, -45, 45, 80, 180],
@@ -92,11 +154,12 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
                 np.testing.assert_array_equal(expected_latitudes, latitudes)
                 np.testing.assert_array_equal(expected_longitudes, longitudes)
 
-    def test_gridded_lat_lons(self):
+    def test_2D_lat_lons_compute_horizontal_source_grids(self):
         var_info = VarInfoFromNetCDF4(self.bad_ncfile, self.logger)
         grid_dimensions = ('/lat', '/lon')
 
-        expected_regex = re.escape('rows:(6, 5), columns:(6, 5)')
+        expected_regex = re.escape('Incorrect source data dimensions. '
+                                   'rows:(6, 5), columns:(6, 5)')
         with self.assertRaisesRegex(InvalidSourceDimensions, expected_regex):
             _compute_horizontal_source_grids(grid_dimensions, self.bad_ncfile,
                                              var_info)

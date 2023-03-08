@@ -64,7 +64,7 @@ def _compute_target_area(message: Message) -> AreaDefinition:
     area_extent = (message.format.scaleExtent.x.min,
                    message.format.scaleExtent.y.min,
                    message.format.scaleExtent.x.max,
-                   message.format.scaleExtent.x.min)
+                   message.format.scaleExtent.y.max)
 
     height = _grid_height(message)
     width = _grid_width(message)
