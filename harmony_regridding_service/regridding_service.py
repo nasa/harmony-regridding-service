@@ -51,7 +51,7 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
         adapter.cache['grids'][dimensions] = DaskEWAResampler(
             source_swath, target_area)
 
-    for _, resampler in adapter.cache['grids'].values():
+    for resampler in adapter.cache['grids'].values():
         resampler.precompute(rows_per_scan=0)
 
     adapter.logger.info(
