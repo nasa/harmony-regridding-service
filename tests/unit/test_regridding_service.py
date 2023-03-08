@@ -50,14 +50,17 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
         dataset = Dataset(cls.bad_ncfile, 'w')
         dataset.createDimension('lon', size=(len(longitudes)))
         dataset.createDimension('lat', size=(len(latitudes)))
-        dataset.createVariable('/lon', longitudes.dtype, dimensions=('lon', 'lat'))
-        dataset.createVariable('/lat', latitudes.dtype, dimensions=('lon', 'lat'))
+        dataset.createVariable('/lon',
+                               longitudes.dtype,
+                               dimensions=('lon', 'lat'))
+        dataset.createVariable('/lat',
+                               latitudes.dtype,
+                               dimensions=('lon', 'lat'))
         dataset['lon'].setncattr('units', 'degrees_east')
         dataset['lat'].setncattr('units', 'degrees_north')
         dataset['lat'][:] = np.broadcast_to(latitudes, (6, 5))
-        dataset['lon'][:] = np.broadcast_to(longitudes, (5,6)).T
+        dataset['lon'][:] = np.broadcast_to(longitudes, (5, 6)).T
         dataset.close()
-
 
     @classmethod
     def tearDownCass(cls):
@@ -66,27 +69,23 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
     def test_expected_result(self):
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
 
-        expected_longitudes = np.array([
-            [-180,  -80,  -45,   45,   80,  180],
-            [-180,  -80,  -45,   45,   80,  180],
-            [-180,  -80,  -45,   45,   80,  180],
-            [-180,  -80,  -45,   45,   80,  180],
-            [-180,  -80,  -45,   45,   80,  180]])
+        expected_longitudes = np.array([[-180, -80, -45, 45, 80, 180],
+                                        [-180, -80, -45, 45, 80, 180],
+                                        [-180, -80, -45, 45, 80, 180],
+                                        [-180, -80, -45, 45, 80, 180],
+                                        [-180, -80, -45, 45, 80, 180]])
 
-        expected_latitudes = np.array([
-            [ 90,  90,  90,  90,  90,  90],
-            [ 45,  45,  45,  45,  45,  45],
-            [  0,   0,   0,   0,   0,   0],
-            [-46, -46, -46, -46, -46, -46],
-            [-89, -89, -89, -89, -89, -89]])
+        expected_latitudes = np.array([[90, 90, 90, 90, 90, 90],
+                                       [45, 45, 45, 45, 45, 45],
+                                       [0, 0, 0, 0, 0, 0],
+                                       [-46, -46, -46, -46, -46, -46],
+                                       [-89, -89, -89, -89, -89, -89]])
 
-
-        test_args = [
-            ('/lon', '/lat'),
-            ('/lat', '/lon')]
+        test_args = [('/lon', '/lat'), ('/lat', '/lon')]
 
         for grid_dimensions in test_args:
-            with self.subTest(f'independent grid_dimension order {grid_dimensions}'):
+            with self.subTest(
+                    f'independent grid_dimension order {grid_dimensions}'):
                 longitudes, latitudes = _compute_horizontal_source_grids(
                     grid_dimensions, self.test_ncfile, var_info)
 
@@ -99,5 +98,5 @@ class Test_ComputeHorizontalSourceGrids(TestCase):
 
         expected_regex = re.escape('rows:(6, 5), columns:(6, 5)')
         with self.assertRaisesRegex(InvalidSourceDimensions, expected_regex):
-            _compute_horizontal_source_grids(
-                grid_dimensions, self.bad_ncfile, var_info)
+            _compute_horizontal_source_grids(grid_dimensions, self.bad_ncfile,
+                                             var_info)
