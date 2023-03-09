@@ -113,7 +113,7 @@ class TestAdapter(TestCase):
                                               access_token=self.access_token)
 
         # Ensure regrid was called with the input filepath.
-        mock_regrid.assert_called_once_with(ANY, expected_downloaded_file)
+        mock_regrid.assert_called_once_with(ANY, expected_downloaded_file, ANY)
 
         # Ensure the file was staged as expected:
         mock_stage.assert_called_once_with(expected_downloaded_file,
