@@ -194,7 +194,7 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_y_elements, actual_y_elements)
 
     def test_get_projection_x_dim(self):
-        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lat'
 
@@ -202,7 +202,7 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_dim, actual)
 
     def test_get_projection_y_dim(self):
-        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lon'
 
@@ -210,7 +210,7 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_dim, actual)
 
     def test_get_projection_y_dim_no_variable(self):
-        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
@@ -218,7 +218,7 @@ class TestRegriddingService(TestCase):
             _get_projection_y_dim(dims, var_info)
 
     def test_get_projection_x_dim_no_variable(self):
-        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
@@ -249,7 +249,7 @@ class TestRegriddingService(TestCase):
 
     def test_expected_result_compute_horizontal_source_grids(self):
         """Exercises the single function for computing horizontal grids."""
-        var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
 
         expected_longitudes = np.array([[-180, -80, -45, 45, 80, 180],
                                         [-180, -80, -45, 45, 80, 180],
@@ -269,7 +269,7 @@ class TestRegriddingService(TestCase):
             with self.subTest(
                     f'independent grid_dimension order {grid_dimensions}'):
                 longitudes, latitudes = _compute_horizontal_source_grids(
-                    grid_dimensions, self.test_ncfile, var_info)
+                    grid_dimensions, self.test_1D_dimensions_ncfile, var_info)
 
                 np.testing.assert_array_equal(expected_latitudes, latitudes)
                 np.testing.assert_array_equal(expected_longitudes, longitudes)
