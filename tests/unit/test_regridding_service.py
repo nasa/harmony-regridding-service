@@ -5,6 +5,7 @@ from netCDF4 import Dataset
 import numpy as np
 from logging import getLogger
 from pathlib import Path
+from pyresample.geometry import AreaDefinition
 import re
 from tempfile import mkdtemp
 from shutil import rmtree
@@ -103,42 +104,48 @@ class TestRegriddingService(TestCase):
     def tearDownCass(cls):
         rmtree(cls.tmp_dir)
 
-    @patch('harmony_regridding_service.regridding_service.AreaDefinition')
+    @patch('harmony_regridding_service.regridding_service.AreaDefinition', wraps=AreaDefinition)
     def test_compute_target_area(self, mock_area):
         """Ensure Area Definition correctly generated"""
-        expected_width = 100
-        expected_height = 50
-        expected_crs = 'the crs string'
-        expected_xmin = -180
-        expected_xmax = 180
-
-        expected_ymin = -90
-        expected_ymax = 90
+        crs = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
+        xmin = -180
+        xmax = 180
+        ymin = -90
+        ymax = 90
 
         message = Message({
             'format': {
-                'crs': expected_crs,
-                'width': expected_width,
-                'height': expected_height,
+                'crs': crs,
+                'scaleSize': {
+                    'x': 1.0,
+                    'y': 2.0
+                },
                 'scaleExtent': {
                     'x': {
-                        'min': expected_xmin,
-                        'max': expected_xmax
+                        'min': xmin,
+                        'max': xmax
                     },
                     'y': {
-                        'min': expected_ymin,
-                        'max': expected_ymax
+                        'min': ymin,
+                        'max': ymax
                     }
                 }
             }
         })
 
-        _compute_target_area(message)
+        expected_height = 90
+        expected_width = 360
 
+        actual_area = _compute_target_area(message)
+
+        self.assertEqual(actual_area.shape, (expected_height, expected_width))
+        self.assertEqual(actual_area.shape, (expected_height, expected_width))
+        self.assertEqual(actual_area.area_extent, (xmin, ymin, xmax, ymax))
+        self.assertEqual(actual_area.proj4_string, crs)
         mock_area.assert_called_once_with(
-            'target_area_id', 'target area definition', None, expected_crs,
+            'target_area_id', 'target area definition', None, crs,
             expected_width, expected_height,
-            (expected_xmin, expected_ymin, expected_xmax, expected_ymax))
+            (xmin, ymin, xmax, ymax))
 
     def test_grid_height(self):
         expected_grid_height = 50
@@ -194,7 +201,8 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_y_elements, actual_y_elements)
 
     def test_get_projection_x_dim(self):
-        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile,
+                                      self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lat'
 
@@ -202,7 +210,8 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_dim, actual)
 
     def test_get_projection_y_dim(self):
-        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile,
+                                      self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lon'
 
@@ -210,7 +219,8 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_dim, actual)
 
     def test_get_projection_y_dim_no_variable(self):
-        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile,
+                                      self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
@@ -218,7 +228,8 @@ class TestRegriddingService(TestCase):
             _get_projection_y_dim(dims, var_info)
 
     def test_get_projection_x_dim_no_variable(self):
-        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile,
+                                      self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
@@ -249,7 +260,8 @@ class TestRegriddingService(TestCase):
 
     def test_expected_result_compute_horizontal_source_grids(self):
         """Exercises the single function for computing horizontal grids."""
-        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_1D_dimensions_ncfile,
+                                      self.logger)
 
         expected_longitudes = np.array([[-180, -80, -45, 45, 80, 180],
                                         [-180, -80, -45, 45, 80, 180],
