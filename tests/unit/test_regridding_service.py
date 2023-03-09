@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from netCDF4 import Dataset
 import numpy as np
@@ -14,8 +14,8 @@ from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.regridding_service import (
     _compute_horizontal_source_grids, _compute_num_elements,
-    _compute_source_swath, _compute_target_area, _get_row_dim, _get_column_dim,
-    _grid_height, _grid_width)
+    _compute_source_swath, _compute_target_area, _get_projection_x_dim,
+    _get_projection_y_dim, _grid_height, _grid_width)
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
 
 
@@ -193,37 +193,37 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_x_elements, actual_x_elements)
         self.assertEqual(expected_y_elements, actual_y_elements)
 
-    def test_get_row_dim(self):
+    def test_get_projection_x_dim(self):
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lat'
 
-        actual = _get_row_dim(dims, var_info)
+        actual = _get_projection_x_dim(dims, var_info)
         self.assertEqual(expected_dim, actual)
 
-    def test_get_column_dim(self):
+    def test_get_projection_y_dim(self):
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
         dims = ('/lat', '/lon')
         expected_dim = '/lon'
 
-        actual = _get_column_dim(dims, var_info)
+        actual = _get_projection_y_dim(dims, var_info)
         self.assertEqual(expected_dim, actual)
 
-    def test_get_column_dim_no_variable(self):
+    def test_get_projection_y_dim_no_variable(self):
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
                                     "No longitude dimension found"):
-            _get_column_dim(dims, var_info)
+            _get_projection_y_dim(dims, var_info)
 
-    def test_get_row_dim_no_variable(self):
+    def test_get_projection_x_dim_no_variable(self):
         var_info = VarInfoFromNetCDF4(self.test_ncfile, self.logger)
         dims = ('/baddim1', '/baddim2')
 
         with self.assertRaisesRegex(InvalidSourceDimensions,
                                     "No latitude dimension found"):
-            _get_row_dim(dims, var_info)
+            _get_projection_x_dim(dims, var_info)
 
     @patch('harmony_regridding_service.regridding_service.SwathDefinition')
     @patch(

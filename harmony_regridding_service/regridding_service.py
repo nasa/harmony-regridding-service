@@ -45,7 +45,8 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
     for dimensions in dimension_variables_mapping:
         # create source swath definition from 2D grids
         if len(dimensions) == 2:
-            source_swath = _compute_source_swath(dimensions, filepath, var_info)
+            source_swath = _compute_source_swath(dimensions, filepath,
+                                                 var_info)
             adapter.cache['grids'][dimensions] = DaskEWAResampler(
                 source_swath, target_area)
 
@@ -102,8 +103,8 @@ def _compute_num_elements(message: Message, dimension_name: str) -> int:
     return num_elements
 
 
-def _get_column_dim(dims: Tuple[str, str],
-                    var_info: VarInfoFromNetCDF4) -> str:
+def _get_projection_y_dim(dims: Tuple[str, str],
+                          var_info: VarInfoFromNetCDF4) -> str:
     """Return name for horizontal grid dimension [column/longitude/x]."""
     column_dim = None
     try:
@@ -116,7 +117,8 @@ def _get_column_dim(dims: Tuple[str, str],
     return column_dim
 
 
-def _get_row_dim(dims: Tuple[str, str], var_info: VarInfoFromNetCDF4) -> str:
+def _get_projection_x_dim(dims: Tuple[str, str],
+                          var_info: VarInfoFromNetCDF4) -> str:
     """Return name for vertical grid dimension [row/latitude/y]."""
     row_dim = None
     try:
@@ -142,8 +144,8 @@ def _compute_horizontal_source_grids(
         grid_dimensions: Tuple[str, str], filepath: str,
         var_info: VarInfoFromNetCDF4) -> Tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
-    row_dim = _get_row_dim(grid_dimensions, var_info)
-    column_dim = _get_column_dim(grid_dimensions, var_info)
+    row_dim = _get_projection_x_dim(grid_dimensions, var_info)
+    column_dim = _get_projection_y_dim(grid_dimensions, var_info)
 
     with Dataset(filepath, mode='r') as data_set:
         row_shape = data_set[row_dim].shape
