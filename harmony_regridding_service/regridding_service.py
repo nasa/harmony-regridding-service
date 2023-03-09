@@ -8,7 +8,7 @@ from netCDF4 import Dataset  # pylint: disable=no-name-in-module
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from pyresample.ewa import DaskEWAResampler
 
-from harmony.message import Message
+from harmony.message import Message, Source
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import InvalidSourceDimensions
@@ -18,15 +18,16 @@ if TYPE_CHECKING:
     from harmony_regridding_service.adapter import RegriddingServiceAdapter
 
 
-def regrid(adapter: RegriddingServiceAdapter, input_filepath: str) -> str:
+def regrid(adapter: RegriddingServiceAdapter, input_filepath: str,
+           source: Source) -> str:
     """Regrid the input data at input_filepath."""
-    _cache_resamplers(adapter, input_filepath)
+    _cache_resamplers(adapter, input_filepath, source)
     adapter.logger.info('regrid has cached resamplers')
     return input_filepath
 
 
-def _cache_resamplers(adapter: RegriddingServiceAdapter,
-                      filepath: str) -> None:
+def _cache_resamplers(adapter: RegriddingServiceAdapter, filepath: str,
+                      source: Source) -> None:
     """Precompute the resampling weights.
 
     Determine the desired output Target Area from the Harmony Message.  Use
@@ -36,7 +37,9 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
     target area.
 
     """
-    var_info = VarInfoFromNetCDF4(filepath, adapter.logger)
+    var_info = VarInfoFromNetCDF4(filepath,
+                                  adapter.logger,
+                                  short_name=source.shortName)
     dimension_variables_mapping = \
         var_info.group_variables_by_horizontal_dimensions()
 
