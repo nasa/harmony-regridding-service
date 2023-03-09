@@ -28,14 +28,14 @@ class TestRegriddingService(TestCase):
         cls.tmp_dir = mkdtemp()
         cls.logger = getLogger()
 
-        cls.test_ncfile = Path(cls.tmp_dir, 'valid_test.nc')
-        cls.bad_ncfile = Path(cls.tmp_dir, 'invalid_test.nc')
+        cls.test_1D_dimensions_ncfile = Path(cls.tmp_dir, '1D_test.nc')
+        cls.test_2D_dimensions_ncfile = Path(cls.tmp_dir, '2D_test.nc')
 
         longitudes = np.array([-180, -80, -45, 45, 80, 180])
         latitudes = np.array([90, 45, 0, -46, -89])
 
         # Set up a file with one dimensional /lon and /lat variables.
-        dataset = Dataset(cls.test_ncfile, 'w')
+        dataset = Dataset(cls.test_1D_dimensions_ncfile, 'w')
         dataset.createDimension('lon', size=len(longitudes))
         dataset.createDimension('lat', size=len(latitudes))
         dataset.createVariable('/lon', longitudes.dtype, dimensions=('lon'))
@@ -47,7 +47,7 @@ class TestRegriddingService(TestCase):
         dataset.close()
 
         # Set up a file with two dimensional /lon and /lat variables.
-        dataset = Dataset(cls.bad_ncfile, 'w')
+        dataset = Dataset(cls.test_2D_dimensions_ncfile, 'w')
         dataset.createDimension('lon', size=(len(longitudes)))
         dataset.createDimension('lat', size=(len(latitudes)))
         dataset.createVariable('/lon',
@@ -275,11 +275,13 @@ class TestRegriddingService(TestCase):
                 np.testing.assert_array_equal(expected_longitudes, longitudes)
 
     def test_2D_lat_lon_input_compute_horizontal_source_grids(self):
-        var_info = VarInfoFromNetCDF4(self.bad_ncfile, self.logger)
+        var_info = VarInfoFromNetCDF4(self.test_2D_dimensions_ncfile,
+                                      self.logger)
         grid_dimensions = ('/lat', '/lon')
 
         expected_regex = re.escape('Incorrect source data dimensions. '
                                    'rows:(6, 5), columns:(6, 5)')
         with self.assertRaisesRegex(InvalidSourceDimensions, expected_regex):
-            _compute_horizontal_source_grids(grid_dimensions, self.bad_ncfile,
+            _compute_horizontal_source_grids(grid_dimensions,
+                                             self.test_2D_dimensions_ncfile,
                                              var_info)
