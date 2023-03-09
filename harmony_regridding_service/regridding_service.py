@@ -29,9 +29,9 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
                       filepath: str) -> None:
     """Precompute the resampling weights.
 
-    Determine the desired ouptut Target Area from the Harmony Message.  Use
+    Determine the desired output Target Area from the Harmony Message.  Use
     this target area in conjunction with each shared horizontal dimension in
-    the inupt source file to create an EWA Resampler and precompute the weights
+    the input source file to create an EWA Resampler and precompute the weights
     to be used in a resample from the shared horizontal dimension to the output
     target area.
 
@@ -44,12 +44,10 @@ def _cache_resamplers(adapter: RegriddingServiceAdapter,
 
     for dimensions in dimension_variables_mapping:
         # create source swath definition from 2D grids
-        if len(dimensions) != 2:
-            continue
-
-        source_swath = _compute_source_swath(dimensions, filepath, var_info)
-        adapter.cache['grids'][dimensions] = DaskEWAResampler(
-            source_swath, target_area)
+        if len(dimensions) == 2:
+            source_swath = _compute_source_swath(dimensions, filepath, var_info)
+            adapter.cache['grids'][dimensions] = DaskEWAResampler(
+                source_swath, target_area)
 
     for resampler in adapter.cache['grids'].values():
         resampler.precompute(rows_per_scan=0)
