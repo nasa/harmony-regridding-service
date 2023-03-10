@@ -150,8 +150,8 @@ class TestUtilities(TestCase):
                                'y': {'min': -90, 'max': 90}}
 
         valid_scale_sizes = {'x': 0.5, 'y': 1.0}
-        valid_height = 181
-        valid_width = 721
+        valid_height = 180
+        valid_width = 720
 
         with self.subTest('format = None returns False'):
             test_message = Message({})
@@ -235,8 +235,8 @@ class TestUtilities(TestCase):
                                'y': {'min': -90, 'max': 90}}
 
         valid_scale_sizes = {'x': 0.5, 'y': 1.0}
-        valid_height = 181
-        valid_width = 721
+        valid_height = 180
+        valid_width = 720
 
         with self.subTest('Only height and scaleExtent returns False'):
             test_message = Message({
@@ -308,8 +308,8 @@ class TestUtilities(TestCase):
                                'y': {'min': -90, 'max': 90}}
 
         valid_scale_sizes = {'x': 0.5, 'y': 1.0}
-        valid_height = 181
-        valid_width = 721
+        valid_height = 180
+        valid_width = 720
 
         with self.subTest('Consistent x dimension returns True'):
             test_message = Message({

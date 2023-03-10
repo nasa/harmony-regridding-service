@@ -183,7 +183,7 @@ def _has_consistent_dimension(message: Message, dimension_name: str) -> bool:
         dimension_elements = message.format.height
 
     derived_scale_size = divide((scale_extent.max - scale_extent.min),
-                                (dimension_elements - 1))
+                                dimension_elements)
 
     return isclose(message_scale_size, derived_scale_size, rtol=1e-3, atol=0)
 

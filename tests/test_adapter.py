@@ -3,7 +3,7 @@ from os.path import exists, join as path_join
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, ANY
 
 from harmony.message import Message
 from harmony.util import config
@@ -61,10 +61,11 @@ class TestAdapter(TestCase):
 
     @patch('harmony_regridding_service.adapter.rmtree')
     @patch('harmony_regridding_service.adapter.mkdtemp')
+    @patch('harmony_regridding_service.adapter.regrid')
     @patch('harmony_regridding_service.adapter.download')
     @patch('harmony_regridding_service.adapter.stage')
-    def test_valid_request(self, mock_stage, mock_download, mock_mkdtemp,
-                           mock_rmtree):
+    def test_valid_request(self, mock_stage, mock_download, mock_regrid,
+                           mock_mkdtemp, mock_rmtree):
         """ Ensure a request with a correctly formatted message is fully
             processed.
 
@@ -75,6 +76,7 @@ class TestAdapter(TestCase):
         expected_output_basename = 'input_regridded.nc4'
         expected_staged_url = path_join(self.staging_location,
                                         expected_output_basename)
+        mock_regrid.return_value = expected_downloaded_file
         mock_mkdtemp.return_value = self.temp_dir
         mock_download.return_value = expected_downloaded_file
         mock_stage.return_value = expected_staged_url
@@ -109,6 +111,9 @@ class TestAdapter(TestCase):
                                               logger=regridder.logger,
                                               cfg=regridder.config,
                                               access_token=self.access_token)
+
+        # Ensure regrid was called with the input filepath.
+        mock_regrid.assert_called_once_with(ANY, expected_downloaded_file, ANY)
 
         # Ensure the file was staged as expected:
         mock_stage.assert_called_once_with(expected_downloaded_file,
