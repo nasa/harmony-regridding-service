@@ -27,7 +27,7 @@ fi
 
 echo "\n"
 echo "Test Coverage Estimates"
-coverage report --omit="*tests/*" 
+coverage report --omit="*tests/*"
 coverage html --omit="*tests/*" -d /home/tests/coverage
 
 # Run pylint
@@ -35,7 +35,7 @@ coverage html --omit="*tests/*" -d /home/tests/coverage
 # W1203 - use of f-strings in log statements. This warning is leftover from
 #         using ''.format() vs % notation. For more information, see:
 #     	  https://github.com/PyCQA/pylint/issues/2354#issuecomment-414526879
-pylint harmony_regridding_service --disable=W1203
+pylint harmony_regridding_service --disable=W1203 --extension-pkg-allow-list=netCDF4
 RESULT=$?
 RESULT=$((3 & $RESULT))
 
