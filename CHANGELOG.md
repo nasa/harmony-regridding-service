@@ -1,3 +1,11 @@
+## v0.0.1
+### 2023-03-28
+
+Initial minimum viable product version of the harmony-regridding-service.  The
+service now can be added to harmony to return a resampled granule. The service
+is limited to resampling geographic data only. If an input granule has multiple
+grids defined, the data from all grids will be resampled to the target grid.
+
 ## v0.0.0
 ### 2023-03-03
 
