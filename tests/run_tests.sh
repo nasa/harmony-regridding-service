@@ -27,8 +27,8 @@ fi
 
 echo "\n"
 echo "Test Coverage Estimates"
-coverage report --omit="*tests/*"
-coverage html --omit="*tests/*" -d /home/tests/coverage
+coverage report --omit="tests/*"
+coverage html --omit="tests/*" -d /home/tests/coverage
 
 # Run pylint
 # Ignored errors/warnings:
