@@ -1,3 +1,9 @@
+## v0.0.2
+### 2023-10-17
+
+No user facing changes.  Migrates sds-varinfo to the public facing
+earthdata-varinfo package.
+
 ## v0.0.1
 ### 2023-03-28
 

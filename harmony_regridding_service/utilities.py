@@ -168,7 +168,7 @@ def _has_consistent_dimension(message: Message, dimension_name: str) -> bool:
         dimension length (e.g., width or height). For the grid x dimension, the
         calculation is as follows:
 
-        scaleSize.x = (scaleExtent.x.max - scaleExtent.x.min) / (width - 1)
+        scaleSize.x = (scaleExtent.x.max - scaleExtent.x.min) / (width)
 
         The message scale sizes is compared to that calculated as above, to
         ensure it is within a relative tolerance (1 x 10^-3).
