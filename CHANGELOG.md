@@ -1,3 +1,9 @@
+## v0.0.3
+### 2023-12-18
+
+No user facing changes. Refactors code to use Harmony Message utilities from
+harmony-service-lib.
+
 ## v0.0.2
 ### 2023-10-17
 

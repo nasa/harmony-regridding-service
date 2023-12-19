@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
 from harmony.message import Message, Source
+from harmony.message_utility import has_dimensions
 from harmony.util import generate_output_filename
 from netCDF4 import Dataset, Dimension, Group, Variable
 from pyresample.ewa import DaskEWAResampler
@@ -27,7 +28,6 @@ from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import (InvalidSourceDimensions,
                                                    RegridderException)
-from harmony_regridding_service.utilities import has_dimensions
 
 if TYPE_CHECKING:
     from harmony_regridding_service.adapter import RegriddingServiceAdapter

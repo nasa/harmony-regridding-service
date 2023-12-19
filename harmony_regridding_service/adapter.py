@@ -12,10 +12,10 @@ from typing import Optional
 
 from harmony import BaseHarmonyAdapter
 from harmony.message import Source as HarmonySource
+from harmony.message_utility import has_self_consistent_grid
 from harmony.util import (bbox_to_geometry, download, generate_output_filename,
                           stage)
 from pystac import Asset, Catalog, Item
-
 
 from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
                                                    InvalidTargetCRS,
@@ -23,8 +23,7 @@ from harmony_regridding_service.exceptions import (InvalidInterpolationMethod,
 from harmony_regridding_service.regridding_service import regrid
 from harmony_regridding_service.utilities import (get_file_mime_type,
                                                   has_valid_crs,
-                                                  has_valid_interpolation,
-                                                  has_self_consistent_grid)
+                                                  has_valid_interpolation)
 
 
 class RegriddingServiceAdapter(BaseHarmonyAdapter):
