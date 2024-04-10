@@ -4,7 +4,7 @@
 """
 from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
-from typing import Any, Optional
+from typing import Optional
 
 from harmony.message import Message
 from harmony.message_utility import rgetattr

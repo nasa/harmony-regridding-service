@@ -256,7 +256,7 @@ class TestRegriddingService(TestCase):
         target_file = self.test_file()
         target_area = self.test_area()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
-        expected_metadata = {'units', 'widgets per month'}
+        expected_metadata = {'units': 'widgets per month'}
         with Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds, \
              Dataset(target_file, mode='w') as target_ds:
 
@@ -268,7 +268,7 @@ class TestRegriddingService(TestCase):
                 attr: validate['/data'].getncattr(attr)
                 for attr in validate['/data'].ncattrs()
             }
-            self.assertDictEqual(actual_metadata, actual_metadata)
+            self.assertDictEqual(actual_metadata, expected_metadata)
 
     def test_copy_dimension_variables(self):
         target_file = self.test_file()
