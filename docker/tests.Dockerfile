@@ -16,7 +16,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 COPY tests/pip_test_requirements.txt .
 RUN pip install --no-input -r pip_test_requirements.txt
 
-# Copy test directory containing Python unittest suite, test data and utilities 
+# Copy test directory containing Python unittest suite, test data and utilities
 COPY ./tests tests
 
 # Configure a container to be executable via the `docker run` command.

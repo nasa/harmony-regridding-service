@@ -1,4 +1,5 @@
 """ Run the Harmony Regridding Service Adapter via the Harmony CLI. """
+
 from argparse import ArgumentParser
 from sys import argv
 from typing import List
@@ -9,12 +10,13 @@ from harmony_regridding_service.adapter import RegriddingServiceAdapter
 
 
 def main(arguments: List[str]):
-    """ Parse command line arguments and invoke the appropriate method to
-        respond to them
+    """Parse command line arguments and invoke the appropriate method to
+    respond to them
 
     """
-    parser = ArgumentParser(prog='harmony-regridding-service',
-                            description='Run Harmony regridding service.')
+    parser = ArgumentParser(
+        prog='harmony-regridding-service', description='Run Harmony regridding service.'
+    )
 
     setup_cli(parser)
     harmony_arguments, _ = parser.parse_known_args(arguments[1:])
