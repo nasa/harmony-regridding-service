@@ -12,31 +12,28 @@ from harmony_regridding_service.utilities import (
 
 
 class TestUtilities(TestCase):
-    """ A class testing the harmony_regridding_service.utilities module. """
+    """A class testing the harmony_regridding_service.utilities module."""
 
     def test_get_file_mime_type(self):
-        """ Ensure a MIME type can be retrieved from an input file path. """
+        """Ensure a MIME type can be retrieved from an input file path."""
         with self.subTest('File with MIME type known by Python.'):
-            self.assertEqual(get_file_mime_type('file.nc'),
-                             'application/x-netcdf')
+            self.assertEqual(get_file_mime_type('file.nc'), 'application/x-netcdf')
 
         with self.subTest('File with MIME type retrieved from dictionary.'):
-            self.assertEqual(get_file_mime_type('file.nc4'),
-                             'application/x-netcdf4')
+            self.assertEqual(get_file_mime_type('file.nc4'), 'application/x-netcdf4')
 
         with self.subTest('File with entirely unknown MIME type.'):
             self.assertIsNone(get_file_mime_type('file.xyzzyx'))
 
         with self.subTest('Upper case letters handled.'):
-            self.assertEqual(get_file_mime_type('file.HDF5'),
-                             'application/x-hdf5')
+            self.assertEqual(get_file_mime_type('file.HDF5'), 'application/x-hdf5')
 
     def test_has_valid_crs(self):
-        """ Ensure the function correctly determines if the input Harmony
-            message has a target Coordinate Reference System (CRS) that is
-            compatible with the service. Currently this is either to not
-            define the target CRS (assuming it to be geographic), or explicitly
-            requesting geographic CRS via EPSG code or proj4 string.
+        """Ensure the function correctly determines if the input Harmony
+        message has a target Coordinate Reference System (CRS) that is
+        compatible with the service. Currently this is either to not
+        define the target CRS (assuming it to be geographic), or explicitly
+        requesting geographic CRS via EPSG code or proj4 string.
 
         """
         with self.subTest('format = None returns True'):
@@ -73,14 +70,15 @@ class TestUtilities(TestCase):
             with self.assertRaises(InvalidTargetCRS) as context:
                 has_valid_crs(test_message)
 
-            self.assertEqual(context.exception.message,
-                             'Target CRS not supported: "invalid CRS"')
+            self.assertEqual(
+                context.exception.message, 'Target CRS not supported: "invalid CRS"'
+            )
 
     def test_is_geographic_crs(self):
-        """ Ensure function correctly determines if a supplied string resolves
-            to a `pyproj.CRS` object with a geographic Coordinate Reference
-            System (CRS). Exceptions arising from invalid CRS strings should
-            also be handled.
+        """Ensure function correctly determines if a supplied string resolves
+        to a `pyproj.CRS` object with a geographic Coordinate Reference
+        System (CRS). Exceptions arising from invalid CRS strings should
+        also be handled.
 
         """
         with self.subTest('"EPSG:4326" returns True'):
@@ -102,14 +100,15 @@ class TestUtilities(TestCase):
             with self.assertRaises(InvalidTargetCRS) as context:
                 _is_geographic_crs('invalid CRS')
 
-            self.assertEqual(context.exception.message,
-                             'Target CRS not supported: "invalid CRS"')
+            self.assertEqual(
+                context.exception.message, 'Target CRS not supported: "invalid CRS"'
+            )
 
     def test_has_valid_interpolation(self):
-        """ Ensure that the function correctly determines if the supplied
-            Harmony message either omits the `format.interpolation` attribute,
-            or specifies EWA via a fully spelled-out string. The TRT-210 MVP
-            only allows for interpolation using EWA.
+        """Ensure that the function correctly determines if the supplied
+        Harmony message either omits the `format.interpolation` attribute,
+        or specifies EWA via a fully spelled-out string. The TRT-210 MVP
+        only allows for interpolation using EWA.
 
         """
         with self.subTest('format = None returns True'):
@@ -121,9 +120,9 @@ class TestUtilities(TestCase):
             self.assertTrue(has_valid_interpolation(test_message))
 
         with self.subTest('EWA (spelled fully) returns True'):
-            test_message = Message({
-                'format': {'interpolation': 'Elliptical Weighted Averaging'}
-            })
+            test_message = Message(
+                {'format': {'interpolation': 'Elliptical Weighted Averaging'}}
+            )
             self.assertTrue(has_valid_interpolation(test_message))
 
         with self.subTest('Unexpected interpolation returns False'):
