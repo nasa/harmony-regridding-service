@@ -1,3 +1,10 @@
+## v0.0.4
+### 2024-04-10
+
+This version of the Harmony Regridding service implements `black` code
+formatting across the entire repository. There should be no functional changes
+to the service.
+
 ## v0.0.3
 ### 2023-12-18
 
