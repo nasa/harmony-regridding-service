@@ -1,12 +1,13 @@
 #!/bin/bash
 ###############################################################################
 #
-# Execute the sds/harmony-regridder-test Docker image as a container,  within
-# Bamboo.
+# Execute the ghcr.io/nasa/harmony-regridder-test Docker image as a container,
+# either locally or within a GitHub Action.
 #
 # 2020-05-07: Adapted from SwotRepr.
 # 2021-01-05: Updated for JUnit output.
 # 2023-01-26: Updated for the Harmony Regridding service.
+# 2024-04-12: Updated to use new open-source Docker image names.
 #
 ###############################################################################
 
@@ -26,4 +27,4 @@ mkdir -p coverage
 docker run --rm \
 	-v $(pwd)/test-reports:/home/tests/reports \
 	-v $(pwd)/coverage:/home/tests/coverage \
-	sds/harmony-regridder-test "$@"
+	ghcr.io/nasa/harmony-regridder-test "$@"

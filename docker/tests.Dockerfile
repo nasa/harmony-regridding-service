@@ -1,14 +1,15 @@
 ###############################################################################
 #
 # Test image for the Harmony Regridding service. This test image uses the main
-# service image, sds/harmony-regridder, as a base layer for the tests. This
-# ensures that the contents of the service image are tested, preventing
+# service image, ghcr.io/nasa/harmony-regridder, as a base layer for the tests.
+# This  ensures that the contents of the service image are tested, preventing
 # discrepancies between the service and test environments.
 #
-# Updated: 2023-01-26
+# 2023-01-26: Added to repository.
+# 2024-04-12: Update base image to ghcr.io/nasa/harmony-regridder.
 #
 ###############################################################################
-FROM sds/harmony-regridder
+FROM ghcr.io/nasa/harmony-regridder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 

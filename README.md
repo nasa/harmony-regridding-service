@@ -10,7 +10,9 @@ GPM/IMERGHH and MERRA collections.
 
 ```
 |- CHANGELOG.md
+|- CONTRIBUTING.md
 |- README.md
+|- legacy-CHANGELOG.md
 |- bin
 |- docker
 |- harmony_regridding_service
@@ -19,12 +21,19 @@ GPM/IMERGHH and MERRA collections.
 ```
 
 * CHANGELOG.md - This file contains a record of changes applied to each new
-  release of a service Docker image. Any release of a new service version
-  should have a record of what was changed in this file.
+  public release of a service Docker image. Any release of a new service
+  version since migrating to GitHub should have a record of what was changed in
+  this file (e.g., starting at version 1.0.0).
+* CONTRIBUTING.md - General guidelines for making contributions to the
+  repository.
+* LICENSE - The NASA open-source license under which this software has been
+  made available.
 * README.md - This file, containing guidance on developing the service.
+* legacy-CHANGELOG.md - This file contains release notes for all versions of
+  the service that were released internally to EOSDIS, before migrating the
+  service code and Docker image to GitHub.
 * bin - A directory containing utility scripts to build the service and test
-  images. This also includes scripts that Bamboo uses to deploy new service
-  images to AWS ECR.
+  images.
 * docker - A directory containing the Dockerfiles for the service and test
   images. It also contains `service_version.txt`, which contains the semantic
   version number of the service image. Any time an update is made that should
@@ -36,6 +45,10 @@ GPM/IMERGHH and MERRA collections.
   class that is invoked by calls to the service.
 * pip_requirements.txt - A list of service Python package dependencies.
 * tests - A directory containing the service unit test suite.
+
+## Contributing:
+
+Contributions are welcome! For more information, see `CONNTRIBUTING.md`.
 
 ## Python dependencies:
 
@@ -69,10 +82,9 @@ $ ./bin/run-test
 The `tests/run_tests.sh` script will also generate a coverage report, rendered
 in HTML, and scan the code with `pylint`.
 
-Currently, the `unittest` suite is run automatically within Bamboo as part of a
-CI/CD pipeline. In future, this project will be migrated from Bitbucket to
-GitHub, at which point the CI/CD will be migrated to workflows that use GitHub
-Actions.
+The `unittest` suite is run automatically via GitHub Actions as part of a
+GitHub "workflow". These workflows are defined in the `.github/workflows`
+directory.
 
 ## pre-commit hooks:
 
@@ -107,10 +119,13 @@ review and `git add` the changes before you can make a commit.
 It is planned to implement additional hooks, possibly including tools such as
 `mypy`.
 
+[pre-commit.ci](pre-commit.ci) is configured such that these same hooks will be
+automatically run for every pull request.
+
 ## Versioning:
 
 Service Docker images for the Harmony Regridding Service adhere to semantic
-version numbers: major.minor.patch.
+version numbers: `major.minor.patch`.
 
 * Major increments: These are non-backwards compatible API changes.
 * Minor increments: These are backwards compatible API changes.
@@ -124,9 +139,8 @@ updated:
 
 ## Docker image publication:
 
-Initially service Docker images will be hosted in AWS Elastic Container
-Registry (ECR). When this repository is migrated to the NASA GitHub
-organisation, service images will be published to ghcr.io, instead.
+Service Docker images are published to ghcr.io any time a change is merged to
+the `main` branch that contains an update to `docker/service_version.txt`.
 
 ## Releasing a new version of the service:
 
@@ -135,3 +149,11 @@ that service version can be released to a Harmony environment by updating the
 main Harmony Bamboo deployment project. Find the environment you wish to
 release the service version to and update the associated environment variable
 to update the semantic version tag at the end of the full Docker image name.
+
+## Get in touch:
+
+You can reach out to the maintainers of this repository via email:
+
+* david.p.auty@nasa.gov
+* owen.m.littlejohns@nasa.gov
+* matthew.savoie@colorado.edu

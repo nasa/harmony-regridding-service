@@ -6,10 +6,11 @@
 # 2020-05-07: Adapted from SwotRepr.
 # 2022-01-03: Updated Dockerfile path and added comments for tags.
 # 2023-01-26: Updated for the Harmony Regridding service.
+# 2024-04-12: Updated image name to: ghcr.io/nasa/harmony-regridder.
 #
 ###############################################################################
 
-image="sds/harmony-regridder"
+image="ghcr.io/nasa/harmony-regridder"
 
 # Retrieve the tag from the script arguments, or default to "latest". Bamboo
 # will pass the contents of `docker/service_version.txt` as this argument,
@@ -18,7 +19,7 @@ image="sds/harmony-regridder"
 tag=${1:-latest}
 
 
-# Remove old versions of: sds/harmony-regridder and sds/harmony-regridder-test
+# Remove old versions of service and test images.
 ./bin/clean-images
 
 # Build the image

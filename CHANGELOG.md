@@ -1,38 +1,13 @@
-## v0.0.4
-### 2024-04-10
+## v1.0.0
+### 2024-04-12
 
-This version of the Harmony Regridding service implements `black` code
-formatting across the entire repository. There should be no functional changes
-to the service.
+This version of the Harmony Regridding Service contains all functionality
+previously released internally to EOSDIS as `sds/harmony-regridder:0.0.4`.
+Minor reformatting of the repository structure has occurred to comply with
+recommended best practices for a Harmony backend service repository, but the
+service itself is functionally unchanged. Additional contents to the repository
+include updated documentation and files outlined by the
+[NASA open-source guidelines](https://code.nasa.gov/#/guide).
 
-## v0.0.3
-### 2023-12-18
-
-No user facing changes. Refactors code to use Harmony Message utilities from
-harmony-service-lib.
-
-## v0.0.2
-### 2023-10-17
-
-No user facing changes.  Migrates sds-varinfo to the public facing
-earthdata-varinfo package.
-
-## v0.0.1
-### 2023-03-28
-
-Initial minimum viable product version of the harmony-regridding-service.  The
-service now can be added to harmony to return a resampled granule. The service
-is limited to resampling geographic data only. If an input granule has multiple
-grids defined, the data from all grids will be resampled to the target grid.
-
-## v0.0.0
-### 2023-03-03
-
-This initial version of the Harmony Regridding service sets up the core
-infrastructure required for a backend service. It contains a RegriddingServiceAdapter
-class that can be invoked within a Harmony Kubernetes cluster, and will return
-the input granule without any transformation. The `RegriddingServiceAdapter` performs
-basic message validation, to ensure the message defines a valid target grid,
-and that it does not specify a target CRS or interpolation method that is
-incompatible with the service. The service itself will be implemented in future
-tickets.
+For more information on internal releases prior to NASA open-source approval,
+see legacy-CHANGELOG.md.
