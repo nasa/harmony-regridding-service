@@ -1,10 +1,11 @@
 """ End-to-end tests of the Harmony Regridding service. """
 
-from os.path import exists, join as path_join
+from os.path import exists
+from os.path import join as path_join
 from shutil import rmtree
 from tempfile import mkdtemp
 from unittest import TestCase
-from unittest.mock import patch, ANY
+from unittest.mock import ANY, patch
 
 from harmony.message import Message
 from harmony.util import config
@@ -16,8 +17,7 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetCRS,
     InvalidTargetGrid,
 )
-
-from tests.utilities import create_stac, Granule
+from tests.utilities import Granule, create_stac
 
 
 class TestAdapter(TestCase):
