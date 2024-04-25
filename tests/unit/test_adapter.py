@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from harmony.message import Message
-from harmony.util import config, HarmonyException
+from harmony.util import HarmonyException, config
 
 from harmony_regridding_service.adapter import RegriddingServiceAdapter
 from harmony_regridding_service.exceptions import (
@@ -9,7 +9,7 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetCRS,
     InvalidTargetGrid,
 )
-from tests.utilities import create_stac, Granule
+from tests.utilities import Granule, create_stac
 
 
 class TestAdapter(TestCase):
