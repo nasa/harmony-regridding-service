@@ -2,7 +2,7 @@
 ###############################################################################
 #
 # A bash script to extract only the notes related to the most recent version of
-# HyBIG from CHANGELOG.md
+# the Harmony Regridding Service from CHANGELOG.md
 #
 # 2023-06-16: Created.
 # 2023-10-10: Copied from earthdata-varinfo repository to HOSS.
