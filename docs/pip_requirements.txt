@@ -3,17 +3,18 @@
 #
 # Example conda environment creation:
 #
-# conda create --name regridder-docs python=3.10 --channel conda-forge \
+# conda create --name regridder-docs python=3.11 --channel conda-forge \
 #     --channel defaults -y
 #
 # pip install -r pip_requirements.txt
 #
 ###############################################################################
 curlify~=2.2.1
-harmony-py~=0.4.6
-hvplot~=0.8.3
-matplotlib~=3.7.1
-netCDF4~=1.6.3
-notebook~=6.5.3
-panel~=0.14.4
-xarray~=2023.1.0
+harmony-py~=0.4.15
+holoviews~=1.18.3  # Mitigates deprecation warning from hvplot
+hvplot~=0.10.0
+matplotlib~=3.7.5
+netCDF4~=1.6.5
+notebook~=7.2.1
+panel~=1.4.4
+xarray~=2024.5.0
