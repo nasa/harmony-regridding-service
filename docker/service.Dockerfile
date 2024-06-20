@@ -9,7 +9,7 @@
 # 2023-01-26: Added to repository.
 #
 ###############################################################################
-FROM python:3.9.14-slim-bullseye
+FROM python:3.11.9-slim-bullseye
 
 WORKDIR "/home"
 

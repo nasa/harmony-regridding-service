@@ -2,22 +2,31 @@
 ###############################################################################
 #
 # A bash script to extract only the notes related to the most recent version of
-# the Harmony Regridding service from CHANGELOG.md
+# HyBIG from CHANGELOG.md
 #
 # 2023-06-16: Created.
 # 2023-10-10: Copied from earthdata-varinfo repository to HOSS.
-# 2024-04-12: Copied from HOSS to the Harmony Regridding service.
+# 2024-01-03: Copied from HOSS repository to the Swath Projector.
+# 2024-01-23: Copied and modified from Swath Projector repository to HyBIG.
+# 2024-06-20: Copied and modified from HyBIG.
 #
 ###############################################################################
 
 CHANGELOG_FILE="CHANGELOG.md"
-VERSION_PATTERN="^## v"
-# Count number of versions in version file:
-number_of_versions=$(grep -c "${VERSION_PATTERN}" ${CHANGELOG_FILE})
 
-if [ ${number_of_versions} -gt 1 ]
-then
-	grep -B 9999 -m 2 "${VERSION_PATTERN}" ${CHANGELOG_FILE} | sed '$d' | sed '$d'
-else
-	cat ${CHANGELOG_FILE}
-fi
+## captures versions
+## >## v1.0.0
+## >## [v1.0.0]
+VERSION_PATTERN="^## [\[]v"
+
+## captures url links
+## [unreleased]:https://github.com/nasa/harmony-regridding-service/compare/1.0.1..HEAD
+## [v1.2.0]: https://github.com/nasa/harmony-regridding-service/compare/1.0.0..1.0.1
+LINK_PATTERN="^\[.*\].*\.\..*"
+
+# Read the file and extract text between the first two occurrences of the
+# VERSION_PATTERN
+result=$(awk "/$VERSION_PATTERN/{c++; if(c==2) exit;} c==1" "$CHANGELOG_FILE")
+
+# Print the result
+echo "$result" |  grep -v "$VERSION_PATTERN" | grep -v "$LINK_PATTERN"
