@@ -1,12 +1,14 @@
 #!/bin/bash
 ###############################################################################
 #
-# Look for all versions of images containing the string "ghcr.io/nasa/harmony-regridder"
-# and remove them. This is primarily for clean-up after development.
+# Look for all versions of images containing the string
+# "ghcr.io/nasa/harmony-regridding-service"  and remove them. This is primarily
+# for clean-up after development.
 #
 # 2020-05-07: Adapted from SwotRepr.
 # 2023-01-26: Updated for the Harmony Regridding Service.
-# 2024-04-12: Update to account for new open-source Docker image names.
+# 2024-04-12: Updated to account for new open-source Docker image names.
+# 2024-09-23: Updated Docker image name to "ghcr.io/nasa/harmony-regridding-service".
 #
 ###############################################################################
 remove_image_by_name() {
@@ -18,7 +20,7 @@ remove_image_by_name() {
     fi
 }
 
-image_base_name="ghcr.io/nasa/harmony-regridder"
+image_base_name="ghcr.io/nasa/harmony-regridding-service"
 
 # First remove test images:
 remove_image_by_name "${image_base_name}-test"
