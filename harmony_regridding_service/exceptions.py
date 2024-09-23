@@ -11,7 +11,7 @@ class RegridderException(HarmonyException):
     """Base service exception."""
 
     def __init__(self, message=None):
-        super().__init__(message, 'ghcr.io/nasa/harmony-regridding-service')
+        super().__init__(message, 'harmony-regridding-service')
 
 
 class InvalidTargetCRS(RegridderException):
