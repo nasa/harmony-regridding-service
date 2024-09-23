@@ -7,10 +7,11 @@
 # 2022-01-03: Updated Dockerfile path and added comments for tags.
 # 2023-01-26: Updated for the Harmony Regridding service.
 # 2024-04-12: Updated image name to: ghcr.io/nasa/harmony-regridder.
+# 2024-09-23: Updated image name to: ghcr.io/nasa/harmony-regridding-service.
 #
 ###############################################################################
 
-image="ghcr.io/nasa/harmony-regridder"
+image="ghcr.io/nasa/harmony-regridding-service"
 
 # Retrieve the tag from the script arguments, or default to "latest". Bamboo
 # will pass the contents of `docker/service_version.txt` as this argument,

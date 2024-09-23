@@ -4,18 +4,19 @@
 # Build a Docker container to run the test suite for the Harmony Regridding
 # service.
 #
-# To build the ghcr.io/nasa/harmony-regridder-test image, the
-# ghcr.io/nasa/harmony-regridder image must also be present locally, as it is
-# used as the base image in `docker/tests.Dockerfile`.
+# To build the ghcr.io/nasa/harmony-regridding-service-test image, the
+# ghcr.io/nasa/harmony-regridding-service image must also be present locally,
+# as it is used as the base image in `docker/tests.Dockerfile`.
 #
 # 2020-05-07: Adapted from SwotRepr.
 # 2022-01-03: Updated Dockerfile path.
 # 2023-01-26: Updated for the Harmony Regridding service.
 # 2024-04-12: Updated image name to: ghcr.io/nasa/harmony-regridder-test.
+# 2024-09-23: Updated image name to: ghcr.io/nasa/harmony-regridding-service-test.
 #
 ###############################################################################
 
-image="ghcr.io/nasa/harmony-regridder-test"
+image="ghcr.io/nasa/harmony-regridding-service-test"
 tag=${1:-latest}
 
 
