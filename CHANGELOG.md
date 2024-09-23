@@ -12,6 +12,11 @@ This version of the Harmony Regridding Service updates to use
 configuration file the Harmony Regridding Service uses to specify metadata
 overrides and excluded science variables to `earthdata-varinfo`.
 
+This update also ensures that the Docker images used for local testing are
+named `ghcr.io/nasa/harmony-regridding-service` and
+`ghcr.io/nasa/harmony-regridding-service-test`, to comply with the released
+image name for the service, and the name that Harmony-in-a-Box is looking for.
+
 ## [v1.0.1] - 2024-06-20
 
 ### Changed

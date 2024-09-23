@@ -1,7 +1,7 @@
 ###############################################################################
 #
-# Service image for ghcr.io/nasa/harmony-regridder, a Harmony backend service
-# that transforms Level 3 or Level 4 data to another grid.
+# Service image for ghcr.io/nasa/harmony-regridding-service, a Harmony backend
+# service that transforms Level 3 or Level 4 data to another grid.
 #
 # This image installs dependencies via Pip. The service code is then copied
 # into the Docker image.
