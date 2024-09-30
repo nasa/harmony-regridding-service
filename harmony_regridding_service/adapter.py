@@ -11,10 +11,15 @@ from shutil import rmtree
 from tempfile import mkdtemp
 from typing import Optional
 
-from harmony import BaseHarmonyAdapter
-from harmony.message import Source as HarmonySource
-from harmony.message_utility import has_self_consistent_grid
-from harmony.util import bbox_to_geometry, download, generate_output_filename, stage
+from harmony_service_lib import BaseHarmonyAdapter
+from harmony_service_lib.message import Source as HarmonySource
+from harmony_service_lib.message_utility import has_self_consistent_grid
+from harmony_service_lib.util import (
+    bbox_to_geometry,
+    download,
+    generate_output_filename,
+    stage,
+)
 from pystac import Asset, Catalog, Item
 
 from harmony_regridding_service.exceptions import (

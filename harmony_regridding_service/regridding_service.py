@@ -19,9 +19,9 @@ from pathlib import Path, PurePath
 from typing import TYPE_CHECKING, Dict, Iterable, List, Set, Tuple
 
 import numpy as np
-from harmony.message import Message, Source
-from harmony.message_utility import has_dimensions
-from harmony.util import generate_output_filename
+from harmony_service_lib.message import Message, Source
+from harmony_service_lib.message_utility import has_dimensions
+from harmony_service_lib.util import generate_output_filename
 from netCDF4 import Dataset, Dimension, Group, Variable
 from pyresample.ewa import DaskEWAResampler
 from pyresample.geometry import AreaDefinition, SwathDefinition
