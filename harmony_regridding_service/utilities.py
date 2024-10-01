@@ -7,8 +7,8 @@ from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
 from typing import Optional
 
-from harmony.message import Message
-from harmony.message_utility import rgetattr
+from harmony_service_lib.message import Message
+from harmony_service_lib.message_utility import rgetattr
 from pyproj import CRS
 from pyproj.exceptions import CRSError
 

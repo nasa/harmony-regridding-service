@@ -4,7 +4,7 @@
 
 """
 
-from harmony.util import HarmonyException
+from harmony_service_lib.util import HarmonyException
 
 
 class RegridderException(HarmonyException):

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from harmony.message import Message
+from harmony_service_lib.message import Message
 
 from harmony_regridding_service.exceptions import InvalidTargetCRS
 from harmony_regridding_service.utilities import (

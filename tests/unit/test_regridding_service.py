@@ -8,7 +8,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import numpy as np
-from harmony.message import Message
+from harmony_service_lib.message import Message
 from netCDF4 import Dataset, Variable
 from numpy.testing import assert_array_equal
 from pyresample.geometry import AreaDefinition
