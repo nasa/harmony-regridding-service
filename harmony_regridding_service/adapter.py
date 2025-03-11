@@ -1,8 +1,8 @@
-""" `RegriddingServiceAdapter` for Harmony Regridding Service.
+"""`RegriddingServiceAdapter` for Harmony Regridding Service.
 
-    The class in this file is the top level of abstraction for a service that
-    will accept a gridded input file (e.g., L3/L4) and transform the data to
-    another grid as specified in the input Harmony message.
+The class in this file is the top level of abstraction for a service that
+will accept a gridded input file (e.g., L3/L4) and transform the data to
+another grid as specified in the input Harmony message.
 
 """
 

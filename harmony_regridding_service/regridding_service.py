@@ -1,15 +1,15 @@
 """Regridding service code.
 
- As of v.0.0.1 (2023-03-27) This code is written to handle only geographic
- grids and resampling.  As such there are a couple of things to pay attention
- to when we move away from this limitation.
+As of v.0.0.1 (2023-03-27) This code is written to handle only geographic
+grids and resampling.  As such there are a couple of things to pay attention
+to when we move away from this limitation.
 
- 1. _is_projection_[x/y]_dim is hard coded to only care about latitudes and
-     longitudes.
+1. _is_projection_[x/y]_dim is hard coded to only care about latitudes and
+    longitudes.
 
- 2. We don't worry about the coordinate metadata on the variables. Any
-    existing metadata will be correct on the output variable. later will have
-    to look at something like check_coor_valid in swot repo.
+2. We don't worry about the coordinate metadata on the variables. Any
+   existing metadata will be correct on the output variable. later will have
+   to look at something like check_coor_valid in swot repo.
 
 """
 
