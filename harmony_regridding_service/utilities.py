@@ -1,5 +1,5 @@
-""" Utility modules for use within the Harmony Regridding Service. These
-    include MIME type determination and basic components of message validation.
+"""Utility modules for use within the Harmony Regridding Service. These
+include MIME type determination and basic components of message validation.
 
 """
 

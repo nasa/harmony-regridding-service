@@ -1,4 +1,4 @@
-""" End-to-end tests of the Harmony Regridding service. """
+"""End-to-end tests of the Harmony Regridding service."""
 
 from os.path import exists
 from os.path import join as path_join

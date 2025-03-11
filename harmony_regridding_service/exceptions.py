@@ -1,6 +1,6 @@
-""" The exceptions in this module are designed to supply understandable
-    messages, which will be propagated out to the end-user via the main Harmony
-    application.
+"""The exceptions in this module are designed to supply understandable
+messages, which will be propagated out to the end-user via the main Harmony
+application.
 
 """
 
