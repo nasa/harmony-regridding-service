@@ -4,6 +4,13 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.0.5] - 2025-03-20
+
+## Changed
+
+- This change should have no user facing functional changes. The pre-commit and
+  linting was updated to a more modern mechanism.
+
 ## [v1.0.4] - 2024-09-30
 
 ## Changed
@@ -50,6 +57,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.0.5]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.5
 [v1.0.4]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.4
 [v1.0.3]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.3
 [v1.0.2]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.2
