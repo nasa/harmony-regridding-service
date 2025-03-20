@@ -23,7 +23,12 @@ import numpy as np
 from harmony_service_lib.message import Message, Source
 from harmony_service_lib.message_utility import has_dimensions
 from harmony_service_lib.util import generate_output_filename
-from netCDF4 import Dataset, Dimension, Group, Variable
+from netCDF4 import (  # pylint: disable=no-name-in-module
+    Dataset,
+    Dimension,
+    Group,
+    Variable,
+)
 from pyresample.ewa import DaskEWAResampler
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
@@ -154,8 +159,8 @@ def _resample_variable_data(
                 var_name,
             )
         return t_var
-    else:
-        return _resample_layer(s_var[:], resampler, var_info, var_name)
+
+    return _resample_layer(s_var[:], resampler, var_info, var_name)
 
 
 def _resample_nD_variables(
