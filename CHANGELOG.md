@@ -8,8 +8,8 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## Changed
 
-- This change should have no user facing functional changes. The pre-commit and
-  linting was updated to a more modern mechanism.
+- This version should show no user facing changes. The pre-commit and
+  linting is updated to a more modern mechanism.
 
 ## [v1.0.4] - 2024-09-30
 
