@@ -1,3 +1,5 @@
+"""Test module for adapter class."""
+
 from unittest import TestCase
 
 from harmony_service_lib.message import Message
