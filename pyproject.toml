@@ -13,6 +13,11 @@ quote-style = "single"
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.ruff.lint.per-file-ignores]
+"exceptions.py" = ["D107"] ## ignore missing doc strings in __init__ for exceptions.
+"tests/*/test_*" = ["D102"] ## ignore missing doc strings in test files.
+"**/test_*.py" = ["D102"] ## ignore missing doc strings in test files.
+
 [[tool.mypy.overrides]]
 module = "harmony_lib.*"
 ignore_missing_imports = true

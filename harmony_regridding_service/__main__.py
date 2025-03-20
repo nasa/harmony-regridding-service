@@ -2,18 +2,14 @@
 
 from argparse import ArgumentParser
 from sys import argv
-from typing import List
 
 from harmony_service_lib import is_harmony_cli, run_cli, setup_cli
 
 from harmony_regridding_service.adapter import RegriddingServiceAdapter
 
 
-def main(arguments: List[str]):
-    """Parse command line arguments and invoke the appropriate method to
-    respond to them
-
-    """
+def main(arguments: list[str]):
+    """Parse command line arguments and invoke the appropriate method."""
     parser = ArgumentParser(
         prog='harmony-regridding-service', description='Run Harmony regridding service.'
     )
