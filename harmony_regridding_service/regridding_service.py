@@ -15,14 +15,20 @@ to when we move away from this limitation.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Dict, Iterable, List, Set, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 from harmony_service_lib.message import Message, Source
 from harmony_service_lib.message_utility import has_dimensions
 from harmony_service_lib.util import generate_output_filename
-from netCDF4 import Dataset, Dimension, Group, Variable
+from netCDF4 import (  # pylint: disable=no-name-in-module
+    Dataset,
+    Dimension,
+    Group,
+    Variable,
+)
 from pyresample.ewa import DaskEWAResampler
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
@@ -56,10 +62,10 @@ def regrid(
 
     target_filepath = generate_output_filename(input_filepath, is_regridded=True)
 
-    with Dataset(input_filepath, mode='r') as source_ds, Dataset(
-        target_filepath, mode='w', format='NETCDF4'
-    ) as target_ds:
-
+    with (
+        Dataset(input_filepath, mode='r') as source_ds,
+        Dataset(target_filepath, mode='w', format='NETCDF4') as target_ds,
+    ):
         _transfer_metadata(source_ds, target_ds)
         _transfer_dimensions(source_ds, target_ds, target_area, var_info)
         crs_map = _write_grid_mappings(
@@ -120,7 +126,7 @@ def _transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
 
 
 def _add_grid_mapping_metadata(
-    target_ds: Dataset, variables: Set[str], var_info: VarInfoFromNetCDF4, crs_map: Dict
+    target_ds: Dataset, variables: set[str], var_info: VarInfoFromNetCDF4, crs_map: dict
 ) -> None:
     """Link regridded variables to the correct crs variable."""
     for var_name in variables:
@@ -153,17 +159,17 @@ def _resample_variable_data(
                 var_name,
             )
         return t_var
-    else:
-        return _resample_layer(s_var[:], resampler, var_info, var_name)
+
+    return _resample_layer(s_var[:], resampler, var_info, var_name)
 
 
 def _resample_nD_variables(
     source_ds: Dataset,
     target_ds: Dataset,
     var_info: VarInfoFromNetCDF4,
-    resampler_cache: Dict,
-    variables: Set[str],
-) -> Set[str]:
+    resampler_cache: dict,
+    variables: set[str],
+) -> set[str]:
     """Function to resample any projected variable."""
     for var_name in variables:
         resampler = resampler_cache[_horizontal_dims_for_variable(var_info, var_name)]
@@ -223,7 +229,7 @@ def _prepare_data_plane(
     return data
 
 
-def _resampler_kwargs(data: np.nd.array) -> Dict:
+def _resampler_kwargs(data: np.nd.array) -> dict:
     """Return kwargs to be used in resampling compute call.
 
     If an input data plane is like int, set maximum_weight_mode to true.
@@ -279,7 +285,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
     return needs_rotation
 
 
-def _validate_remaining_variables(resampled_variables: Dict) -> None:
+def _validate_remaining_variables(resampled_variables: dict) -> None:
     """Ensure every remaining variable can be processed.
 
     We should not have any 0D or 1D variables left and we do not handle greater
@@ -294,7 +300,7 @@ def _validate_remaining_variables(resampled_variables: Dict) -> None:
         )
 
 
-def _group_by_ndim(var_info: VarInfoFromNetCDF4, variables: Set) -> Dict:
+def _group_by_ndim(var_info: VarInfoFromNetCDF4, variables: set) -> dict:
     """Sort a list of variables by their number of dimensions.
 
     Return a dictionary of {num_dimensions : set(variable names)}
@@ -349,7 +355,7 @@ def _copy_dimension_variables(
     target_ds: Dataset,
     target_area: AreaDefinition,
     var_info: VarInfoFromNetCDF4,
-) -> Set[str]:
+) -> set[str]:
     """Copy over dimension variables that are changed  in the target file."""
     dim_var_names = _resampled_dimension_variable_names(var_info)
     processed_vars = _copy_1d_dimension_variables(
@@ -368,10 +374,10 @@ def _copy_dimension_variables(
 def _copy_1d_dimension_variables(
     source_ds: Dataset,
     target_ds: Dataset,
-    dim_var_names: Set[str],
+    dim_var_names: set[str],
     target_area: AreaDefinition,
     var_info: VarInfoFromNetCDF4,
-) -> Set[str]:
+) -> set[str]:
     """Copy 1 dimensional dimension variables.
 
     These are the variables associated directly with the resampled
@@ -431,7 +437,7 @@ def _get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
     )
 
 
-def _resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> Set[str]:
+def _resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return the list of dimension variables to resample to target grid.
 
     This returns a list of the fully qualified variables that need to use the
@@ -473,15 +479,15 @@ def _transfer_dimensions(
 
 def _write_grid_mappings(
     target_ds: Dataset,
-    resampled_dim_pairs: List[Tuple[str, str]],
+    resampled_dim_pairs: list[tuple[str, str]],
     target_area: AreaDefinition,
-) -> Dict:
+) -> dict:
     """Add cordinate reference system metadata variables.
 
     Add placeholder variables that contain the metadata related the cordinate
     reference system for the target grid.
 
-    Returns a dictionary of horizonal Tuple[dim pair] to full crs name for
+    Returns a dictionary of horizonal tuple[dim pair] to full crs name for
     pointing back to the correct crs variable in the regridded variables.
 
     """
@@ -500,7 +506,7 @@ def _write_grid_mappings(
 
 
 def _crs_variable_name(
-    dim_pair: Tuple[str, str], resampled_dim_pairs: List[Tuple[str, str]]
+    dim_pair: tuple[str, str], resampled_dim_pairs: list[tuple[str, str]]
 ) -> str:
     """Return a crs variable name for this dimension pair.
 
@@ -522,8 +528,8 @@ def _crs_variable_name(
 
 
 def _clone_variables(
-    source_ds: Dataset, target_ds: Dataset, dimensions: Set[str]
-) -> Set[str]:
+    source_ds: Dataset, target_ds: Dataset, dimensions: set[str]
+) -> set[str]:
     """Clone variables from source to target.
 
     Copy variables and their attributes directly from the source Dataset to the
@@ -592,7 +598,7 @@ def _create_dimension(dataset: Dataset, dimension_name: str, size: int) -> Dimen
 
 
 def _create_resampled_dimensions(
-    resampled_dim_pairs: List[Tuple[str, str]],
+    resampled_dim_pairs: list[tuple[str, str]],
     dataset: Dataset,
     target_area: AreaDefinition,
     var_info: VarInfoFromNetCDF4,
@@ -629,8 +635,8 @@ def _get_dimension(dataset: Dataset, dimension_name: str) -> Dimension:
 
 
 def _copy_dimensions(
-    dimensions: Set[str], source_ds: Dataset, target_ds: Dataset
-) -> Set[str]:
+    dimensions: set[str], source_ds: Dataset, target_ds: Dataset
+) -> set[str]:
     """Copy each dimension from source to target.
 
     ensure the first dimensions copied are the UNLIMITED dimensions.
@@ -649,19 +655,16 @@ def _copy_dimensions(
 
 def _horizontal_dims_for_variable(
     var_info: VarInfoFromNetCDF4, var_name: str
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Return the horizontal dimensions for desired variable."""
+    group_vars = var_info.group_variables_by_horizontal_dimensions()
     return next(
-        (
-            dims
-            for dims, var_names in var_info.group_variables_by_horizontal_dimensions().items()
-            if var_name in var_names
-        ),
+        (dims for dims, var_names in group_vars.items() if var_name in var_names),
         None,
     )
 
 
-def _all_dimensions(var_info: VarInfoFromNetCDF4) -> Set[str]:
+def _all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a list of all dimensions in the file."""
     dimensions = set()
     for variable_name in var_info.get_all_variables():
@@ -672,7 +675,7 @@ def _all_dimensions(var_info: VarInfoFromNetCDF4) -> Set[str]:
     return dimensions
 
 
-def _unresampled_variables(var_info: VarInfoFromNetCDF4) -> Set[str]:
+def _unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Variable names to be transfered from source to target without change.
 
     returns a set of variables that do not have any dimension that is also in
@@ -691,12 +694,12 @@ def _unresampled_variables(var_info: VarInfoFromNetCDF4) -> Set[str]:
     )
 
 
-def _all_dimension_variables(var_info: VarInfoFromNetCDF4) -> Set[str]:
+def _all_dimension_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a set of every dimension variable name in the file."""
     return var_info.get_required_dimensions(var_info.get_all_variables())
 
 
-def _resampled_dimension_pairs(var_info: VarInfoFromNetCDF4) -> List[Tuple[str, str]]:
+def _resampled_dimension_pairs(var_info: VarInfoFromNetCDF4) -> list[tuple[str, str]]:
     """Return a list of the resampled horizontal spatial dimensions.
 
     Gives a list of the 2-element horizontal dimensions that are used in
@@ -710,7 +713,7 @@ def _resampled_dimension_pairs(var_info: VarInfoFromNetCDF4) -> List[Tuple[str, 
     return dimension_pairs
 
 
-def _resampled_dimensions(var_info: VarInfoFromNetCDF4) -> Set[str]:
+def _resampled_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a set of all resampled dimension names."""
     dimensions = set()
     for dim_pair in _resampled_dimension_pairs(var_info):
@@ -820,7 +823,7 @@ def _is_projection_y_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
 
 def _get_projection_x_dims(
     dims: Iterable[str], var_info: VarInfoFromNetCDF4
-) -> List[str]:
+) -> list[str]:
     """Return name for horizontal grid dimension [column/longitude/x]."""
     return [dim for dim in dims if _is_projection_x_dim(dim, var_info)]
 
@@ -831,7 +834,7 @@ def _get_projection_y_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) ->
 
 
 def _compute_source_swath(
-    grid_dimensions: Tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
+    grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> SwathDefinition:
     """Return a SwathDefinition for the input gridDimensions."""
     longitudes, latitudes = _compute_horizontal_source_grids(
@@ -842,8 +845,8 @@ def _compute_source_swath(
 
 
 def _compute_horizontal_source_grids(
-    grid_dimensions: Tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
-) -> Tuple[np.array, np.array]:
+    grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
+) -> tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
     row_dim = _get_projection_y_dims(grid_dimensions, var_info)[0]
     column_dim = _get_projection_x_dims(grid_dimensions, var_info)[0]

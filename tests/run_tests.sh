@@ -1,43 +1,24 @@
 #!/bin/sh
 ###############################################################################
 #
-# A script invoked by the test Dockerfile to run the Python `unittest` suite
+# A script invoked by the test Dockerfile to run the Python test suite
 # for the Harmony Regridding Service. The script first runs the test suite,
 # then it checks for linting errors.
-#
-# 2020-05-07: Adapted from SwotRepr project.
-# 2022-01-03: Removed safety checks, as these are now run in Snyk.
-# 2023-01-26: Updated for use with the Harmony Regridding Service.
-#
 ###############################################################################
 
 # Exit status used to report back to caller
 STATUS=0
 
-export HDF5_DISABLE_VERSION_CHECK=1
-
 # Run the standard set of unit tests, producing JUnit compatible output
-coverage run -m xmlrunner discover tests -o tests/reports
-RESULT=$?
+pytest --cov=harmony_regridding_service \
+       --cov-report=html:reports/coverage \
+       --cov-report term \
+       --junitxml=reports/test-reports/test-results-"$(date +'%Y%m%d%H%M%S')".xml || STATUS=1
 
-if [ "$RESULT" -ne "0" ]; then
-    STATUS=1
-    echo "ERROR: unittest generated errors"
-fi
-
-echo "\n"
-echo "Test Coverage Estimates"
-coverage report --omit="tests/*"
-coverage html --omit="tests/*" -d /home/tests/coverage
 
 # Run pylint
-# Ignored errors/warnings:
-# W1203 - use of f-strings in log statements. This warning is leftover from
-#         using ''.format() vs % notation. For more information, see:
-#     	  https://github.com/PyCQA/pylint/issues/2354#issuecomment-414526879
-pylint harmony_regridding_service --disable=W1203 --extension-pkg-allow-list=netCDF4
-RESULT=$?
-RESULT=$((3 & $RESULT))
+pylint harmony_regridding_service --disable=W1203
+RESULT=$((3 & $?))
 
 if [ "$RESULT" -ne "0" ]; then
     STATUS=1

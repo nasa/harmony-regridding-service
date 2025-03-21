@@ -10,9 +10,10 @@ Granule = namedtuple('Granule', ['url', 'media_type', 'roles'])
 
 
 def create_stac(granule: Granule) -> Catalog:
-    """Create a SpatioTemporal Asset Catalog (STAC). These are used as inputs
-    for Harmony requests, containing the URL and other information for
-    input granules.
+    """Create a SpatioTemporal Asset Catalog (STAC).
+
+    These are used as inputs for Harmony requests, containing the URL and other
+    information for input granules.
 
     For simplicity the geometric and temporal properties of each item are
     set to default values.

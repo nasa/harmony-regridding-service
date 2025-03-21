@@ -1,11 +1,12 @@
-"""Utility modules for use within the Harmony Regridding Service. These
-include MIME type determination and basic components of message validation.
+"""Utility functions for use within the Harmony Regridding Service.
+
+These include MIME type determination and basic components of message
+validation.
 
 """
 
 from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
-from typing import Optional
 
 from harmony_service_lib.message import Message
 from harmony_service_lib.message_utility import rgetattr
@@ -22,8 +23,10 @@ KNOWN_MIME_TYPES = {
 VALID_INTERPOLATION_METHODS = ('Elliptical Weighted Averaging',)
 
 
-def get_file_mime_type(file_name: str) -> Optional[str]:
-    """This function tries to infer the MIME type of a file string. If the
+def get_file_mime_type(file_name: str) -> str | None:
+    """Infer file's MIME type.
+
+    This function tries to infer the MIME type of a file string. If the
     `mimetypes.guess_type` function cannot guess the MIME type of the
     granule, a dictionary of known file types is checked using the file
     extension. That dictionary only contains keys for MIME types that
@@ -39,7 +42,9 @@ def get_file_mime_type(file_name: str) -> Optional[str]:
 
 
 def has_valid_crs(message: Message) -> bool:
-    """Check the target Coordinate Reference System (CRS) in the Harmony
+    """Validate CRS.
+
+    Check the target Coordinate Reference System (CRS) in the Harmony
     message is compatible with the CRS types supported by the regridder. In
     the MVP, only a geographic CRS is supported, so `Message.format.crs`
     should either be undefined or specify a geographic CRS.
@@ -50,9 +55,10 @@ def has_valid_crs(message: Message) -> bool:
 
 
 def _is_geographic_crs(crs_string: str) -> bool:
-    """Use pyproj to ascertain if the supplied Coordinate Reference System
-    (CRS) is geographic.
+    """Infer if CRS is geographic.
 
+    Use pyproj to ascertain if the supplied Coordinate Reference System
+    (CRS) is geographic.
     """
     try:
         crs = CRS(crs_string)
@@ -64,7 +70,9 @@ def _is_geographic_crs(crs_string: str) -> bool:
 
 
 def has_valid_interpolation(message: Message) -> bool:
-    """Check the interpolation method in the input Harmony message is
+    """Ensure valid interpolation.
+
+    Check the interpolation method in the input Harmony message is
     compatible with the methods supported by the regridder. In the MVP,
     only the EWA algorithm is used, so either the interpolation should be
     unspecified in the message, or it should be the string

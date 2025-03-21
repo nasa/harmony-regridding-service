@@ -1,3 +1,5 @@
+"""Test the Utilities module."""
+
 from unittest import TestCase
 
 from harmony_service_lib.message import Message
@@ -29,7 +31,9 @@ class TestUtilities(TestCase):
             self.assertEqual(get_file_mime_type('file.HDF5'), 'application/x-hdf5')
 
     def test_has_valid_crs(self):
-        """Ensure the function correctly determines if the input Harmony
+        """Test has_valid_crs.
+
+        Ensure the function correctly determines if the input Harmony
         message has a target Coordinate Reference System (CRS) that is
         compatible with the service. Currently this is either to not
         define the target CRS (assuming it to be geographic), or explicitly
@@ -75,7 +79,9 @@ class TestUtilities(TestCase):
             )
 
     def test_is_geographic_crs(self):
-        """Ensure function correctly determines if a supplied string resolves
+        """Test _is_geographic_crs.
+
+        Ensure function correctly determines if a supplied string resolves
         to a `pyproj.CRS` object with a geographic Coordinate Reference
         System (CRS). Exceptions arising from invalid CRS strings should
         also be handled.
@@ -105,7 +111,9 @@ class TestUtilities(TestCase):
             )
 
     def test_has_valid_interpolation(self):
-        """Ensure that the function correctly determines if the supplied
+        """Test has_valid_interpolation.
+
+        Ensure that the function correctly determines if the supplied
         Harmony message either omits the `format.interpolation` attribute,
         or specifies EWA via a fully spelled-out string. The TRT-210 MVP
         only allows for interpolation using EWA.

@@ -1,7 +1,8 @@
-"""The exceptions in this module are designed to supply understandable
+"""Custom exceptions module.
+
+The exceptions in this module are designed to supply understandable
 messages, which will be propagated out to the end-user via the main Harmony
 application.
-
 """
 
 from harmony_service_lib.util import HarmonyException
@@ -15,10 +16,7 @@ class RegridderException(HarmonyException):
 
 
 class InvalidTargetCRS(RegridderException):
-    """Raised when a request specifies an unsupported target Coordinate
-    Reference System.
-
-    """
+    """An unsupported target Coordinate Reference System."""
 
     def __init__(self, target_crs: str):
         super().__init__(f'Target CRS not supported: "{target_crs}"')
@@ -29,7 +27,7 @@ class InvalidInterpolationMethod(RegridderException):
 
     def __init__(self, interpolation_method: str):
         super().__init__(
-            'Interpolation method not supported: ' f'"{interpolation_method}"'
+            f'Interpolation method not supported: "{interpolation_method}"'
         )
 
 

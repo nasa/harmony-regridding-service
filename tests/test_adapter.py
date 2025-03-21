@@ -50,10 +50,11 @@ class TestAdapter(TestCase):
         expected_title: str,
         expected_media_type: str,
     ):
-        """Check the contents of the Harmony output STAC. It should have a
+        """Verify output.
+
+        Check the contents of the Harmony output STAC. It should have a
         single data item. The URL, title and media type for this asset will
         be compared to supplied values.
-
         """
         items = list(catalog.get_items())
         self.assertEqual(len(items), 1)
@@ -76,8 +77,7 @@ class TestAdapter(TestCase):
     def test_valid_request(
         self, mock_stage, mock_download, mock_regrid, mock_mkdtemp, mock_rmtree
     ):
-        """Ensure a request with a correctly formatted message is fully
-        processed.
+        """Ensures correctly formatted message is fully processed.
 
         This test will need updating when the service functions fully.
 
@@ -152,7 +152,9 @@ class TestAdapter(TestCase):
     @patch('harmony_regridding_service.adapter.download')
     @patch('harmony_regridding_service.adapter.stage')
     def test_missing_grid(self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree):
-        """Ensure a request that fails message validation correctly raises an
+        """Test missing grid message.
+
+        Ensure a request that fails message validation correctly raises an
         exception that is reported at the top level of invocation. Message
         validation occurs prior to the `RegriddingServiceAdapter.process_item`
         method, so none of the functions or methods within that method
@@ -193,7 +195,9 @@ class TestAdapter(TestCase):
     @patch('harmony_regridding_service.adapter.download')
     @patch('harmony_regridding_service.adapter.stage')
     def test_invalid_grid(self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree):
-        """Ensure a request that fails message validation correctly raises an
+        """Tests invalid grid message.
+
+        Ensure a request that fails message validation correctly raises an
         exception that is reported at the top level of invocation. Message
         validation occurs prior to the `RegriddingServiceAdapter.process_item`
         method, so none of the functions or methods within that method
@@ -246,7 +250,9 @@ class TestAdapter(TestCase):
     def test_invalid_interpolation(
         self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree
     ):
-        """Ensure a request that fails message validation correctly raises an
+        """Tests invalid interpolation message.
+
+        Ensure a request that fails message validation correctly raises an
         exception that is reported at the top level of invocation. Message
         validation occurs prior to the `RegriddingServiceAdapter.process_item`
         method, so none of the functions or methods within that method
@@ -296,7 +302,9 @@ class TestAdapter(TestCase):
     @patch('harmony_regridding_service.adapter.download')
     @patch('harmony_regridding_service.adapter.stage')
     def test_invalid_crs(self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree):
-        """Ensure a request that fails message validation correctly raises an
+        """Test invalid CRS message.
+
+        Ensure a request that fails message validation correctly raises an
         exception that is reported at the top level of invocation. Message
         validation occurs prior to the `RegriddingServiceAdapter.process_item`
         method, so none of the functions or methods within that method

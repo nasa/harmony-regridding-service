@@ -9,7 +9,6 @@ another grid as specified in the input Harmony message.
 from os.path import basename
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Optional
 
 from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.message import Source as HarmonySource
@@ -36,12 +35,10 @@ from harmony_regridding_service.utilities import (
 
 
 class RegriddingServiceAdapter(BaseHarmonyAdapter):
-    """This class extends the BaseHarmonyAdapter class from the
-    harmony-service-lib package to implement regridding operations.
-
-    """
+    """Implement Harmony Regridding Operations."""
 
     def __init__(self, message, catalog=None, config=None):
+        """Initialize the custom adapter."""
         super().__init__(message, catalog=catalog, config=config)
         self.cache = {'grids': {}}
 
@@ -51,8 +48,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
         return super().invoke()
 
     def validate_message(self):
-        """Validates that the contents of the Harmony message provides all
-        necessary parameters.
+        """Validate the Harmony message provides all necessary parameters.
 
         For an input Harmony message to be considered valid it must:
 
@@ -85,11 +81,9 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
             results.assets = {}
 
             asset = next(
-                (
-                    item_asset
-                    for item_asset in item.assets.values()
-                    if 'data' in (item_asset.roles or [])
-                )
+                item_asset
+                for item_asset in item.assets.values()
+                if 'data' in (item_asset.roles or [])
             )
 
             # Download the input:
@@ -120,9 +114,11 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
         self,
         transformed_file: str,
         input_file: str,
-        transformed_mime_type: Optional[str],
+        transformed_mime_type: str | None,
     ) -> str:
-        """Generate an output file name based on the input asset URL and the
+        """Stage the generated output files.
+
+        Generate an output file name based on the input asset URL and the
         operations performed to produce the output. Use this name to stage
         the output in the S3 location specified in the input Harmony
         message.
@@ -142,10 +138,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
     def create_output_stac_item(
         self, input_stac_item: Item, staged_url: str, transformed_mime_type: str
     ) -> Item:
-        """Create an output STAC item used to access the transformed and
-        staged output in S3.
-
-        """
+        """Return STAC item used to access the transformed and staged output in S3."""
         output_stac_item = input_stac_item.clone()
         output_stac_item.assets = {}
         # The output bounding box will vary by grid, so the following line

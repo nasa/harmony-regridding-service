@@ -9,15 +9,19 @@ GPM/IMERGHH and MERRA collections.
 ## Repository structure:
 
 ```
+|- .snyk
 |- CHANGELOG.md
 |- CONTRIBUTING.md
+|- LICENSE
 |- README.md
+|- 📁 bin
+|- dev-requirements.txt
+|- 📁 docker
+|- 📁 docs
+|- 📁 harmony_regridding_service
 |- legacy-CHANGELOG.md
-|- bin
-|- docker
-|- harmony_regridding_service
 |- pip_requirements.txt
-|- tests
+|- 📁 tests
 ```
 
 * .snyk - A file used by the Snyk webhook to ensure the correct version of
@@ -38,13 +42,14 @@ GPM/IMERGHH and MERRA collections.
   service code and Docker image to GitHub.
 * bin - A directory containing utility scripts to build the service and test
   images.
+* dev-requirements.txt - A list of Python package dependencies for library development.
 * docker - A directory containing the Dockerfiles for the service and test
   images. It also contains `service_version.txt`, which contains the semantic
   version number of the service image. Any time an update is made that should
   have an accompanying service image release, this file should be updated.
 * docs - A directory containing Jupyter notebook documentation showing an
   end-user how to use the service.
-* harmony_regridding_service - The directory containing Python source code for
+* harmony\_regridding\_service - The directory containing Python source code for
   the Harmony Regridding Service. `adapter.py` contains the `RegriddingServiceAdapter`
   class that is invoked by calls to the service.
 * pip_requirements.txt - A list of service Python package dependencies.
@@ -59,12 +64,13 @@ Contributions are welcome! For more information, see `CONNTRIBUTING.md`.
 At this time, the service only requires dependencies that can be obtained via
 Pip. The service dependencies are contained in `pip_requirements.txt`.
 Additional test dependencies are listed in `tests/pip_test_requirements.txt`.
+Developers will want to install those listed in `dev-requirements.txt`.
 
 ## Local development:
 
 Local testing of service functionality is best achieved via a local instance of
 [Harmony](https://github.com/nasa/harmony). Please see instructions there
-regarding creation of a local Harmony instance.
+regarding creation of a local Harmony-In-A-Box instance.
 
 If testing small functions locally that do not require inputs from the main
 Harmony application, it is recommended that you create a Python virtual
@@ -73,7 +79,7 @@ dependencies for the service within that environment via Pip.
 
 ## Tests:
 
-This service utilises the Python `unittest` package to perform unit tests on
+This service utilises the Python `pytest` package to perform unit tests on
 classes and functions in the service. After local development is complete, and
 test have been updated, they can be run via:
 
@@ -97,16 +103,17 @@ checking the repository for some coding standard best practices. These include:
 
 * Removing trailing whitespaces.
 * Removing blank lines at the end of a file.
-* JSON files have valid formats.
-* [ruff](https://github.com/astral-sh/ruff) Python linting checks.
-* [black](https://black.readthedocs.io/en/stable/index.html) Python code
-  formatting checks.
+* Validating JSON and yaml files.
+* Ensuring large files are not added to the repo.
+* [ruff](https://github.com/astral-sh/ruff) is used for linting checks and
+  formatting.  Ruff configuration is found in the `pyproject.toml` file.
 
-To enable these checks:
+
+Developers should enable these checks:
 
 ```bash
-# Install pre-commit Python package as part of test requirements:
-pip install -r tests/pip_test_requirements.txt
+# Install pre-commit Python package as part of dev requirements:
+pip install -r dev-requirements.txt
 
 # Install the git hook scripts:
 pre-commit install
@@ -115,16 +122,17 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-When you try to make a new commit locally, `pre-commit` will automatically run.
-If any of the hooks detect non-compliance (e.g., trailing whitespace), that
-hook will state it failed, and also try to fix the issue. You will need to
-review and `git add` the changes before you can make a commit.
+After enabling pre-commit, when you make a new commit locally, `pre-commit`
+will automatically run.  If any of the hooks detect non-compliance (e.g.,
+trailing whitespace), that hook will state it failed, and also try to fix the
+issue. You will need to review the automated changes and `git add` them
+before you can make a commit.
 
 It is planned to implement additional hooks, possibly including tools such as
 `mypy`.
 
 [pre-commit.ci](pre-commit.ci) is configured such that these same hooks will be
-automatically run for every pull request.
+automatically run for every pull request. This check must pass for a PR to be merged to `main`.
 
 ## Versioning:
 
