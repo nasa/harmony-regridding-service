@@ -18,5 +18,5 @@ convention = "google"
 "tests/**/test_*" = ["D102"] ## ignore missing doc strings in test files.
 
 [[tool.mypy.overrides]]
-module = "harmony_lib.*"
+module = "harmony_service_lib.*"
 ignore_missing_imports = true
