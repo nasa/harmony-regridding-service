@@ -42,7 +42,7 @@ GPM/IMERGHH and MERRA collections.
   service code and Docker image to GitHub.
 * bin - A directory containing utility scripts to build the service and test
   images.
-* dev_requirements.txt - A list of Python package dependencies for library development.
+* dev-requirements.txt - A list of Python package dependencies for library development.
 * docker - A directory containing the Dockerfiles for the service and test
   images. It also contains `service_version.txt`, which contains the semantic
   version number of the service image. Any time an update is made that should
