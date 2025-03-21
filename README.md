@@ -15,7 +15,7 @@ GPM/IMERGHH and MERRA collections.
 |- LICENSE
 |- README.md
 |- 📁 bin
-|- dev-requirements.txt
+|- dev_requirements.txt
 |- 📁 docker
 |- 📁 docs
 |- 📁 harmony_regridding_service
@@ -42,7 +42,7 @@ GPM/IMERGHH and MERRA collections.
   service code and Docker image to GitHub.
 * bin - A directory containing utility scripts to build the service and test
   images.
-* dev-requirements.txt - A list of Python package dependencies for library development.
+* dev_requirements.txt - A list of Python package dependencies for library development.
 * docker - A directory containing the Dockerfiles for the service and test
   images. It also contains `service_version.txt`, which contains the semantic
   version number of the service image. Any time an update is made that should
@@ -64,7 +64,7 @@ Contributions are welcome! For more information, see `CONNTRIBUTING.md`.
 At this time, the service only requires dependencies that can be obtained via
 Pip. The service dependencies are contained in `pip_requirements.txt`.
 Additional test dependencies are listed in `tests/pip_test_requirements.txt`.
-Developers will want to install those listed in `dev-requirements.txt`.
+Developers will want to install those listed in `dev_requirements.txt`.
 
 ## Local development:
 
@@ -113,7 +113,7 @@ Developers should enable these checks:
 
 ```bash
 # Install pre-commit Python package as part of dev requirements:
-pip install -r dev-requirements.txt
+pip install -r dev_requirements.txt
 
 # Install the git hook scripts:
 pre-commit install
