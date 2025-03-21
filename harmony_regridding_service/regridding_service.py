@@ -16,11 +16,13 @@ to when we move away from this limitation.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from logging import Logger
 from pathlib import Path, PurePath
 from typing import TYPE_CHECKING
 
 import numpy as np
-from harmony_service_lib.message import Message, Source
+from harmony_service_lib.message import Message as HarmonyMessage
+from harmony_service_lib.message import Source as HarmonySource
 from harmony_service_lib.message_utility import has_dimensions
 from harmony_service_lib.util import generate_output_filename
 from netCDF4 import (  # pylint: disable=no-name-in-module
@@ -39,7 +41,7 @@ from harmony_regridding_service.exceptions import (
 )
 
 if TYPE_CHECKING:
-    from harmony_regridding_service.adapter import RegriddingServiceAdapter
+    pass
 
 HRS_VARINFO_CONFIG_FILENAME = str(
     Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
@@ -47,7 +49,7 @@ HRS_VARINFO_CONFIG_FILENAME = str(
 
 
 def regrid(
-    adapter: RegriddingServiceAdapter, input_filepath: str, source: Source
+    message: HarmonyMessage, input_filepath: str, source: HarmonySource, logger: Logger
 ) -> str:
     """Regrid the input data at input_filepath."""
     var_info = VarInfoFromNetCDF4(
@@ -55,10 +57,10 @@ def regrid(
         short_name=source.shortName,
         config_file=HRS_VARINFO_CONFIG_FILENAME,
     )
-    target_area = _compute_target_area(adapter.message)
+    target_area = _compute_target_area(message)
 
     resampler_cache = _cache_resamplers(input_filepath, var_info, target_area)
-    adapter.logger.info(f'cached resamplers for {resampler_cache.keys()}')
+    logger.info(f'cached resamplers for {resampler_cache.keys()}')
 
     target_filepath = generate_output_filename(input_filepath, is_regridded=True)
 
@@ -76,27 +78,27 @@ def regrid(
         cloned_vars = _clone_variables(
             source_ds, target_ds, _unresampled_variables(var_info)
         )
-        adapter.logger.info(f'cloned variables: {cloned_vars}')
+        logger.info(f'cloned variables: {cloned_vars}')
         vars_to_process -= cloned_vars
 
         dimension_vars = _copy_dimension_variables(
             source_ds, target_ds, target_area, var_info
         )
-        adapter.logger.info(f'processed dimension variables: {dimension_vars}')
+        logger.info(f'processed dimension variables: {dimension_vars}')
         vars_to_process -= dimension_vars
 
         resampled_vars = _resample_nD_variables(
             source_ds, target_ds, var_info, resampler_cache, set(vars_to_process)
         )
         vars_to_process -= resampled_vars
-        adapter.logger.info(f'resampled variables: {resampled_vars}')
+        logger.info(f'resampled variables: {resampled_vars}')
 
         _add_grid_mapping_metadata(target_ds, resampled_vars, var_info, crs_map)
 
         if vars_to_process:
-            adapter.logger.warn(f'Unprocessed Variables: {vars_to_process}')
+            logger.warn(f'Unprocessed Variables: {vars_to_process}')
         else:
-            adapter.logger.info('Processed all variables.')
+            logger.info('Processed all variables.')
 
     return target_filepath
 
@@ -748,7 +750,7 @@ def _cache_resamplers(
     return grid_cache
 
 
-def _compute_target_area(message: Message) -> AreaDefinition:
+def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     """Parse the harmony message and build a target AreaDefinition."""
     # ScaleExtent is required and validated.
     area_extent = (
@@ -773,7 +775,7 @@ def _compute_target_area(message: Message) -> AreaDefinition:
     )
 
 
-def _grid_height(message: Message) -> int:
+def _grid_height(message: HarmonyMessage) -> int:
     """Compute grid height from Message.
 
     Compute the height of grid from the scaleExtents and scale_sizes.
@@ -783,7 +785,7 @@ def _grid_height(message: Message) -> int:
     return _compute_num_elements(message, 'y')
 
 
-def _grid_width(message: Message) -> int:
+def _grid_width(message: HarmonyMessage) -> int:
     """Compute grid height from Message.
 
     Compute the height of grid from the scaleExtents and scale_sizes.
@@ -793,7 +795,7 @@ def _grid_width(message: Message) -> int:
     return _compute_num_elements(message, 'x')
 
 
-def _compute_num_elements(message: Message, dimension_name: str) -> int:
+def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
     """Compute the number of gridcells based on scaleExtents and scaleSize."""
     scale_extent = getattr(message.format.scaleExtent, dimension_name)
     scale_size = getattr(message.format.scaleSize, dimension_name)
