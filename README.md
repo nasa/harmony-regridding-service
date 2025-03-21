@@ -64,7 +64,7 @@ Contributions are welcome! For more information, see `CONNTRIBUTING.md`.
 At this time, the service only requires dependencies that can be obtained via
 Pip. The service dependencies are contained in `pip_requirements.txt`.
 Additional test dependencies are listed in `tests/pip_test_requirements.txt`.
-Developers will want to install those listed in `dev_requirements.txt`.
+Developers will want to install those listed in `dev-requirements.txt`.
 
 ## Local development:
 
@@ -113,7 +113,7 @@ Developers should enable these checks:
 
 ```bash
 # Install pre-commit Python package as part of dev requirements:
-pip install -r dev_requirements.txt
+pip install -r dev-requirements.txt
 
 # Install the git hook scripts:
 pre-commit install
