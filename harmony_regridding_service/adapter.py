@@ -9,7 +9,6 @@ another grid as specified in the input Harmony message.
 from os.path import basename
 from shutil import rmtree
 from tempfile import mkdtemp
-from typing import Optional
 
 from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.message import Source as HarmonySource
@@ -115,7 +114,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
         self,
         transformed_file: str,
         input_file: str,
-        transformed_mime_type: Optional[str],
+        transformed_mime_type: str | None,
     ) -> str:
         """Stage the generated output files.
 

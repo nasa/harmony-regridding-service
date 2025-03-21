@@ -7,7 +7,6 @@ validation.
 
 from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
-from typing import Optional
 
 from harmony_service_lib.message import Message
 from harmony_service_lib.message_utility import rgetattr
@@ -24,7 +23,7 @@ KNOWN_MIME_TYPES = {
 VALID_INTERPOLATION_METHODS = ('Elliptical Weighted Averaging',)
 
 
-def get_file_mime_type(file_name: str) -> Optional[str]:
+def get_file_mime_type(file_name: str) -> str | None:
     """Infer file's MIME type.
 
     This function tries to infer the MIME type of a file string. If the
