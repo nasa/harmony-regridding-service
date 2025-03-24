@@ -18,6 +18,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 COPY tests/pip_test_requirements.txt .
 RUN pip install --no-input -r pip_test_requirements.txt
 
+
+COPY ./pyproject.toml pyproject.toml
+
 # Copy test directory containing Python unittest suite, test data and utilities
 COPY ./tests tests
 

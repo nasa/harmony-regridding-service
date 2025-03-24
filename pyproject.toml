@@ -23,6 +23,4 @@ ignore_missing_imports = true
 
 [tool.pylint]
 disable = ["W1203"]
-
-[tool.pylint.typecheck]
-ignored-modules =  [ "netCDF4" ]
+typecheck.ignored-modules =  [ "netCDF4" ]
