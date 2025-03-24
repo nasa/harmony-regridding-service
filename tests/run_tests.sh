@@ -17,7 +17,7 @@ pytest --cov=harmony_regridding_service \
 
 
 # Run pylint
-pylint harmony_regridding_service --disable=W1203
+pylint harmony_regridding_service
 RESULT=$((3 & $?))
 
 if [ "$RESULT" -ne "0" ]; then

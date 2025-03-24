@@ -25,7 +25,7 @@ from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 from harmony_service_lib.message_utility import has_dimensions
 from harmony_service_lib.util import generate_output_filename
-from netCDF4 import (  # pylint: disable=no-name-in-module
+from netCDF4 import (
     Dataset,
     Dimension,
     Group,

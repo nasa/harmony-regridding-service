@@ -1,8 +1,8 @@
 # Open source packages available from PyPI
 dask~=2025.2.0
-earthdata-varinfo~=3.0.2
+earthdata-varinfo~=3.0.3
 harmony-service-lib~=2.6.0
-netCDF4~=1.6.5
+netCDF4~=1.7.2
 numpy~=1.26.4
 pyproj~=3.7.1
 pyresample~=1.33.0
