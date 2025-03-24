@@ -24,36 +24,36 @@ GPM/IMERGHH and MERRA collections.
 |- 📁 tests
 ```
 
-* .snyk - A file used by the Snyk webhook to ensure the correct version of
+* `.snyk` - A file used by the Snyk webhook to ensure the correct version of
   Python is used when installing the full dependency tree for the Harmony
   Regridding Service. This file should be updated when the version of Python is
   updated in the service Docker image.
-* CHANGELOG.md - This file contains a record of changes applied to each new
+* `CHANGELOG.md` - This file contains a record of changes applied to each new
   public release of a service Docker image. Any release of a new service
   version since migrating to GitHub should have a record of what was changed in
   this file (e.g., starting at version 1.0.0).
-* CONTRIBUTING.md - General guidelines for making contributions to the
+* `CONTRIBUTING.md` - General guidelines for making contributions to the
   repository.
-* LICENSE - The NASA open-source license under which this software has been
+* `LICENSE` - The NASA open-source license under which this software has been
   made available.
-* README.md - This file, containing guidance on developing the service.
-* legacy-CHANGELOG.md - This file contains release notes for all versions of
+* `README.md` - This file, containing guidance on developing the service.
+* `legacy-CHANGELOG.md` - This file contains release notes for all versions of
   the service that were released internally to EOSDIS, before migrating the
   service code and Docker image to GitHub.
-* bin - A directory containing utility scripts to build the service and test
+* `bin` - A directory containing utility scripts to build the service and test
   images.
-* dev_requirements.txt - A list of Python package dependencies for library development.
-* docker - A directory containing the Dockerfiles for the service and test
+* `dev_requirements.txt` - A list of Python package dependencies for library development.
+* `docker` - A directory containing the Dockerfiles for the service and test
   images. It also contains `service_version.txt`, which contains the semantic
   version number of the service image. Any time an update is made that should
   have an accompanying service image release, this file should be updated.
-* docs - A directory containing Jupyter notebook documentation showing an
+* `docs` - A directory containing Jupyter notebook documentation showing an
   end-user how to use the service.
-* harmony\_regridding\_service - The directory containing Python source code for
+* `harmony_regridding_service` - The directory containing Python source code for
   the Harmony Regridding Service. `adapter.py` contains the `RegriddingServiceAdapter`
   class that is invoked by calls to the service.
-* pip_requirements.txt - A list of service Python package dependencies.
-* tests - A directory containing the service unit test suite.
+* `pip_requirements.txt` - A list of service Python package dependencies.
+* `tests` - A directory containing the service unit test suite.
 
 ## Contributing:
 
