@@ -7,7 +7,7 @@ from tempfile import mkdtemp
 from unittest import TestCase
 from unittest.mock import ANY, patch
 
-from harmony_service_lib.message import Message
+from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.util import config
 from pystac import Catalog
 
@@ -90,7 +90,7 @@ class TestAdapter(TestCase):
         mock_download.return_value = expected_downloaded_file
         mock_stage.return_value = expected_staged_url
 
-        message = Message(
+        message = HarmonyMessage(
             {
                 'accessToken': self.access_token,
                 'callback': 'https://example.com/',
@@ -132,7 +132,9 @@ class TestAdapter(TestCase):
         )
 
         # Ensure regrid was called with the input filepath.
-        mock_regrid.assert_called_once_with(ANY, expected_downloaded_file, ANY)
+        mock_regrid.assert_called_once_with(
+            message, expected_downloaded_file, ANY, regridder.logger
+        )
 
         # Ensure the file was staged as expected:
         mock_stage.assert_called_once_with(
@@ -164,7 +166,7 @@ class TestAdapter(TestCase):
         """
         error_message = 'Insufficient or invalid target grid parameters.'
 
-        harmony_message = Message(
+        harmony_message = HarmonyMessage(
             {
                 'accessToken': self.access_token,
                 'callback': 'https://example.com/',
@@ -208,7 +210,7 @@ class TestAdapter(TestCase):
         """
         error_message = 'Insufficient or invalid target grid parameters.'
 
-        harmony_message = Message(
+        harmony_message = HarmonyMessage(
             {
                 'accessToken': self.access_token,
                 'callback': 'https://example.com/',
@@ -263,7 +265,7 @@ class TestAdapter(TestCase):
         """
         error_message = 'Interpolation method not supported: "Bilinear"'
 
-        harmony_message = Message(
+        harmony_message = HarmonyMessage(
             {
                 'accessToken': self.access_token,
                 'callback': 'https://example.com/',
@@ -315,7 +317,7 @@ class TestAdapter(TestCase):
         """
         error_message = 'Target CRS not supported: "invalid CRS"'
 
-        harmony_message = Message(
+        harmony_message = HarmonyMessage(
             {
                 'accessToken': self.access_token,
                 'callback': 'https://example.com/',

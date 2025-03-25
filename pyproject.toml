@@ -20,3 +20,7 @@ convention = "google"
 [[tool.mypy.overrides]]
 module = "harmony_service_lib.*"
 ignore_missing_imports = true
+
+[tool.pylint]
+disable = ["W1203"]
+typecheck.ignored-modules =  [ "netCDF4" ]

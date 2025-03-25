@@ -95,7 +95,9 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
                 access_token=self.message.accessToken,
             )
 
-            transformed_file_name = regrid(self, input_filepath, source)
+            transformed_file_name = regrid(
+                self.message, input_filepath, source, self.logger
+            )
 
             # Stage the transformed output:
             transformed_mime_type = get_file_mime_type(transformed_file_name)
