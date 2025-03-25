@@ -18,7 +18,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from logging import Logger
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING
 
 import numpy as np
 from harmony_service_lib.message import Message as HarmonyMessage
@@ -39,9 +38,6 @@ from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
     RegridderException,
 )
-
-if TYPE_CHECKING:
-    pass
 
 HRS_VARINFO_CONFIG_FILENAME = str(
     Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
