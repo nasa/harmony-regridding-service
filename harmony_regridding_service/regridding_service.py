@@ -38,16 +38,60 @@ from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
     RegridderException,
 )
+from harmony_regridding_service.regridding_utility import (
+    get_harmony_message_from_params,
+)
 
 HRS_VARINFO_CONFIG_FILENAME = str(
     Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
 )
 
 
+def regrid_cli_entry(source_filename: str, params: dict, source: dict, logger: Logger):
+    """Call regrid without the adapter class.
+
+    TODO: This is where a library entry will exist if it is ever made.  In the
+    meantime, this is an entrypoint to call the regridder without instantiating
+    an adapter for testing.
+
+    Args:
+    source_filename: [str], a string to an input file to be regridded.
+
+    params: [dict | None], A dictionary with the following keys:
+        crs: [dict | None], Target image's Coordinate Reference System.
+             A dictionary with 'epsg', 'proj4' or 'wkt' key.
+
+        scale_extent: [dict | None], Scale Extents for the image. This dictionary
+            contains "x" and "y" keys each whose value which is a dictionary
+            of "min", "max" values in the same units as the crs.
+            e.g.: { "x": { "min": 0.5, "max": 125 },
+                    "y": { "min": 52, "max": 75.22 } }
+
+        scale_size: [dict | None], Scale sizes for the image.  The dictionary
+            contains "x" and "y" keys with the horizontal and veritcal
+            resolution in the same units as the crs.
+            e.g.: { "x": 10, "y": 10 }
+
+        height: [int | None], height of the output image in gridcells.
+
+        width: [int | none], width of the output image in gridcells.
+
+    source: [dict | None], a Dictionary suitable for initializing a Harmony
+            Source JsonObject.
+
+    logger: [Logger], a configured logging object.
+
+    """
+    harmony_message = get_harmony_message_from_params(params)
+    source = HarmonySource(source)
+    return regrid(harmony_message, source_filename, source, logger)
+
+
 def regrid(
     message: HarmonyMessage, input_filepath: str, source: HarmonySource, logger: Logger
 ) -> str:
     """Regrid the input data at input_filepath."""
+    logger.info(f'HarmonyMessage: {message}')
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,
@@ -83,7 +127,7 @@ def regrid(
         logger.info(f'processed dimension variables: {dimension_vars}')
         vars_to_process -= dimension_vars
 
-        resampled_vars = _resample_nD_variables(
+        resampled_vars = _resample_n_dimensional_variables(
             source_ds, target_ds, var_info, resampler_cache, set(vars_to_process)
         )
         vars_to_process -= resampled_vars
@@ -161,7 +205,7 @@ def _resample_variable_data(
     return _resample_layer(s_var[:], resampler, var_info, var_name)
 
 
-def _resample_nD_variables(
+def _resample_n_dimensional_variables(
     source_ds: Dataset,
     target_ds: Dataset,
     var_info: VarInfoFromNetCDF4,
@@ -737,6 +781,7 @@ def _cache_resamplers(
     for dimensions in dimension_vars_mapping:
         # create source swath definition from 2D grids
         if len(dimensions) == 2:
+            print(f'{dimensions}')
             source_swath = _compute_source_swath(dimensions, filepath, var_info)
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
 
@@ -803,7 +848,8 @@ def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
 def _is_projection_x_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a projection X dimension."""
     try:
-        is_x_dim = var_info.get_variable(dim).is_longitude()
+        dim_var = var_info.get_variable(dim)
+        is_x_dim = dim_var.is_longitude() or dim_var.is_projection_x()
     except AttributeError:
         is_x_dim = False
     return is_x_dim
@@ -813,7 +859,8 @@ def _is_projection_y_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a projection Y dimension."""
     is_y_dim = False
     try:
-        is_y_dim = var_info.get_variable(dim).is_latitude()
+        dim_var = var_info.get_variable(dim)
+        is_y_dim = dim_var.is_latitude() or dim_var.is_projection_y()
     except AttributeError:
         pass
     return is_y_dim
@@ -846,6 +893,7 @@ def _compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
+    print(f'grid_dimensions: {grid_dimensions}')
     row_dim = _get_projection_y_dims(grid_dimensions, var_info)[0]
     column_dim = _get_projection_x_dims(grid_dimensions, var_info)[0]
 
