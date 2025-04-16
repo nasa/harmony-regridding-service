@@ -91,7 +91,6 @@ def regrid(
     message: HarmonyMessage, input_filepath: str, source: HarmonySource, logger: Logger
 ) -> str:
     """Regrid the input data at input_filepath."""
-    logger.info(f'HarmonyMessage: {message}')
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,
