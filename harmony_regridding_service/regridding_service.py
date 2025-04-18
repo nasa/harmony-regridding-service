@@ -16,7 +16,7 @@ to when we move away from this limitation.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from logging import Logger
+from logging import Logger, getLogger
 from pathlib import Path, PurePath
 
 import numpy as np
@@ -42,12 +42,16 @@ from harmony_regridding_service.regridding_utility import (
     get_harmony_message_from_params,
 )
 
+logger = getLogger(__name__)
+
 HRS_VARINFO_CONFIG_FILENAME = str(
     Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
 )
 
 
-def regrid_cli_entry(source_filename: str, params: dict, source: dict, logger: Logger):
+def regrid_cli_entry(
+    source_filename: str, params: dict, source: dict, call_logger: Logger
+):
     """Call regrid without the adapter class.
 
     TODO: This is where a library entry will exist if it is ever made.  In the
@@ -79,18 +83,25 @@ def regrid_cli_entry(source_filename: str, params: dict, source: dict, logger: L
     source: [dict | None], a Dictionary suitable for initializing a Harmony
             Source JsonObject.
 
-    logger: [Logger], a configured logging object.
+    call_logger: [Logger], a configured logging object.
 
     """
     harmony_message = get_harmony_message_from_params(params)
     source = HarmonySource(source)
-    return regrid(harmony_message, source_filename, source, logger)
+    return regrid(harmony_message, source_filename, source, call_logger)
 
 
 def regrid(
-    message: HarmonyMessage, input_filepath: str, source: HarmonySource, logger: Logger
+    message: HarmonyMessage,
+    input_filepath: str,
+    source: HarmonySource,
+    call_logger: Logger,
 ) -> str:
     """Regrid the input data at input_filepath."""
+    # TODO [MHS, 04/16/2025] fix this somehow to get rid of global
+    global logger
+    logger = call_logger or logger
+
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,
@@ -767,20 +778,18 @@ def _cache_resamplers(
 ) -> None:
     """Precompute the resampling weights.
 
-    Determine the desired output Target Area from the Harmony Message.  Use
-    this target area in conjunction with each shared horizontal dimension in
-    the input source file to create an EWA Resampler and precompute the weights
-    to be used in a resample from the shared horizontal dimension to the output
-    target area.
+    Use the regridding target area in conjunction with each 2D horizontal
+    dimension pair in the input source file to create an resampler and precompute
+    the weights to be used when resampling.
 
     """
     grid_cache = {}
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
     for dimensions in dimension_vars_mapping:
-        # create source swath definition from 2D grids
+        # create source swath definitions from all 2D grids found in the input file.
         if len(dimensions) == 2:
-            print(f'{dimensions}')
+            logger.info(f'computing weights for dimensions {dimensions}')
             source_swath = _compute_source_swath(dimensions, filepath, var_info)
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
 
@@ -793,6 +802,7 @@ def _cache_resamplers(
 def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     """Parse the harmony message and build a target AreaDefinition."""
     # ScaleExtent is required and validated.
+    logger.info('compute target_area')
     area_extent = (
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
@@ -892,9 +902,10 @@ def _compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
-    print(f'grid_dimensions: {grid_dimensions}')
     row_dim = _get_projection_y_dims(grid_dimensions, var_info)[0]
     column_dim = _get_projection_x_dims(grid_dimensions, var_info)[0]
+    logger.info(f'found row_dim: {row_dim}')
+    logger.info(f'found column_dim: {column_dim}')
 
     with Dataset(filepath, mode='r') as data_set:
         row_shape = data_set[row_dim].shape
