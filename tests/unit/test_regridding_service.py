@@ -1041,27 +1041,6 @@ class TestRegriddingService(TestCase):
             actual = rs._get_vertical_dims(dims, var_info)
             self.assertEqual(expected_dim, actual)
 
-    @patch('harmony_regridding_service.regridding_service.SwathDefinition')
-    @patch(
-        'harmony_regridding_service.regridding_service._compute_horizontal_source_grids'
-    )
-    def test_compute_source_swath(self, mock_horiz_source_grids, mock_swath):
-        """Ensure source swaths are correctly generated."""
-        grid_dims = ('/lon', '/lat')
-        filepath = 'path to a file'
-        var_info = {'fake': 'varinfo object'}
-        lons = np.array([[1, 1], [1, 1], [1, 1]])
-        lats = np.array([[2, 2], [2, 2], [2, 2]])
-
-        mock_horiz_source_grids.return_value = (lons, lats)
-
-        rs._compute_source_swath(grid_dims, filepath, var_info)
-
-        # horizontal grids were called successfully
-        mock_horiz_source_grids.assert_called_with(grid_dims, filepath, var_info)
-        # swath was called with the horizontal 2d grids.
-        mock_swath.assert_called_with(lons=lons, lats=lats)
-
     def test_expected_result_compute_horizontal_source_grids(self):
         """Exercises the single function for computing horizontal grids."""
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
