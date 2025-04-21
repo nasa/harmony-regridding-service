@@ -319,7 +319,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         (
             index
             for index, dimension in enumerate(var_dims)
-            if _is_projection_x_dim(dimension, var_info)
+            if _is_horizontal_dim(dimension, var_info)
         ),
         None,
     )
@@ -327,7 +327,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         (
             index
             for index, dimension in enumerate(var_dims)
-            if _is_projection_y_dim(dimension, var_info)
+            if _is_vertical_dim(dimension, var_info)
         ),
         None,
     )
@@ -379,8 +379,8 @@ def _copy_resampled_bounds_variable(
     """Copy computed values for dimension variable bounds variables."""
     var_dims = var_info.get_variable(bounds_var).dimensions
 
-    xdims = _get_projection_x_dims(var_dims, var_info)
-    ydims = _get_projection_y_dims(var_dims, var_info)
+    xdims = _get_horizontal_dims(var_dims, var_info)
+    ydims = _get_vertical_dims(var_dims, var_info)
     if xdims:
         target_coords = target_area.projection_x_coords
         dim_name = xdims[0]
@@ -442,8 +442,8 @@ def _copy_1d_dimension_variables(
         if len(var_info.get_variable(dim_var_name).dimensions) == 1
     }
 
-    xdims = _get_projection_x_dims(one_d_vars, var_info)
-    ydims = _get_projection_y_dims(one_d_vars, var_info)
+    xdims = _get_horizontal_dims(one_d_vars, var_info)
+    ydims = _get_vertical_dims(one_d_vars, var_info)
 
     for dim_name in one_d_vars:
         if dim_name in xdims:
@@ -657,8 +657,8 @@ def _create_resampled_dimensions(
 ):
     """Create dimensions for the target resampled grids."""
     for dim_pair in resampled_dim_pairs:
-        xdim = _get_projection_x_dims(set(dim_pair), var_info)[0]
-        ydim = _get_projection_y_dims(set(dim_pair), var_info)[0]
+        xdim = _get_horizontal_dims(set(dim_pair), var_info)[0]
+        ydim = _get_vertical_dims(set(dim_pair), var_info)[0]
 
         _create_dimension(dataset, xdim, target_area.projection_x_coords.shape[0])
         _create_dimension(dataset, ydim, target_area.projection_y_coords.shape[0])
@@ -784,10 +784,11 @@ def _cache_resamplers(
 
     """
     grid_cache = {}
+
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
     for dimensions in dimension_vars_mapping:
-        # create source swath definitions from all 2D grids found in the input file.
+        # create swath definitions from each unique 2D grid found in the input file.
         if len(dimensions) == 2:
             logger.info(f'computing weights for dimensions {dimensions}')
             source_swath = _compute_source_swath(dimensions, filepath, var_info)
@@ -854,8 +855,8 @@ def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
     return num_elements
 
 
-def _is_projection_x_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a projection X dimension."""
+def _is_horizontal_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+    """Test if dim is a horizontal dimension."""
     try:
         dim_var = var_info.get_variable(dim)
         is_x_dim = dim_var.is_longitude() or dim_var.is_projection_x()
@@ -864,7 +865,7 @@ def _is_projection_x_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     return is_x_dim
 
 
-def _is_projection_y_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+def _is_vertical_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a projection Y dimension."""
     is_y_dim = False
     try:
@@ -875,16 +876,16 @@ def _is_projection_y_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     return is_y_dim
 
 
-def _get_projection_x_dims(
+def _get_horizontal_dims(
     dims: Iterable[str], var_info: VarInfoFromNetCDF4
 ) -> list[str]:
     """Return name for horizontal grid dimension [column/longitude/x]."""
-    return [dim for dim in dims if _is_projection_x_dim(dim, var_info)]
+    return [dim for dim in dims if _is_horizontal_dim(dim, var_info)]
 
 
-def _get_projection_y_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
+def _get_vertical_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
     """Return name for vertical grid dimension [row/latitude/y]."""
-    return [dim for dim in dims if _is_projection_y_dim(dim, var_info)]
+    return [dim for dim in dims if _is_vertical_dim(dim, var_info)]
 
 
 def _compute_source_swath(
@@ -902,8 +903,8 @@ def _compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
-    row_dim = _get_projection_y_dims(grid_dimensions, var_info)[0]
-    column_dim = _get_projection_x_dims(grid_dimensions, var_info)[0]
+    row_dim = _get_vertical_dims(grid_dimensions, var_info)[0]
+    column_dim = _get_horizontal_dims(grid_dimensions, var_info)[0]
     logger.info(f'found row_dim: {row_dim}')
     logger.info(f'found column_dim: {column_dim}')
 
