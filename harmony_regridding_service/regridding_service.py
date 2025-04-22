@@ -146,7 +146,7 @@ def regrid(
         _add_grid_mapping_metadata(target_ds, resampled_vars, var_info, crs_map)
 
         if vars_to_process:
-            logger.warn(f'Unprocessed Variables: {vars_to_process}')
+            logger.warning(f'Unprocessed Variables: {vars_to_process}')
         else:
             logger.info('Processed all variables.')
 
