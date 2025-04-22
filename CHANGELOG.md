@@ -7,6 +7,11 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased] - 2025-04-22
 
+## Added
+
+- Adds Command line entrypoint for testing the service without Docker.
+
+
 ## Changed
 
 - Internal changes only. Python lib dependencies are updated. Small refactors applied.
