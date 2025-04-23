@@ -10,6 +10,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import numpy as np
+import pytest
 from harmony_service_lib.message import Message
 from netCDF4 import Dataset, Variable
 from numpy.testing import assert_array_equal
@@ -20,7 +21,9 @@ import harmony_regridding_service.regridding_service as rs
 from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
     RegridderException,
+    SourceDataError,
 )
+from harmony_regridding_service.regridding_service import _compute_array_bounds
 
 
 class TestRegriddingService(TestCase):
@@ -144,7 +147,7 @@ class TestRegriddingService(TestCase):
         rmtree(cls.tmp_dir)
 
     @classmethod
-    def test_file(self):
+    def _generate_test_file(self):
         """Return a temporary target netcdf filename."""
         return Path(self.target_tmp_dir, f'target_{uuid4()}.nc')
 
@@ -155,7 +158,9 @@ class TestRegriddingService(TestCase):
         )
 
     @classmethod
-    def test_area(cls, width=360, height=180, area_extent=(-180, -90, 180, 90)):
+    def _generate_test_area(
+        cls, width=360, height=180, area_extent=(-180, -90, 180, 90)
+    ):
         projection = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
         return AreaDefinition(
             'test_id',
@@ -184,7 +189,7 @@ class TestRegriddingService(TestCase):
 
     def test_walk_groups(self):
         """Demonstrate traversing all groups."""
-        target_path = self.test_file()
+        target_path = self._generate_test_file()
         groups = ['/a/nested/group', '/b/another/deeper/group2']
         expected_visited = {'a', 'nested', 'group', 'b', 'another', 'deeper', 'group2'}
 
@@ -201,8 +206,8 @@ class TestRegriddingService(TestCase):
         self.assertSetEqual(expected_visited, actual_visited)
 
     def test_copy_1d_dimension_variables(self):
-        target_file = self.test_file()
-        target_area = self.test_area()
+        target_file = self._generate_test_file()
+        target_area = self._generate_test_area()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         dim_var_names = {'/lon', '/lat'}
         expected_attributes = {'long_name', 'standard_name', 'units'}
@@ -225,8 +230,8 @@ class TestRegriddingService(TestCase):
                 validate['/lat'].getncattr('non-standard-attribute')
 
     def test_copy_vars_without_metadata(self):
-        target_file = self.test_file()
-        target_area = self.test_area()
+        target_file = self._generate_test_file()
+        target_area = self._generate_test_area()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         with (
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
@@ -243,8 +248,8 @@ class TestRegriddingService(TestCase):
             self.assertDictEqual({}, actual_metadata)
 
     def test_copy_var_with_attrs(self):
-        target_file = self.test_file()
-        target_area = self.test_area()
+        target_file = self._generate_test_file()
+        target_area = self._generate_test_area()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         expected_metadata = {'units': 'widgets per month'}
         with (
@@ -262,10 +267,10 @@ class TestRegriddingService(TestCase):
             self.assertDictEqual(actual_metadata, expected_metadata)
 
     def test_copy_dimension_variables(self):
-        target_file = self.test_file()
+        target_file = self._generate_test_file()
         width = 300
         height = 150
-        target_area = self.test_area(width=width, height=height)
+        target_area = self._generate_test_area(width=width, height=height)
         var_info = self.var_info(self.test_MERRA2_ncfile)
         expected_vars_copied = {'/lon', '/lat'}
 
@@ -344,8 +349,8 @@ class TestRegriddingService(TestCase):
         self.assertEqual(expected_bounds, actual_bounds)
 
     def test_copy_resampled_bounds_variable(self):
-        target_file = self.test_file()
-        target_area = self.test_area()
+        target_file = self._generate_test_file()
+        target_area = self._generate_test_area()
         var_info = self.var_info(self.test_IMERG_ncfile)
         bnds_var = '/Grid/lat_bnds'
         var_copied = None
@@ -433,7 +438,7 @@ class TestRegriddingService(TestCase):
 
     def test_transfer_metadata(self):
         """Tests to ensure root and group level metadata is transfered to target."""
-        test_file = self.test_file()
+        _generate_test_file = self._generate_test_file()
 
         # metadata Set in the test 1D file
         expected_root_metadata = {
@@ -445,11 +450,11 @@ class TestRegriddingService(TestCase):
 
         with (
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
-            Dataset(test_file, mode='w') as target_ds,
+            Dataset(_generate_test_file, mode='w') as target_ds,
         ):
             rs._transfer_metadata(source_ds, target_ds)
 
-        with Dataset(test_file, mode='r') as validate:
+        with Dataset(_generate_test_file, mode='r') as validate:
             root_metadata = {
                 attr: validate.getncattr(attr) for attr in validate.ncattrs()
             }
@@ -475,7 +480,7 @@ class TestRegriddingService(TestCase):
         width = 36
         height = 18
         area_extent = (-180, -90, 180, 90)
-        test_area = AreaDefinition(
+        _generate_test_area = AreaDefinition(
             'test_id',
             'test area definition',
             None,
@@ -485,13 +490,13 @@ class TestRegriddingService(TestCase):
             area_extent,
         )
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
-        target_file = self.test_file()
+        target_file = self._generate_test_file()
 
         with (
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
             Dataset(target_file, mode='w') as target_ds,
         ):
-            rs._transfer_dimensions(source_ds, target_ds, test_area, var_info)
+            rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
         with Dataset(target_file, mode='r') as validate:
             self.assertEqual(validate.dimensions['bnds'].size, 2)
@@ -501,13 +506,13 @@ class TestRegriddingService(TestCase):
             self.assertEqual(validate.dimensions['lat'].size, height)
 
     def test_clone_variables(self):
-        target_file = self.test_file()
+        target_file = self._generate_test_file()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         projection = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
         width = 36
         height = 18
         area_extent = (-180, -90, 180, 90)
-        test_area = AreaDefinition(
+        _generate_test_area = AreaDefinition(
             'test_id',
             'test area definition',
             None,
@@ -521,7 +526,7 @@ class TestRegriddingService(TestCase):
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
             Dataset(target_file, mode='w') as target_ds,
         ):
-            rs._transfer_dimensions(source_ds, target_ds, test_area, var_info)
+            rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
             copied = rs._clone_variables(source_ds, target_ds, copy_vars)
 
@@ -538,7 +543,7 @@ class TestRegriddingService(TestCase):
             width = 36
             height = 18
             area_extent = (-180, -90, 180, 90)
-            test_area = AreaDefinition(
+            _generate_test_area = AreaDefinition(
                 'test_id',
                 'test area definition',
                 None,
@@ -547,11 +552,11 @@ class TestRegriddingService(TestCase):
                 height,
                 area_extent,
             )
-            target_file = self.test_file()
+            target_file = self._generate_test_file()
 
             with Dataset(target_file, mode='w') as target_ds:
                 rs._create_resampled_dimensions(
-                    [('/lat', '/lon')], target_ds, test_area, var_info
+                    [('/lat', '/lon')], target_ds, _generate_test_area, var_info
                 )
 
             with Dataset(target_file, mode='r') as validate:
@@ -564,7 +569,7 @@ class TestRegriddingService(TestCase):
             width = 360
             height = 180
             area_extent = (-180, -90, 180, 90)
-            test_area = AreaDefinition(
+            _generate_test_area = AreaDefinition(
                 'test_id',
                 'test area definition',
                 None,
@@ -573,10 +578,13 @@ class TestRegriddingService(TestCase):
                 height,
                 area_extent,
             )
-            target_file = self.test_file()
+            target_file = self._generate_test_file()
             with Dataset(target_file, mode='w') as target_ds:
                 rs._create_resampled_dimensions(
-                    [('/Grid/lon', '/Grid/lat')], target_ds, test_area, var_info
+                    [('/Grid/lon', '/Grid/lat')],
+                    target_ds,
+                    _generate_test_area,
+                    var_info,
                 )
 
             with Dataset(target_file, mode='r') as validate:
@@ -609,9 +617,9 @@ class TestRegriddingService(TestCase):
             self.assertDictEqual(expected_args, actual_args)
 
     def test_write_grid_mappings(self):
-        target_file = self.test_file()
+        target_file = self._generate_test_file()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
-        test_area = self.test_area()
+        _generate_test_area = self._generate_test_area()
         expected_crs_map = {('/lon', '/lat'): '/crs'}
 
         with (
@@ -619,16 +627,16 @@ class TestRegriddingService(TestCase):
             Dataset(target_file, mode='w') as target_ds,
         ):
             rs._transfer_metadata(source_ds, target_ds)
-            rs._transfer_dimensions(source_ds, target_ds, test_area, var_info)
+            rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
             actual_crs_map = rs._write_grid_mappings(
-                target_ds, rs._resampled_dimension_pairs(var_info), test_area
+                target_ds, rs._resampled_dimension_pairs(var_info), _generate_test_area
             )
             self.assertDictEqual(expected_crs_map, actual_crs_map)
 
         with Dataset(target_file, mode='r') as validate:
             crs = rs._get_variable(validate, '/crs')
-            expected_crs_metadata = test_area.crs.to_cf()
+            expected_crs_metadata = _generate_test_area.crs.to_cf()
 
             actual_crs_metadata = {attr: crs.getncattr(attr) for attr in crs.ncattrs()}
 
@@ -647,7 +655,7 @@ class TestRegriddingService(TestCase):
     def test_create_dimension(self):
         name = '/somedim'
         size = 1000
-        with Dataset(self.test_file(), mode='w') as target_ds:
+        with Dataset(self._generate_test_file(), mode='w') as target_ds:
             dim = rs._create_dimension(target_ds, name, size)
             self.assertTrue(type(dim), Variable)
             self.assertEqual(dim.size, size)
@@ -656,7 +664,7 @@ class TestRegriddingService(TestCase):
     def test_create_nested_dimension(self):
         name = '/some/deeply/nested/dimname'
         size = 2000
-        with Dataset(self.test_file(), mode='w') as target_ds:
+        with Dataset(self._generate_test_file(), mode='w') as target_ds:
             dim = rs._create_dimension(target_ds, name, size)
             self.assertTrue(type(dim), Variable)
             self.assertEqual(dim.size, size)
@@ -678,7 +686,7 @@ class TestRegriddingService(TestCase):
 
     def test_copy_dimension(self):
         with (
-            Dataset(self.test_file(), mode='w') as target_ds,
+            Dataset(self._generate_test_file(), mode='w') as target_ds,
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
         ):
             time_dimension = rs._copy_dimension('/time', source_ds, target_ds)
@@ -690,7 +698,7 @@ class TestRegriddingService(TestCase):
             self.assertEqual(lon_dimension.size, len(self.longitudes))
 
     def test_copy_dimensions(self):
-        test_target = self.test_file()
+        test_target = self._generate_test_file()
         with (
             Dataset(test_target, mode='w') as target_ds,
             Dataset(self.test_1D_dimensions_ncfile, mode='r') as source_ds,
@@ -707,7 +715,7 @@ class TestRegriddingService(TestCase):
             self.assertEqual(validate.dimensions['bnds'].size, 2)
 
     def test_copy_dimensions_with_groups(self):
-        test_target = self.test_file()
+        test_target = self._generate_test_file()
         with (
             Dataset(test_target, mode='w') as target_ds,
             Dataset(self.test_IMERG_ncfile, mode='r') as source_ds,
@@ -890,7 +898,7 @@ class TestRegriddingService(TestCase):
     )
     def test_compute_target_area(self, mock_area):
         """Ensure Area Definition correctly generated."""
-        crs = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
+        crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
         xmin = -180
         xmax = 180
         ymin = -90
@@ -917,7 +925,7 @@ class TestRegriddingService(TestCase):
         self.assertEqual(actual_area.shape, (expected_height, expected_width))
         self.assertEqual(actual_area.shape, (expected_height, expected_width))
         self.assertEqual(actual_area.area_extent, (xmin, ymin, xmax, ymax))
-        self.assertEqual(actual_area.proj4_string, crs)
+        self.assertEqual(actual_area.proj_str, crs)
         mock_area.assert_called_once_with(
             'target_area_id',
             'target area definition',
@@ -1087,3 +1095,32 @@ class TestRegriddingService(TestCase):
             rs._compute_horizontal_source_grids(
                 grid_dimensions, self.test_2D_dimensions_ncfile, var_info
             )
+
+
+@pytest.mark.parametrize(
+    'input_values, expected',
+    [
+        ([1, 2, 3], (0.5, 3.5)),
+        ([-1, -2, -3], (-0.5, -3.5)),
+        ([-1, 0, 1, 2, 3], (-1.5, 3.5)),
+        ([3, 2, 1, 0, -1], (3.5, -1.5)),
+        ([2, 1, 0, -1, -2, -3], (2.5, -3.5)),
+    ],
+)
+def test__compute_array_bounds(input_values, expected):
+    """Test expected cases."""
+    actual = _compute_array_bounds(input_values)
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    'input_values, expected_error, expected_message',
+    [
+        ([1, 2, 3, 3.5], SourceDataError, 'coordinates are not regularly spaced'),
+        ([1], SourceDataError, 'coordinates must have at least 2 values'),
+    ],
+)
+def test__compute_array_bounds_failures(input_values, expected_error, expected_message):
+    """Test expected cases."""
+    with pytest.raises(expected_error, match=expected_message):
+        _compute_array_bounds(input_values)

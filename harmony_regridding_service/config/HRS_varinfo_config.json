@@ -1,6 +1,6 @@
 {
   "Identification": "harmony_regridding_service_varinfo_config",
-  "Version": 3,
+  "Version": 4,
   "CollectionShortNamePath": [
     "/HDF5_GLOBAL/short_name",
     "/NC_GLOBAL/short_name",
@@ -14,7 +14,8 @@
     "ShortName"
   ],
   "Mission": {
-    "ATL\\d{2}": "ICESat2"
+    "ATL\\d{2}": "ICESat2",
+    "SPL4SMAU" : "SMAP"
   },
  "ExcludedScienceVariables": [
     {
@@ -31,7 +32,7 @@
   "MetadataOverrides": [
     {
       "Applicability": {
-        "Mission": "ICESat2",
+	"Mission": "ICESat2",
         "ShortNamePath": "ATL14",
         "VariablePattern": "/tile_stats/x"
       },
@@ -54,6 +55,20 @@
           "Value": "projection_y_coordinate"
         }
       ]
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMAU",
+	"VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "TODO [MHS, 03/25/2025]"
     }
   ]
 }

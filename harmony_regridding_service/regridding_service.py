@@ -1,17 +1,4 @@
-"""Regridding service code.
-
-As of v.0.0.1 (2023-03-27) This code is written to handle only geographic
-grids and resampling.  As such there are a couple of things to pay attention
-to when we move away from this limitation.
-
-1. _is_projection_[x/y]_dim is hard coded to only care about latitudes and
-    longitudes.
-
-2. We don't worry about the coordinate metadata on the variables. Any
-   existing metadata will be correct on the output variable. later will have
-   to look at something like check_coor_valid in swot repo.
-
-"""
+"""Regridding service code."""
 
 from __future__ import annotations
 
@@ -20,6 +7,7 @@ from logging import Logger, getLogger
 from pathlib import Path, PurePath
 
 import numpy as np
+import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 from harmony_service_lib.message_utility import has_dimensions
@@ -30,13 +18,19 @@ from netCDF4 import (
     Group,
     Variable,
 )
+from pyproj import CRS
+from pyproj.exceptions import CRSError
+from pyresample import create_area_def
 from pyresample.ewa import DaskEWAResampler
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
+from xarray import DataTree
 
 from harmony_regridding_service.exceptions import (
+    InvalidSourceCRS,
     InvalidSourceDimensions,
     RegridderException,
+    SourceDataError,
 )
 from harmony_regridding_service.regridding_utility import (
     get_harmony_message_from_params,
@@ -98,7 +92,6 @@ def regrid(
     call_logger: Logger,
 ) -> str:
     """Regrid the input data at input_filepath."""
-    # TODO [MHS, 04/16/2025] fix this somehow to get rid of global
     global logger
     logger = call_logger or logger
 
@@ -787,11 +780,14 @@ def _cache_resamplers(
 
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
-    for dimensions in dimension_vars_mapping:
-        # create swath definitions from each unique 2D grid found in the input file.
+    for dimensions, variable_set in dimension_vars_mapping.items():
+        # create swath definitions from each unique 2D grid dimensions found in
+        # the input file.
         if len(dimensions) == 2:
             logger.info(f'computing weights for dimensions {dimensions}')
-            source_swath = _compute_source_swath(dimensions, filepath, var_info)
+            source_swath = _compute_source_swath(
+                dimensions, filepath, var_info, variable_set
+            )
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
 
     for resampler in grid_cache.values():
@@ -801,7 +797,12 @@ def _cache_resamplers(
 
 
 def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
-    """Parse the harmony message and build a target AreaDefinition."""
+    """Define the output area for your regridding operation.
+
+    Parse the harmony message and build a target AreaDefinition.  All
+    multi-dimensional variable will be regridded to this target.
+
+    """
     # ScaleExtent is required and validated.
     logger.info('compute target_area')
     area_extent = (
@@ -889,20 +890,182 @@ def _get_vertical_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str
 
 
 def _compute_source_swath(
-    grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
+    grid_dimensions: tuple[str, str],
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    variable_set: set,
 ) -> SwathDefinition:
-    """Return a SwathDefinition for the input gridDimensions."""
-    longitudes, latitudes = _compute_horizontal_source_grids(
-        grid_dimensions, filepath, var_info
-    )
+    """Return a SwathDefinition for the input grid_dimensions."""
+    if _dims_are_lon_lat(grid_dimensions, var_info):
+        longitudes, latitudes = _compute_horizontal_source_grids(
+            grid_dimensions, filepath, var_info
+        )
+    elif _dims_are_projected_x_y(grid_dimensions, var_info):
+        longitudes, latitudes = _compute_projected_horizontal_source_grids(
+            grid_dimensions, filepath, var_info, variable_set
+        )
+    else:
+        raise SourceDataError(
+            'Cannot determine correct dimension type from source {grid_dimensions}.'
+        )
 
     return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
+def _dims_are_projected_x_y(
+    dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
+) -> bool:
+    """Does the dimension pair represent projected x/y values."""
+    for dim_name in dimensions:
+        dim_var = var_info.get_variable(dim_name)
+        if not dim_var.is_projection_x_or_y():
+            return False
+    return True
+
+
+def _dims_are_lon_lat(
+    dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
+) -> bool:
+    """Does the dimension pair represent longitudes/latitudes."""
+    for dim_name in dimensions:
+        dim_var = var_info.get_variable(dim_name)
+        if not dim_var.is_geographic():
+            return False
+    return True
+
+
+def _compute_area_extent_from_regular_x_y_coords(
+    xvalues: np.ndarray, yvalues: np.ndarray
+) -> tuple(np.float64, np.float64, np.float64, np.float64):
+    """Return outer extent of regularly defined grid.
+
+    given xvalues and yvalues represent the center values of a regularly spaced array,
+    compute the cell height and width, return the total extent of the grid area.
+
+    Returns:
+      tuple: area_extent defintion
+          (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
+
+    """
+    min_x, max_x = _compute_array_bounds(xvalues)
+    min_y, max_y = _compute_array_bounds(yvalues)
+    return (
+        np.min([min_x, max_x]),
+        np.min([min_y, max_y]),
+        np.max([min_x, max_x]),
+        np.max([min_y, max_y]),
+    )
+
+
+def _compute_array_bounds(values: np.ndarray) -> tuple(np.float64, np.float64):
+    """Return array bounds inclusive of the cell width for a regular vector.
+
+    Args:
+      values: np.array of regularly spaced values with length > 1
+
+    Returns:
+      tuple: extents of array bounds
+
+    """
+    if len(values) < 2:
+        raise SourceDataError('coordinates must have at least 2 values')
+
+    diffs = np.diff(values)
+    if not np.allclose(diffs, diffs[0], rtol=1e-5):
+        raise SourceDataError('coordinates are not regularly spaced')
+
+    half_width = (values[1] - values[0]) / 2.0
+    left = values[0] - half_width
+    right = values[-1] + half_width
+    return (left, right)
+
+
+def _crs_from_source_data(dt: DataTree, variables: set) -> CRS:
+    """Create a CRS describing the grid in the source file.
+
+    Look through the variables for metadata that points to a grid_mapping
+    and generate a CRS from that information.
+
+    The metadata is not always clear or easy to parse into a CRS. Take a
+    shortcut when possible.
+
+    if the grid_mapping has a known EASE2 grid name, use the EPSG code known
+    apriori.
+
+    Args:
+      dt: the source file as an opened DataTree
+
+      variables: set of variables all sharing the same 2-dimensional grid is
+                 traversed looking for a grid_mapping.
+
+    Returns:
+      CRS object
+
+    """
+    for varname in variables:
+        var = dt[varname]
+        if 'grid_mapping' in var.attrs:
+            try:
+                return CRS.from_cf(dt[var.attrs['grid_mapping']].attrs)
+            except CRSError as e:
+                raise InvalidSourceCRS(
+                    'Could not create a CRS from grid_mapping metadata'
+                ) from e
+
+    raise InvalidSourceCRS('No grid_mapping metadata found.')
+
+
+def _compute_projected_horizontal_source_grids(
+    grid_dimensions: tuple[str, str],
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    variables: set,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return longitude and latitude grids for a projected grid_dimensions pair.
+
+    Given the input grid_dimensions pair, find the projected coordinate dimensions
+    in the source data and use those to generate 2D longitude and latitude arrays.
+
+
+    """
+    xdim_name = _get_horizontal_dims(grid_dimensions, var_info)[0]
+    ydim_name = _get_vertical_dims(grid_dimensions, var_info)[0]
+    try:
+        with xr.open_datatree(filepath) as dt:
+            xvalues = dt[xdim_name].data
+            yvalues = dt[ydim_name].data
+            area_extent = _compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
+            source_crs = _crs_from_source_data(dt, variables)
+            cell_width = np.abs(xvalues[1] - xvalues[0])
+            cell_height = np.abs(yvalues[1] - yvalues[0])
+            source_area = create_area_def(
+                'source grid area',
+                source_crs,
+                area_extent=area_extent,
+                shape=(len(yvalues), len(xvalues)),
+                resolution=(cell_width, cell_height),
+            )
+            return source_area.get_lonlats()
+    except Exception as e:
+        logger.error(e)
+        raise SourceDataError('cannot compute projected source grids') from e
+
+
 def _compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
-) -> tuple[np.array, np.array]:
-    """Return 2D np.arrays of longitude and latitude."""
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return grids for longitude and latitude for the grid_dimension pair.
+
+    Given the input grid_dimension names, create longitude and latitude grids
+    underlay the source data for dimensions.
+
+    Each input 2D source data variable, described by the grid_dimensions tuple
+    is used to find a 1D longitude array (columns) and a 1D latitude array
+    (rows).  These 1D arrays are broadcast to 2 dimensions.
+
+    We return the new longitude[column x row] and latitude[column x row] arrays.
+
+    """
     row_dim = _get_vertical_dims(grid_dimensions, var_info)[0]
     column_dim = _get_horizontal_dims(grid_dimensions, var_info)[0]
     logger.info(f'found row_dim: {row_dim}')
