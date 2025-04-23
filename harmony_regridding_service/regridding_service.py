@@ -16,7 +16,7 @@ to when we move away from this limitation.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from logging import Logger
+from logging import Logger, getLogger
 from pathlib import Path, PurePath
 
 import numpy as np
@@ -38,16 +38,70 @@ from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
     RegridderException,
 )
+from harmony_regridding_service.regridding_utility import (
+    get_harmony_message_from_params,
+)
+
+logger = getLogger(__name__)
 
 HRS_VARINFO_CONFIG_FILENAME = str(
     Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
 )
 
 
+def regrid_cli_entry(
+    source_filename: str, params: dict, source: dict, call_logger: Logger
+):
+    """Call regrid without the adapter class.
+
+    TODO: This is where a library entry will exist if it is ever made.  In the
+    meantime, this is an entrypoint to call the regridder without instantiating
+    an adapter for testing.
+
+    Args:
+    source_filename: [str], a string to an input file to be regridded.
+
+    params: [dict | None], A dictionary with the following keys:
+        crs: [dict | None], Target image's Coordinate Reference System.
+             A dictionary with 'epsg', 'proj4' or 'wkt' key.
+
+        scale_extent: [dict | None], Scale Extents for the image. This dictionary
+            contains "x" and "y" keys each whose value which is a dictionary
+            of "min", "max" values in the same units as the crs.
+            e.g.: { "x": { "min": 0.5, "max": 125 },
+                    "y": { "min": 52, "max": 75.22 } }
+
+        scale_size: [dict | None], Scale sizes for the image.  The dictionary
+            contains "x" and "y" keys with the horizontal and veritcal
+            resolution in the same units as the crs.
+            e.g.: { "x": 10, "y": 10 }
+
+        height: [int | None], height of the output image in gridcells.
+
+        width: [int | none], width of the output image in gridcells.
+
+    source: [dict | None], a Dictionary suitable for initializing a Harmony
+            Source JsonObject.
+
+    call_logger: [Logger], a configured logging object.
+
+    """
+    harmony_message = get_harmony_message_from_params(params)
+    source = HarmonySource(source)
+    return regrid(harmony_message, source_filename, source, call_logger)
+
+
 def regrid(
-    message: HarmonyMessage, input_filepath: str, source: HarmonySource, logger: Logger
+    message: HarmonyMessage,
+    input_filepath: str,
+    source: HarmonySource,
+    call_logger: Logger,
 ) -> str:
     """Regrid the input data at input_filepath."""
+    # TODO [MHS, 04/16/2025] fix this somehow to get rid of global
+    global logger
+    logger = call_logger or logger
+
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,
@@ -83,7 +137,7 @@ def regrid(
         logger.info(f'processed dimension variables: {dimension_vars}')
         vars_to_process -= dimension_vars
 
-        resampled_vars = _resample_nD_variables(
+        resampled_vars = _resample_n_dimensional_variables(
             source_ds, target_ds, var_info, resampler_cache, set(vars_to_process)
         )
         vars_to_process -= resampled_vars
@@ -92,7 +146,7 @@ def regrid(
         _add_grid_mapping_metadata(target_ds, resampled_vars, var_info, crs_map)
 
         if vars_to_process:
-            logger.warn(f'Unprocessed Variables: {vars_to_process}')
+            logger.warning(f'Unprocessed Variables: {vars_to_process}')
         else:
             logger.info('Processed all variables.')
 
@@ -161,7 +215,7 @@ def _resample_variable_data(
     return _resample_layer(s_var[:], resampler, var_info, var_name)
 
 
-def _resample_nD_variables(
+def _resample_n_dimensional_variables(
     source_ds: Dataset,
     target_ds: Dataset,
     var_info: VarInfoFromNetCDF4,
@@ -265,7 +319,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         (
             index
             for index, dimension in enumerate(var_dims)
-            if _is_projection_x_dim(dimension, var_info)
+            if _is_horizontal_dim(dimension, var_info)
         ),
         None,
     )
@@ -273,7 +327,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         (
             index
             for index, dimension in enumerate(var_dims)
-            if _is_projection_y_dim(dimension, var_info)
+            if _is_vertical_dim(dimension, var_info)
         ),
         None,
     )
@@ -325,8 +379,8 @@ def _copy_resampled_bounds_variable(
     """Copy computed values for dimension variable bounds variables."""
     var_dims = var_info.get_variable(bounds_var).dimensions
 
-    xdims = _get_projection_x_dims(var_dims, var_info)
-    ydims = _get_projection_y_dims(var_dims, var_info)
+    xdims = _get_horizontal_dims(var_dims, var_info)
+    ydims = _get_vertical_dims(var_dims, var_info)
     if xdims:
         target_coords = target_area.projection_x_coords
         dim_name = xdims[0]
@@ -388,8 +442,8 @@ def _copy_1d_dimension_variables(
         if len(var_info.get_variable(dim_var_name).dimensions) == 1
     }
 
-    xdims = _get_projection_x_dims(one_d_vars, var_info)
-    ydims = _get_projection_y_dims(one_d_vars, var_info)
+    xdims = _get_horizontal_dims(one_d_vars, var_info)
+    ydims = _get_vertical_dims(one_d_vars, var_info)
 
     for dim_name in one_d_vars:
         if dim_name in xdims:
@@ -603,8 +657,8 @@ def _create_resampled_dimensions(
 ):
     """Create dimensions for the target resampled grids."""
     for dim_pair in resampled_dim_pairs:
-        xdim = _get_projection_x_dims(set(dim_pair), var_info)[0]
-        ydim = _get_projection_y_dims(set(dim_pair), var_info)[0]
+        xdim = _get_horizontal_dims(set(dim_pair), var_info)[0]
+        ydim = _get_vertical_dims(set(dim_pair), var_info)[0]
 
         _create_dimension(dataset, xdim, target_area.projection_x_coords.shape[0])
         _create_dimension(dataset, ydim, target_area.projection_y_coords.shape[0])
@@ -724,19 +778,19 @@ def _cache_resamplers(
 ) -> None:
     """Precompute the resampling weights.
 
-    Determine the desired output Target Area from the Harmony Message.  Use
-    this target area in conjunction with each shared horizontal dimension in
-    the input source file to create an EWA Resampler and precompute the weights
-    to be used in a resample from the shared horizontal dimension to the output
-    target area.
+    Use the regridding target area in conjunction with each 2D horizontal
+    dimension pair in the input source file to create an resampler and precompute
+    the weights to be used when resampling.
 
     """
     grid_cache = {}
+
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
     for dimensions in dimension_vars_mapping:
-        # create source swath definition from 2D grids
+        # create swath definitions from each unique 2D grid found in the input file.
         if len(dimensions) == 2:
+            logger.info(f'computing weights for dimensions {dimensions}')
             source_swath = _compute_source_swath(dimensions, filepath, var_info)
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
 
@@ -749,6 +803,7 @@ def _cache_resamplers(
 def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     """Parse the harmony message and build a target AreaDefinition."""
     # ScaleExtent is required and validated.
+    logger.info('compute target_area')
     area_extent = (
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
@@ -800,35 +855,37 @@ def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
     return num_elements
 
 
-def _is_projection_x_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a projection X dimension."""
+def _is_horizontal_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+    """Test if dim is a horizontal dimension."""
     try:
-        is_x_dim = var_info.get_variable(dim).is_longitude()
+        dim_var = var_info.get_variable(dim)
+        is_x_dim = dim_var.is_longitude() or dim_var.is_projection_x()
     except AttributeError:
         is_x_dim = False
     return is_x_dim
 
 
-def _is_projection_y_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+def _is_vertical_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a projection Y dimension."""
     is_y_dim = False
     try:
-        is_y_dim = var_info.get_variable(dim).is_latitude()
+        dim_var = var_info.get_variable(dim)
+        is_y_dim = dim_var.is_latitude() or dim_var.is_projection_y()
     except AttributeError:
         pass
     return is_y_dim
 
 
-def _get_projection_x_dims(
+def _get_horizontal_dims(
     dims: Iterable[str], var_info: VarInfoFromNetCDF4
 ) -> list[str]:
     """Return name for horizontal grid dimension [column/longitude/x]."""
-    return [dim for dim in dims if _is_projection_x_dim(dim, var_info)]
+    return [dim for dim in dims if _is_horizontal_dim(dim, var_info)]
 
 
-def _get_projection_y_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
+def _get_vertical_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
     """Return name for vertical grid dimension [row/latitude/y]."""
-    return [dim for dim in dims if _is_projection_y_dim(dim, var_info)]
+    return [dim for dim in dims if _is_vertical_dim(dim, var_info)]
 
 
 def _compute_source_swath(
@@ -846,8 +903,10 @@ def _compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> tuple[np.array, np.array]:
     """Return 2D np.arrays of longitude and latitude."""
-    row_dim = _get_projection_y_dims(grid_dimensions, var_info)[0]
-    column_dim = _get_projection_x_dims(grid_dimensions, var_info)[0]
+    row_dim = _get_vertical_dims(grid_dimensions, var_info)[0]
+    column_dim = _get_horizontal_dims(grid_dimensions, var_info)[0]
+    logger.info(f'found row_dim: {row_dim}')
+    logger.info(f'found column_dim: {column_dim}')
 
     with Dataset(filepath, mode='r') as data_set:
         row_shape = data_set[row_dim].shape

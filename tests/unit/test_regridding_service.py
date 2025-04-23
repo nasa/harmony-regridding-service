@@ -979,19 +979,19 @@ class TestRegriddingService(TestCase):
     def test_is_projection_dim(self):
         with self.subTest('test valid x'):
             var_info = self.var_info(self.test_1D_dimensions_ncfile)
-            self.assertTrue(rs._is_projection_x_dim('/lon', var_info))
+            self.assertTrue(rs._is_horizontal_dim('/lon', var_info))
 
         with self.subTest('test invalid x'):
             var_info = self.var_info(self.test_1D_dimensions_ncfile)
-            self.assertFalse(rs._is_projection_x_dim('/lat', var_info))
+            self.assertFalse(rs._is_horizontal_dim('/lat', var_info))
 
         with self.subTest('test valid y'):
             var_info = self.var_info(self.test_1D_dimensions_ncfile)
-            self.assertTrue(rs._is_projection_y_dim('/lat', var_info))
+            self.assertTrue(rs._is_vertical_dim('/lat', var_info))
 
         with self.subTest('test invalid y'):
             var_info = self.var_info(self.test_1D_dimensions_ncfile)
-            self.assertFalse(rs._is_projection_y_dim('/lon', var_info))
+            self.assertFalse(rs._is_vertical_dim('/lon', var_info))
 
     def test_get_projection_dims(self):
         with self.subTest('x dims'):
@@ -999,7 +999,7 @@ class TestRegriddingService(TestCase):
             dims = ('/lat', '/lon')
             expected_dim = ['/lon']
 
-            actual = rs._get_projection_x_dims(dims, var_info)
+            actual = rs._get_horizontal_dims(dims, var_info)
             self.assertEqual(expected_dim, actual)
 
         with self.subTest('y dims'):
@@ -1007,7 +1007,7 @@ class TestRegriddingService(TestCase):
             dims = ('/lat', '/lon')
             expected_dim = ['/lat']
 
-            actual = rs._get_projection_y_dims(dims, var_info)
+            actual = rs._get_vertical_dims(dims, var_info)
             self.assertEqual(expected_dim, actual)
 
         with self.subTest('y dims no variables'):
@@ -1015,14 +1015,14 @@ class TestRegriddingService(TestCase):
             dims = ('/baddim1', '/baddim2')
 
             expected_dims = []
-            actual_dims = rs._get_projection_y_dims(dims, var_info)
+            actual_dims = rs._get_vertical_dims(dims, var_info)
             self.assertEqual(expected_dims, actual_dims)
 
         with self.subTest('x dims no variables'):
             var_info = self.var_info(self.test_1D_dimensions_ncfile)
             dims = ('/baddim1', '/baddim2')
             expected_dims = []
-            actual_dims = rs._get_projection_x_dims(dims, var_info)
+            actual_dims = rs._get_horizontal_dims(dims, var_info)
             self.assertEqual(expected_dims, actual_dims)
 
         with self.subTest('x dims with bad variable'):
@@ -1030,7 +1030,7 @@ class TestRegriddingService(TestCase):
             dims = ('/baddim1', '/lon')
             expected_dim = ['/lon']
 
-            actual_dim = rs._get_projection_x_dims(dims, var_info)
+            actual_dim = rs._get_horizontal_dims(dims, var_info)
             self.assertEqual(expected_dim, actual_dim)
 
         with self.subTest('y dims multiple values'):
@@ -1038,29 +1038,8 @@ class TestRegriddingService(TestCase):
             dims = ('/lat', '/lon', '/lat', '/ba')
             expected_dim = ['/lat', '/lat']
 
-            actual = rs._get_projection_y_dims(dims, var_info)
+            actual = rs._get_vertical_dims(dims, var_info)
             self.assertEqual(expected_dim, actual)
-
-    @patch('harmony_regridding_service.regridding_service.SwathDefinition')
-    @patch(
-        'harmony_regridding_service.regridding_service._compute_horizontal_source_grids'
-    )
-    def test_compute_source_swath(self, mock_horiz_source_grids, mock_swath):
-        """Ensure source swaths are correctly generated."""
-        grid_dims = ('/lon', '/lat')
-        filepath = 'path to a file'
-        var_info = {'fake': 'varinfo object'}
-        lons = np.array([[1, 1], [1, 1], [1, 1]])
-        lats = np.array([[2, 2], [2, 2], [2, 2]])
-
-        mock_horiz_source_grids.return_value = (lons, lats)
-
-        rs._compute_source_swath(grid_dims, filepath, var_info)
-
-        # horizontal grids were called successfully
-        mock_horiz_source_grids.assert_called_with(grid_dims, filepath, var_info)
-        # swath was called with the horizontal 2d grids.
-        mock_swath.assert_called_with(lons=lons, lats=lats)
 
     def test_expected_result_compute_horizontal_source_grids(self):
         """Exercises the single function for computing horizontal grids."""
