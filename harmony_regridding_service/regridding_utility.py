@@ -61,6 +61,7 @@ def get_harmony_message_from_params(params: dict | None) -> HarmonyMessage:
         params = {}
     mime = params.get('mime', 'application/netcdf')
     crs = params.get('crs', None)
+    srs = params.get('srs', None)
     scale_extent = params.get('scale_extent', None)
     scale_size = params.get('scale_size', None)
     height = params.get('height', None)
@@ -71,7 +72,7 @@ def get_harmony_message_from_params(params: dict | None) -> HarmonyMessage:
             'format': {
                 'mime': mime,
                 'crs': crs,
-                'srs': crs,
+                'srs': srs,
                 'scaleExtent': scale_extent,
                 'scaleSize': scale_size,
                 'height': height,

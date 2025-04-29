@@ -12,6 +12,11 @@ def test_get_harmony_message_all_params():
     params = {
         'mime': 'application/x-netcdf',
         'crs': {'epsg': 'EPSG:4326'},
+        'srs': {
+            'epsg': 'EPSG:4326',
+            'proj4': '+proj=longlat +datum=WGS84 +no_defs',
+            'wkt': 'GEOGCS["WGS 84",DATUM...',
+        },
         'scale_extent': {
             'x': {'min': -180, 'max': 180},
             'y': {'min': -90, 'max': 90},
@@ -26,8 +31,8 @@ def test_get_harmony_message_all_params():
     assert message.format.mime == 'application/x-netcdf'
     assert message.format.crs == {'epsg': 'EPSG:4326'}
     assert message.format.srs.epsg == 'EPSG:4326'
-    assert message.format.srs.wkt is None
-    assert message.format.srs.proj4 is None
+    assert message.format.srs.wkt == 'GEOGCS["WGS 84",DATUM...'
+    assert message.format.srs.proj4 == '+proj=longlat +datum=WGS84 +no_defs'
     assert message.format.height == 100
     assert message.format.width == 99
     assert message.format.scaleExtent.x.min == -180
