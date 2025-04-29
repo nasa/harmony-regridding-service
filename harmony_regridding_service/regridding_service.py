@@ -552,13 +552,13 @@ def _clone_dimensions(
         (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, dimension_name)
         try:
             t_var[:] = s_var[:]
-        except IndexError as vlen_Error:
+        except IndexError as vlen_error:
             # Handle snowflake metadata with vlen string.
             if s_var.dtype == str and s_var.shape == ():
                 t_var[0] = s_var[0]
             else:
                 logger.error('Unable to clone variable {s_var}')
-                raise SourceDataError('Unhandled variable clone') from vlen_Error
+                raise SourceDataError('Unhandled variable clone') from vlen_error
 
     return dimensions
 
@@ -969,7 +969,7 @@ def _compute_array_bounds(values: np.ndarray) -> tuple(np.float64, np.float64):
         raise SourceDataError('coordinates must have at least 2 values')
 
     diffs = np.diff(values)
-    # TODO: SPL4CMDL (v7,v8) have +/1 1.5m variance in their cell
+    # SPL4CMDL (v7,v8) have +/1 1.5m variance in their cell
     # centers. relax spacing to allow for up to 3 meters difference in adjacent cells.
     if not np.allclose(diffs, diffs[0], atol=3):
         raise SourceDataError('coordinates are not regularly spaced')

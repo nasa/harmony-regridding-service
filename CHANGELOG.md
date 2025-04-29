@@ -5,16 +5,20 @@ to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
-## [Unreleased] - 2025-04-22
+## [v1.1.0] - 2025-04-29
 
 ## Added
 
 - Adds Command line entrypoint for testing the service without Docker.
+- Adds support for input files that have projected cordinates. These include
+  the SMAP L4 Collections SPL4CMDL, SPL4SMAU, SPL4SMGP and SPL4SMLM.
+
+
 
 
 ## Changed
 
-- Internal changes only. Python lib dependencies are updated. Small refactors applied.
+- Internal changes. Python lib dependencies are updated. Small refactors applied.
 
 
 ## [v1.0.6] - 2025-03-24
