@@ -15,7 +15,7 @@
   ],
   "Mission": {
     "ATL\\d{2}": "ICESat2",
-    "SPL4SMAU" : "SMAP"
+    "SPL4.+": "SMAP"
   },
  "ExcludedScienceVariables": [
     {
@@ -32,7 +32,7 @@
   "MetadataOverrides": [
     {
       "Applicability": {
-	"Mission": "ICESat2",
+        "Mission": "ICESat2",
         "ShortNamePath": "ATL14",
         "VariablePattern": "/tile_stats/x"
       },
@@ -60,7 +60,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMAU",
-	"VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
+	      "VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
       },
       "Attributes": [
         {
@@ -68,7 +68,49 @@
           "Value": "/y, /x"
         }
       ],
-      "_Description": "TODO [MHS, 03/25/2025]"
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4CMDL",
+	      "VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMGP",
+	      "VariablePattern": "^/Geophysical_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMLM",
+	      "VariablePattern": "^/Land-Model-Constants_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
     }
   ]
 }
