@@ -299,44 +299,47 @@ class TestRegriddingService(TestCase):
             )
             var_name = '/T'
             expected_data = np.ma.copy(test_data)
-            actual_data = rs._prepare_data_plane(test_data, var_info, var_name)
+            actual_data = rs._prepare_data_plane(
+                test_data, var_info, var_name, cast_to=np.float64
+            )
 
-            self.assertEqual(np.float32, actual_data.dtype)
+            self.assertEqual(np.float64, actual_data.dtype)
             np.testing.assert_equal(expected_data, actual_data)
 
         with self.subTest('floating point data with rotation'):
             var_info = self.var_info(self.test_IMERG_ncfile)
-            test_data = np.ma.array(
-                np.arange(12).reshape(4, 3), fill_value=-9999.9, dtype=np.float16
-            )
+            test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.float16)
             var_name = '/Grid/HQprecipitation'
-            expected_data = np.ma.copy(test_data.T)
-            actual_data = rs._prepare_data_plane(test_data, var_info, var_name)
+            expected_data = np.copy(test_data.T)
+            actual_data = rs._prepare_data_plane(
+                test_data, var_info, var_name, cast_to=np.float64
+            )
 
-            self.assertEqual(np.float16, actual_data.dtype)
+            self.assertEqual(np.float64, actual_data.dtype)
             np.testing.assert_equal(expected_data, actual_data)
 
         with self.subTest('integer data without rotation'):
             var_info = self.var_info(self.test_MERRA2_ncfile)
-            test_data = np.ma.array(
-                np.arange(12).reshape(4, 3), fill_value=-9, dtype=np.int8
-            )
+            test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.int8)
             var_name = '/T'
-            expected_data = np.ma.copy(test_data)
-            actual_data = rs._prepare_data_plane(test_data, var_info, var_name)
+            expected_data = np.copy(test_data)
+            actual_data = rs._prepare_data_plane(
+                test_data, var_info, var_name, cast_to=np.float64
+            )
 
-            self.assertEqual(np.float16, actual_data.dtype)
+            self.assertEqual(np.float64, actual_data.dtype)
             np.testing.assert_equal(expected_data, actual_data)
 
         with self.subTest('integer data with rotation'):
             var_info = self.var_info(self.test_IMERG_ncfile)
-            test_data = np.ma.array(
-                np.arange(12).reshape(4, 3), fill_value=-99999999, dtype=np.int64
-            )
+            test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.int64)
+            test_data[0, 0] = -99999999
             var_name = '/Grid/HQprecipitation'
-            expected_data = np.ma.copy(test_data.T).astype(np.float64)
+            expected_data = np.copy(test_data.T).astype(np.float64)
 
-            actual_data = rs._prepare_data_plane(test_data, var_info, var_name)
+            actual_data = rs._prepare_data_plane(
+                test_data, var_info, var_name, cast_to=np.float64
+            )
 
             self.assertEqual(np.float64, actual_data.dtype)
             np.testing.assert_equal(expected_data, actual_data)
@@ -505,7 +508,7 @@ class TestRegriddingService(TestCase):
             self.assertEqual(validate.dimensions['lon'].size, width)
             self.assertEqual(validate.dimensions['lat'].size, height)
 
-    def test_clone_variables(self):
+    def test_clone_dimensions(self):
         target_file = self._generate_test_file()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         projection = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
@@ -528,7 +531,7 @@ class TestRegriddingService(TestCase):
         ):
             rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
-            copied = rs._clone_variables(source_ds, target_ds, copy_vars)
+            copied = rs._clone_dimensions(source_ds, target_ds, copy_vars)
 
             self.assertEqual(copy_vars, copied)
 
@@ -591,29 +594,26 @@ class TestRegriddingService(TestCase):
                 self.assertEqual(validate['Grid'].dimensions['lat'].size, 180)
                 self.assertEqual(validate['Grid'].dimensions['lon'].size, 360)
 
-    def test_resampler_kwards(self):
+    def test_resampler_kwargs(self):
         with self.subTest('floating data'):
-            data = np.array([1.0, 2.0, 3.0], dtype='float')
-            expected_args = {'rows_per_scan': 0}
-            actual_args = rs._resampler_kwargs(data)
+            data = np.array([1.0, 2.0, 3.0, 4.0], dtype='float')
+            expected_args = {'rows_per_scan': 2}
+            actual_args = rs._resampler_kwargs(data, 'float')
             self.assertDictEqual(expected_args, actual_args)
 
-        with self.subTest('with fill'):
-            data = np.ma.array(
-                [1.0, 2.0, 3.0], mask=[0, 0, 0], fill_value=-9999.9, dtype='float'
-            )
-            expected_args = {'rows_per_scan': 0, 'fill_value': -9999.9}
-            actual_args = rs._resampler_kwargs(data)
+        with self.subTest('all rows needed'):
+            data = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], dtype='float')
+            expected_args = {'rows_per_scan': 7}
+            actual_args = rs._resampler_kwargs(data, 'float')
             self.assertDictEqual(expected_args, actual_args)
 
         with self.subTest('integer data'):
-            data = np.ma.array([1, 2, 3], mask=[0, 0, 0], fill_value=-8, dtype='int16')
+            data = np.ma.array([1, 2, 3], dtype='int16')
             expected_args = {
-                'rows_per_scan': 0,
-                'fill_value': -8,
+                'rows_per_scan': 3,
                 'maximum_weight_mode': True,
             }
-            actual_args = rs._resampler_kwargs(data)
+            actual_args = rs._resampler_kwargs(data, 'int16')
             self.assertDictEqual(expected_args, actual_args)
 
     def test_write_grid_mappings(self):
@@ -1116,7 +1116,11 @@ def test__compute_array_bounds(input_values, expected):
 @pytest.mark.parametrize(
     'input_values, expected_error, expected_message',
     [
-        ([1, 2, 3, 3.5], SourceDataError, 'coordinates are not regularly spaced'),
+        (
+            [10, 20, 30, 43.5, 50],
+            SourceDataError,
+            'coordinates are not regularly spaced',
+        ),
         ([1], SourceDataError, 'coordinates must have at least 2 values'),
     ],
 )

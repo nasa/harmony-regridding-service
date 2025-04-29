@@ -49,16 +49,18 @@ def regrid(
     """Regrid the input data at input_filepath."""
     global logger
     logger = call_logger or logger
+    logger.info(f'Format:\n {message.format}')
+    logger.info(f'Source:\n {source}')
 
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,
         config_file=HRS_VARINFO_CONFIG_FILENAME,
     )
+
     target_area = _compute_target_area(message)
 
     resampler_cache = _cache_resamplers(input_filepath, var_info, target_area)
-    logger.info(f'cached resamplers for {resampler_cache.keys()}')
 
     target_filepath = generate_output_filename(input_filepath, is_regridded=True)
 
@@ -73,11 +75,12 @@ def regrid(
         )
 
         vars_to_process = var_info.get_all_variables()
-        cloned_vars = _clone_variables(
+
+        cloned_dims = _clone_dimensions(
             source_ds, target_ds, _unresampled_variables(var_info)
         )
-        logger.info(f'cloned variables: {cloned_vars}')
-        vars_to_process -= cloned_vars
+        logger.info(f'cloned dimensions: {cloned_dims}')
+        vars_to_process -= cloned_dims
 
         dimension_vars = _copy_dimension_variables(
             source_ds, target_ds, target_area, var_info
@@ -141,12 +144,13 @@ def _resample_variable_data(
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
+    eventual_fill_value: np.number | None,
 ) -> None:
     """Recursively resample variable data in N-dimensions.
 
-    A recursive function that will reduce an N-dimensional variable to the base
+    A recursive function that reduces an N-dimensional variable to the base
     case of a 2-D layer representing a horizontal spatial slice. This slice
-    will then be resampled with the supplied DaskEWAResampler
+    is resampled with the supplied DaskEWAResampler
 
     """
     if len(s_var.shape) > 2:
@@ -157,10 +161,11 @@ def _resample_variable_data(
                 resampler,
                 var_info,
                 var_name,
+                eventual_fill_value,
             )
         return t_var
 
-    return _resample_layer(s_var[:], resampler, var_info, var_name)
+    return _resample_layer(s_var[:], resampler, var_info, var_name, eventual_fill_value)
 
 
 def _resample_n_dimensional_variables(
@@ -171,14 +176,22 @@ def _resample_n_dimensional_variables(
     variables: set[str],
 ) -> set[str]:
     """Function to resample any projected variable."""
+    processed = set()
+
     for var_name in variables:
+        processed.add(var_name)
+        logger.debug(f'resampling {var_name}')
         resampler = resampler_cache[_horizontal_dims_for_variable(var_info, var_name)]
+
         (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
+        eventual_fill_value = getattr(t_var, '_FillValue', None)
+        logger.debug(f'eventual_fill {eventual_fill_value}')
 
         t_var[:] = _resample_variable_data(
-            s_var[:], t_var[:], resampler, var_info, var_name
+            s_var[:], t_var[:], resampler, var_info, var_name, eventual_fill_value
         )
-    return variables
+
+    return processed
 
 
 def _resample_layer(
@@ -186,12 +199,24 @@ def _resample_layer(
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
+    eventual_fill_value: np.number | None,
 ) -> np.ma.array:
     """Prepare the input layer, resample and return the results."""
-    prepped_source = _prepare_data_plane(source_plane, var_info, var_name)
-    target_data = resampler.compute(prepped_source, **_resampler_kwargs(prepped_source))
-    return _prepare_data_plane(target_data, var_info, var_name).astype(
-        source_plane.dtype
+    # pyresample only uses float64 so be explicit when we prepare the data.
+    prepped_source = _prepare_data_plane(
+        source_plane, var_info, var_name, cast_to=np.float64
+    )
+    resample_fill = eventual_fill_value.astype(prepped_source.dtype)
+
+    target_data = resampler.compute(
+        prepped_source,
+        fill_value=resample_fill,
+        **_resampler_kwargs(prepped_source, source_plane.dtype),
+    )
+
+    ## Convert the data back into the original datatype and transpose if necessary.
+    return _prepare_data_plane(
+        target_data, var_info, var_name, cast_to=source_plane.dtype
     )
 
 
@@ -200,36 +225,30 @@ def _integer_like(test_type: np.dtype) -> bool:
     return np.issubdtype(np.dtype(test_type), np.integer)
 
 
-def _best_cast(integer_type: np.dtype) -> np.dtype:
-    """Return smallest float type to cast an integer type to."""
-    float_types = [np.float16, np.float32, np.float64]
-
-    return next(
-        float_type
-        for float_type in float_types
-        if np.can_cast(integer_type, float_type)
-    )
-
-
 def _prepare_data_plane(
-    data: np.Array, var_info: VarInfoFromNetCDF4, var_name: str
+    data: np.Array,
+    var_info: VarInfoFromNetCDF4,
+    var_name: str,
+    cast_to: np.dtype,
 ) -> np.Array:
     """Perform Type casting and transpose 2d data array when necessary.
 
     If an input data plane is an int, recast to the smallest floating point
-    data type. Also perform the transposition if the data dimension
+    data type that will contain the data.
+
+    Also perform a transposition if the data dimension
     organization requires.
 
     """
-    if _integer_like(data.dtype):
-        data = data.astype(_best_cast(data.dtype))
+    logger.debug(f'casting {var_name} to {cast_to}')
+    data = data.astype(cast_to)
 
     if _needs_rotation(var_info, var_name):
         data = np.ma.copy(data.T, order='C')
     return data
 
 
-def _resampler_kwargs(data: np.nd.array) -> dict:
+def _resampler_kwargs(data: np.nd.array, original_dtype: np.dtype) -> dict:
     """Return kwargs to be used in resampling compute call.
 
     If an input data plane is like int, set maximum_weight_mode to true.
@@ -237,15 +256,9 @@ def _resampler_kwargs(data: np.nd.array) -> dict:
     """
     kwargs = {}
 
-    kwargs['rows_per_scan'] = 0
+    kwargs['rows_per_scan'] = _get_rows_per_scan(data.shape[0])
 
-    if hasattr(data, 'fill_value'):
-        fill = data.fill_value
-        if np.issubdtype(fill, np.floating):
-            fill = np.float64(fill)
-        kwargs['fill_value'] = fill
-
-    if _integer_like(data.dtype):
+    if _integer_like(original_dtype):
         kwargs['maximum_weight_mode'] = True
 
     return kwargs
@@ -527,7 +540,7 @@ def _crs_variable_name(
     return crs_var_name
 
 
-def _clone_variables(
+def _clone_dimensions(
     source_ds: Dataset, target_ds: Dataset, dimensions: set[str]
 ) -> set[str]:
     """Clone variables from source to target.
@@ -537,7 +550,15 @@ def _clone_variables(
     """
     for dimension_name in dimensions:
         (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, dimension_name)
-        t_var[:] = s_var[:]
+        try:
+            t_var[:] = s_var[:]
+        except IndexError as vlen_Error:
+            # Handle snowflake metadata with vlen string.
+            if s_var.dtype == str and s_var.shape == ():
+                t_var[0] = s_var[0]
+            else:
+                logger.error('Unable to clone variable {s_var}')
+                raise SourceDataError('Unhandled variable clone') from vlen_Error
 
     return dimensions
 
@@ -571,11 +592,15 @@ def _copy_var_without_metadata(
     """
     var = PurePath(variable_name)
     s_var = _get_variable(source_ds, variable_name)
+
+    # Create target variable
     t_group = target_ds.createGroup(var.parent)
     fill_value = getattr(s_var, '_FillValue', None)
     t_var = t_group.createVariable(
         var.name, s_var.dtype, s_var.dimensions, fill_value=fill_value
     )
+    s_var.set_auto_maskandscale(False)
+    t_var.set_auto_maskandscale(False)
 
     return (s_var, t_var)
 
@@ -744,9 +769,8 @@ def _cache_resamplers(
                 dimensions, filepath, var_info, variable_set
             )
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
-            rows_per_scan = _get_rows_per_scan(source_swath.shape[0])
             grid_cache[dimensions].precompute(
-                rows_per_scan=rows_per_scan, maximum_weight_mode=True
+                rows_per_scan=_get_rows_per_scan(source_swath.shape[0]),
             )
 
     return grid_cache
@@ -945,7 +969,9 @@ def _compute_array_bounds(values: np.ndarray) -> tuple(np.float64, np.float64):
         raise SourceDataError('coordinates must have at least 2 values')
 
     diffs = np.diff(values)
-    if not np.allclose(diffs, diffs[0], rtol=1e-5):
+    # TODO: SPL4CMDL (v7,v8) have +/1 1.5m variance in their cell
+    # centers. relax spacing to allow for up to 3 meters difference in adjacent cells.
+    if not np.allclose(diffs, diffs[0], atol=3):
         raise SourceDataError('coordinates are not regularly spaced')
 
     half_width = (values[1] - values[0]) / 2.0
