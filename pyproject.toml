@@ -24,3 +24,13 @@ ignore_missing_imports = true
 [tool.pylint]
 disable = ["W1203"]
 typecheck.ignored-modules =  [ "netCDF4" ]
+
+[tool.pytest.ini_options]
+# Thread on this warning
+# https://github.com/Unidata/netcdf4-python/issues/1354
+# answer about overriding numpy's explicit ignoring warnings
+# https://github.com/Unidata/netcdf4-python/issues/1354#issuecomment-2546768878
+# https://github.com/numpy/numpy/blob/main/numpy/__init__.py#L320-L323
+filterwarnings = [
+    "ignore:numpy.ndarray size changed"
+]
