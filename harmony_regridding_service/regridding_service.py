@@ -495,9 +495,9 @@ def _write_grid_mappings(
     resampled_dim_pairs: list[tuple[str, str]],
     target_area: AreaDefinition,
 ) -> dict:
-    """Add cordinate reference system metadata variables.
+    """Add coordinate reference system metadata variables.
 
-    Add placeholder variables that contain the metadata related the cordinate
+    Add placeholder variables that contain the metadata related the coordinate
     reference system for the target grid.
 
     Returns a dictionary of horizonal tuple[dim pair] to full crs name for

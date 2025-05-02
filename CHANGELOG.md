@@ -10,7 +10,7 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 ## Added
 
 - Adds Command line entrypoint for testing the service without Docker.
-- Adds support for input files that have projected cordinates. These include
+- Adds support for input files that have projected coordinates. These include
   the SMAP L4 Collections SPL4CMDL, SPL4SMAU, SPL4SMGP and SPL4SMLM.
 
 
