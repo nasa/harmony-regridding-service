@@ -22,10 +22,7 @@ def smap_projected_netcdf_file(tmp_path, smap_projected_datatree):
     Yields:
         pathlib.Path: The path to the temporary NetCDF file.
     """
-    # Create a path for the temporary file within the pytest temporary directory
     file_path = tmp_path / 'smap_projected_data.nc'
-
-    # Save the datatree to a NetCDF file
     smap_projected_datatree.to_netcdf(file_path)
 
     yield file_path
@@ -37,26 +34,12 @@ def create_projected_datatree():
     This data was created from a slice of SMAP_L4_SM_aup_20220103T000000_Vv8010_001.h5
     {"y": slice(114, 120, None), "x": slice(200, 205, None)}, this small area
     has both valid and missing data to use in testing. Only a few of the
-    SPL4SMAU variables are included.
+    SPL4SMAU variables are included, one from each data group.
 
     Returns:
          The created datatree object.
 
     """
-    # Define attributes for coordinates
-    x_attrs = {
-        'long_name': 'X coordinate of cell center in EASE 2.0 global projection',
-        'standard_name': 'projection_x_coordinate',
-        'axis': 'X',
-        'units': 'm',  # Assuming meters based on projection
-    }
-    y_attrs = {
-        'long_name': 'Y coordinate of cell center in EASE 2.0 global projection',
-        'standard_name': 'projection_y_coordinate',
-        'axis': 'Y',
-        'units': 'm',  # Assuming meters based on projection
-    }
-
     x_coords = DataArray(
         np.array(
             [
@@ -68,9 +51,15 @@ def create_projected_datatree():
             ]
         ),
         dims='x',
-        attrs=x_attrs,
+        attrs={
+            'long_name': 'X coordinate of cell center in EASE 2.0 global projection',
+            'standard_name': 'projection_x_coordinate',
+            'axis': 'X',
+            'units': 'm',
+        },
         name='x',
     )
+
     y_coords = DataArray(
         np.array(
             [
@@ -83,7 +72,12 @@ def create_projected_datatree():
             ]
         ),
         dims='y',
-        attrs=y_attrs,
+        attrs={
+            'long_name': 'Y coordinate of cell center in EASE 2.0 global projection',
+            'standard_name': 'projection_y_coordinate',
+            'axis': 'Y',
+            'units': 'm',
+        },
         name='y',
     )
 
