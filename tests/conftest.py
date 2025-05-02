@@ -43,24 +43,48 @@ def create_projected_datatree():
          The created datatree object.
 
     """
-    x_coords = np.array(
-        [
-            -15561416.159668,
-            -15552408.104004,
-            -15543400.04834,
-            -15534391.992676,
-            -15525383.937012,
-        ]
+    # Define attributes for coordinates
+    x_attrs = {
+        'long_name': 'X coordinate of cell center in EASE 2.0 global projection',
+        'standard_name': 'projection_x_coordinate',
+        'axis': 'X',
+        'units': 'm',  # Assuming meters based on projection
+    }
+    y_attrs = {
+        'long_name': 'Y coordinate of cell center in EASE 2.0 global projection',
+        'standard_name': 'projection_y_coordinate',
+        'axis': 'Y',
+        'units': 'm',  # Assuming meters based on projection
+    }
+
+    x_coords = DataArray(
+        np.array(
+            [
+                -15561416.159668,
+                -15552408.104004,
+                -15543400.04834,
+                -15534391.992676,
+                -15525383.937012,
+            ]
+        ),
+        dims='x',
+        attrs=x_attrs,
+        name='x',
     )
-    y_coords = np.array(
-        [
-            6283118.82568359,
-            6274110.77001953,
-            6265102.71435547,
-            6256094.65869141,
-            6247086.60302734,
-            6238078.54736328,
-        ]
+    y_coords = DataArray(
+        np.array(
+            [
+                6283118.82568359,
+                6274110.77001953,
+                6265102.71435547,
+                6256094.65869141,
+                6247086.60302734,
+                6238078.54736328,
+            ]
+        ),
+        dims='y',
+        attrs=y_attrs,
+        name='y',
     )
 
     sm_profile_values = np.array(
@@ -146,24 +170,9 @@ def create_projected_datatree():
     dataset_identification_metadata = {
         'SMAPShortName': 'L4_SM_aup',
         'characterSet': 'utf8',
-        'QAAbstract': 'An ASCII product that contains statistical information on da...',
-        'ECSVersionDescription': 'Three-character string that identifies the type o...',
-        'UUID': '48ED4B4C-D0D4-11EF-B181-E58983D16534',
-        'language': 'eng',
-        'QAFileName': 'SMAP_L4_SM_aup_20220103T000000_Vv8010_001.qa',
-        'topicCategoryCode': 'geoscientificInformation',
-        'ECSVersionID': '008',
-        'abstract': 'The SMAP L4_SM data product provides global, 3-hourly surface ...',
-        'creationDate': '2025-01-12T10:59:24.000Z',
         'VersionID': 'Vv8010',
-        'status': 'onGoing',
-        'QACreationDate': '2025-01-12T10:59:24.000Z',
-        'credit': 'The software that generates the L4_SM data product and the data ...',
-        'purpose': 'The SMAP L4_SM data product provides spatially and temporally...',
         'fileName': 'SMAP_L4_SM_aup_20220103T000000_Vv8010_001.h5',
         'longName': 'SMAP L4 Global 3-hourly 9 km Surface and Rootzone Soil Moistur...',
-        'CompositeReleaseID': 'Vv80100012',
-        'originatorOrganizationName': 'NASA Global Modeling and Assimilation Office...',
         'shortName': 'SPL4SMAU',
     }
 
