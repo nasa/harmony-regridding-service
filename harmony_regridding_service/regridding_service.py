@@ -76,7 +76,7 @@ def regrid(
 
         vars_to_process = var_info.get_all_variables()
 
-        cloned_dims = _clone_dimensions(
+        cloned_dims = _clone_variables(
             source_ds, target_ds, _unresampled_variables(var_info)
         )
         logger.info(f'cloned dimensions: {cloned_dims}')
@@ -540,7 +540,7 @@ def _crs_variable_name(
     return crs_var_name
 
 
-def _clone_dimensions(
+def _clone_variables(
     source_ds: Dataset, target_ds: Dataset, dimensions: set[str]
 ) -> set[str]:
     """Clone variables from source to target.

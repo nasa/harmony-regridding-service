@@ -510,7 +510,7 @@ class TestRegriddingService(TestCase):
             self.assertEqual(validate.dimensions['lon'].size, width)
             self.assertEqual(validate.dimensions['lat'].size, height)
 
-    def test_clone_dimensions(self):
+    def test_clone_variables(self):
         target_file = self._generate_test_file()
         var_info = self.var_info(self.test_1D_dimensions_ncfile)
         projection = '+proj=longlat +datum=WGS84 +no_defs +type=crs'
@@ -533,7 +533,7 @@ class TestRegriddingService(TestCase):
         ):
             rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
-            copied = rs._clone_dimensions(source_ds, target_ds, copy_vars)
+            copied = rs._clone_variables(source_ds, target_ds, copy_vars)
 
             self.assertEqual(copy_vars, copied)
 
