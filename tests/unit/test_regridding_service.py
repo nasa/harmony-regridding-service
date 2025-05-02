@@ -1100,6 +1100,20 @@ class TestRegriddingService(TestCase):
 
 
 @pytest.mark.parametrize(
+    'input_value, expected, description',
+    [
+        (1, 1, 'number less than 2'),
+        (4, 2, 'even composite number'),
+        (9, 3, 'odd composite number'),
+        (7, 7, 'prime number'),
+    ],
+)
+def test__get_rows_per_scan(input_value, expected, description):
+    """Test _get_rows_per_scan with various input types."""
+    assert rs._get_rows_per_scan(input_value) == expected, f'Failed for {description}'
+
+
+@pytest.mark.parametrize(
     'input_values, expected',
     [
         ([1, 2, 3], (0.5, 3.5)),
