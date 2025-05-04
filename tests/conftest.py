@@ -1,8 +1,19 @@
 """Set up common pytest fixtures."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from xarray import DataArray, Dataset, DataTree
+
+HRS_VARINFO_CONFIG_FILENAME = str(
+    Path(
+        Path(__file__).parent.parent,
+        'harmony_regridding_service',
+        'config',
+        'HRS_varinfo_config.json',
+    )
+)
 
 
 @pytest.fixture(scope='session')
