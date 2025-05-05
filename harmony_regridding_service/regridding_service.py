@@ -798,7 +798,7 @@ def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variable will be regridded to this target.
+    multi-dimensional variables will be regridded to this target.
 
     """
     # ScaleExtent is required and validated.
@@ -956,13 +956,18 @@ def _compute_area_extent_from_regular_x_y_coords(
 
 
 def _compute_array_bounds(values: np.ndarray) -> tuple(np.float64, np.float64):
-    """Return array bounds inclusive of the cell width for a regular vector.
+    """Returns external edges of array bounds.
+
+    If values holds an array of regulary spaced cell centers, return the outer
+    edges of the array by computing the cell width and adding half of that to
+    each end of the vector.
 
     Args:
-      values: np.array of regularly spaced values with length > 1
+      values: np.array of regularly spaced values with length > 1 representing
+      cell centers of a gridcell.
 
     Returns:
-      tuple: extents of array bounds
+      tuple: bounding extent of the input array
 
     """
     if len(values) < 2:
