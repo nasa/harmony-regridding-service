@@ -76,11 +76,11 @@ def regrid(
 
         vars_to_process = var_info.get_all_variables()
 
-        cloned_dims = _clone_variables(
+        cloned_vars = _clone_variables(
             source_ds, target_ds, _unresampled_variables(var_info)
         )
-        logger.info(f'cloned dimensions: {cloned_dims}')
-        vars_to_process -= cloned_dims
+        logger.info(f'cloned variables: {cloned_vars}')
+        vars_to_process -= cloned_vars
 
         dimension_vars = _copy_dimension_variables(
             source_ds, target_ds, target_area, var_info
