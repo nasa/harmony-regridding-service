@@ -12,16 +12,21 @@ from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 from netCDF4 import Dataset, Dimension
 from numpy.testing import assert_array_equal
+from pyproj import CRS
 from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 import harmony_regridding_service.regridding_service as rs
 from harmony_regridding_service.exceptions import (
+    InvalidSourceCRS,
     InvalidSourceDimensions,
     RegridderException,
     SourceDataError,
 )
-from harmony_regridding_service.regridding_service import _compute_array_bounds
+from harmony_regridding_service.regridding_service import (
+    _compute_array_bounds,
+    _crs_from_source_data,
+)
 
 
 ## pytest fixtures
@@ -1147,7 +1152,7 @@ def test_get_projection_dims_y_dims_multiple_values(
 
 
 @pytest.mark.parametrize('test_arg', [('/lon', '/lat'), ('/lat', '/lon')])
-def test_expected_result_compute_horizontal_source_grids(
+def test_expected_result__compute_horizontal_source_grids(
     test_arg, test_1D_dimensions_ncfile, var_info_fxn
 ):
     """Exercises the single function for computing horizontal grids."""
@@ -1179,6 +1184,45 @@ def test_expected_result_compute_horizontal_source_grids(
 
     np.testing.assert_array_equal(expected_latitudes, latitudes)
     np.testing.assert_array_equal(expected_longitudes, longitudes)
+
+
+@pytest.mark.parametrize('grid_dimensions', [('/y', '/x'), ('/x', '/y')])
+def test__compute_projected_horizontal_source_grids(
+    grid_dimensions, var_info_fxn, smap_projected_netcdf_file
+):
+    """Test source grid generation."""
+    var_info = var_info_fxn(smap_projected_netcdf_file)
+
+    expected_longitudes = np.array(
+        [
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+            [-161.28112846, -161.18776746, -161.09440646, -161.00104546, -160.90768446],
+        ]
+    )
+    expected_latitudes = np.array(
+        [
+            [58.95624444, 58.95624444, 58.95624444, 58.95624444, 58.95624444],
+            [58.82092601, 58.82092601, 58.82092601, 58.82092601, 58.82092601],
+            [58.6861299, 58.6861299, 58.6861299, 58.6861299, 58.6861299],
+            [58.55184932, 58.55184932, 58.55184932, 58.55184932, 58.55184932],
+            [58.41807764, 58.41807764, 58.41807764, 58.41807764, 58.41807764],
+            [58.28480835, 58.28480835, 58.28480835, 58.28480835, 58.28480835],
+        ]
+    )
+
+    longitudes, latitudes = rs._compute_projected_horizontal_source_grids(
+        grid_dimensions,
+        smap_projected_netcdf_file,
+        var_info,
+        set({'/Forecast_Data/sm_profile_forecast'}),
+    )
+
+    np.testing.assert_array_almost_equal(latitudes, expected_latitudes)
+    np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
 
 
 def test_2D_lat_lon_input_compute_horizontal_source_grids(
@@ -1243,7 +1287,52 @@ def test__compute_array_bounds_failures(input_values, expected_error, expected_m
         _compute_array_bounds(input_values)
 
 
-@pytest.mark.skip('Check coverage without this test.')
+def test__crs_from_source_data_expected_case(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    expected_crs = CRS('epsg:6933')
+    crs = _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+    assert crs.to_epsg() == expected_crs
+
+
+def test__crs_from_source_data_missing(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    dt['/Forecast_Data/sm_profile_forecast'].attrs.pop('grid_mapping')
+    with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
+        _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
+@pytest.mark.parametrize(
+    'file_fixture_name, dimensions, expected_result',
+    [
+        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), False),
+        ('smap_projected_netcdf_file', ('/y', '/x'), True),
+    ],
+)
+def test__dims_are_projected_x_y(
+    var_info_fxn, request, file_fixture_name, dimensions, expected_result
+):
+    """Test if dimensions are projected x/y coordinates."""
+    file_fixture = request.getfixturevalue(file_fixture_name)
+    var_info = var_info_fxn(file_fixture)
+    assert rs._dims_are_projected_x_y(dimensions, var_info) is expected_result
+
+
+@pytest.mark.parametrize(
+    'file_fixture_name, dimensions, expected_result',
+    [
+        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), True),
+        ('smap_projected_netcdf_file', ('/y', '/x'), False),
+    ],
+)
+def test__dims_are_lon_lat(
+    var_info_fxn, request, file_fixture_name, dimensions, expected_result
+):
+    """Test if dimensions are lon/lat coordinates."""
+    file_fixture = request.getfixturevalue(file_fixture_name)
+    var_info = var_info_fxn(file_fixture)
+    assert rs._dims_are_lon_lat(dimensions, var_info) is expected_result
+
+
 def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
     """Test the full regrid process for projected input data."""
     input_filename = str(smap_projected_netcdf_file)
