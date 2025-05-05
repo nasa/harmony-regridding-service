@@ -16,7 +16,6 @@ from pyproj import CRS
 from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
-import harmony_regridding_service.regridding_service as rs
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
@@ -24,8 +23,54 @@ from harmony_regridding_service.exceptions import (
     SourceDataError,
 )
 from harmony_regridding_service.regridding_service import (
+    HRS_VARINFO_CONFIG_FILENAME,
+    _all_dimension_variables,
+    _all_dimensions,
+    _clone_variables,
     _compute_array_bounds,
+    _compute_horizontal_source_grids,
+    _compute_num_elements,
+    _compute_projected_horizontal_source_grids,
+    _compute_target_area,
+    _copy_1d_dimension_variables,
+    _copy_dimension,
+    _copy_dimension_variables,
+    _copy_dimensions,
+    _copy_resampled_bounds_variable,
+    _copy_var_with_attrs,
+    _copy_var_without_metadata,
+    _create_dimension,
+    _create_resampled_dimensions,
     _crs_from_source_data,
+    _crs_variable_name,
+    _dims_are_lon_lat,
+    _dims_are_projected_x_y,
+    _get_bounds_var,
+    _get_dimension,
+    _get_horizontal_dims,
+    _get_rows_per_scan,
+    _get_variable,
+    _get_vertical_dims,
+    _grid_height,
+    _grid_width,
+    _group_by_ndim,
+    _horizontal_dims_for_variable,
+    _integer_like,
+    _is_horizontal_dim,
+    _is_vertical_dim,
+    _needs_rotation,
+    _prepare_data_plane,
+    _resampled_dimension_pairs,
+    _resampled_dimension_variable_names,
+    _resampled_dimensions,
+    _resampler_kwargs,
+    _transfer_dimensions,
+    _transfer_metadata,
+    _unresampled_variables,
+    _validate_remaining_variables,
+    _walk_groups,
+    _write_grid_mappings,
+    regrid,
 )
 
 
@@ -182,7 +227,7 @@ def var_info_fxn():
     def _var_info(nc_file: str | Path, short_name: str | None = None):
         return VarInfoFromNetCDF4(
             str(nc_file),
-            config_file=rs.HRS_VARINFO_CONFIG_FILENAME,
+            config_file=HRS_VARINFO_CONFIG_FILENAME,
             short_name=short_name,
         )
 
@@ -223,7 +268,7 @@ def test_group_by_ndim_one_variable(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     variables = {'/data'}
     expected_sorted = {2: {'/data'}}
-    actual_sorted = rs._group_by_ndim(var_info, variables)
+    actual_sorted = _group_by_ndim(var_info, variables)
     assert expected_sorted == actual_sorted
 
 
@@ -232,7 +277,7 @@ def test_group_by_ndim_merra2(test_MERRA2_ncfile, var_info_fxn):
     var_info_merra2 = var_info_fxn(test_MERRA2_ncfile)
     variables = {'/OMEGA', '/RH', '/PHIS', '/PS', '/lat'}
     expected_sorted = {4: {'/OMEGA', '/RH'}, 3: {'/PHIS', '/PS'}, 1: {'/lat'}}
-    actual_sorted = rs._group_by_ndim(var_info_merra2, variables)
+    actual_sorted = _group_by_ndim(var_info_merra2, variables)
     assert expected_sorted == actual_sorted
 
 
@@ -248,7 +293,7 @@ def test_walk_groups(test_file):
 
     actual_visited = set()
     with Dataset(target_path, mode='r') as validate:
-        for groups in rs._walk_groups(validate):
+        for groups in _walk_groups(validate):
             for group in groups:
                 actual_visited.update([group.name])
 
@@ -268,8 +313,8 @@ def test_copy_1d_dimension_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, target_area, var_info)
-        vars_copied = rs._copy_1d_dimension_variables(
+        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        vars_copied = _copy_1d_dimension_variables(
             source_ds, target_ds, dim_var_names, target_area, var_info
         )
 
@@ -292,8 +337,8 @@ def test_copy_vars_without_metadata(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, target_area, var_info)
-        rs._copy_var_without_metadata(source_ds, target_ds, '/data')
+        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _copy_var_without_metadata(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
         actual_metadata = {
@@ -314,8 +359,8 @@ def test_copy_var_with_attrs(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, target_area, var_info)
-        rs._copy_var_with_attrs(source_ds, target_ds, '/data')
+        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _copy_var_with_attrs(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
         actual_metadata = {
@@ -342,9 +387,9 @@ def test_copy_dimension_variables(
         Dataset(test_MERRA2_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
 
-        vars_copied = rs._copy_dimension_variables(
+        vars_copied = _copy_dimension_variables(
             source_ds, target_ds, target_area, var_info
         )
 
@@ -363,9 +408,7 @@ def test_prepare_data_plane_floating_without_rotation(var_info_fxn, test_MERRA2_
     )
     var_name = '/T'
     expected_data = np.ma.copy(test_data)
-    actual_data = rs._prepare_data_plane(
-        test_data, var_info, var_name, cast_to=np.float64
-    )
+    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
@@ -376,9 +419,7 @@ def test_prepare_data_plane_floating_with_rotation(var_info_fxn, test_IMERG_ncfi
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.float16)
     var_name = '/Grid/HQprecipitation'
     expected_data = np.copy(test_data.T)
-    actual_data = rs._prepare_data_plane(
-        test_data, var_info, var_name, cast_to=np.float64
-    )
+    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
@@ -389,9 +430,7 @@ def test_prepare_data_plane_int_without_rotation(var_info_fxn, test_MERRA2_ncfil
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.int8)
     var_name = '/T'
     expected_data = np.copy(test_data)
-    actual_data = rs._prepare_data_plane(
-        test_data, var_info, var_name, cast_to=np.float64
-    )
+    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
@@ -404,9 +443,7 @@ def test_prepare_data_plane_int_with_rotation(var_info_fxn, test_IMERG_ncfile):
     var_name = '/Grid/HQprecipitation'
     expected_data = np.copy(test_data.T).astype(np.float64)
 
-    actual_data = rs._prepare_data_plane(
-        test_data, var_info, var_name, cast_to=np.float64
-    )
+    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
@@ -416,7 +453,7 @@ def test_get_bound_var(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
     expected_bounds = 'lon_bnds'
 
-    actual_bounds = rs._get_bounds_var(var_info, '/Grid/lon')
+    actual_bounds = _get_bounds_var(var_info, '/Grid/lon')
     assert expected_bounds == actual_bounds
 
 
@@ -440,9 +477,9 @@ def test_copy_resampled_bounds_variable(
         Dataset(test_IMERG_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
 
-        var_copied = rs._copy_resampled_bounds_variable(
+        var_copied = _copy_resampled_bounds_variable(
             source_ds, target_ds, bnds_var, target_area, var_info
         )
 
@@ -457,7 +494,7 @@ def test_resampled_dimension_variable_names_root_level_dimensions(
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_resampled = {'/lon', '/lat'}
 
-    actual_resampled = rs._resampled_dimension_variable_names(var_info)
+    actual_resampled = _resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
@@ -472,7 +509,7 @@ def test_resampled_dimension_variable_names_grouped_dimensions(
         '/Grid/lat_bnds',
     }
 
-    actual_resampled = rs._resampled_dimension_variable_names(var_info)
+    actual_resampled = _resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
@@ -480,7 +517,7 @@ def test_multiple_resampled_dimension_variable_names(test_ATL14_ncfile, var_info
     var_info = var_info_fxn(test_ATL14_ncfile)
     expected_resampled = {'/x', '/y', '/tile_stats/x', '/tile_stats/y'}
 
-    actual_resampled = rs._resampled_dimension_variable_names(var_info)
+    actual_resampled = _resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
@@ -493,7 +530,7 @@ def test_crs_variable_name_multiple_grids_separate_groups():
     ]
 
     expected_crs_name = '/Grid/crs'
-    actual_crs_name = rs._crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
@@ -502,7 +539,7 @@ def test_crs_variable_name_single_grid():
     dim_pairs = [('/lat', '/lon')]
     expected_crs_name = '/crs'
 
-    actual_crs_name = rs._crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
@@ -515,7 +552,7 @@ def test_crs_variable_name_multiple_grids_share_group():
     ]
 
     expected_crs_name = '/crs_global_grid_lat_global_grid_lon'
-    actual_crs_name = rs._crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
@@ -535,7 +572,7 @@ def test_transfer_metadata(test_file, test_1D_dimensions_ncfile):
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(_generate_test_file, mode='w') as target_ds,
     ):
-        rs._transfer_metadata(source_ds, target_ds)
+        _transfer_metadata(source_ds, target_ds)
 
     with Dataset(_generate_test_file, mode='r') as validate:
         root_metadata = {attr: validate.getncattr(attr) for attr in validate.ncattrs()}
@@ -567,7 +604,7 @@ def test_transfer_dimensions(test_area_fxn, var_info_fxn, test_1D_dimensions_ncf
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
     with Dataset(target_file, mode='r') as validate:
         assert validate.dimensions['bnds'].size == 2
@@ -592,9 +629,9 @@ def test_clone_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
-        copied = rs._clone_variables(source_ds, target_ds, copy_vars)
+        copied = _clone_variables(source_ds, target_ds, copy_vars)
 
         assert copy_vars == copied
 
@@ -616,7 +653,7 @@ def test_create_resampled_dimensions_root_dimensions(
     target_file = test_file
 
     with Dataset(target_file, mode='w') as target_ds:
-        rs._create_resampled_dimensions(
+        _create_resampled_dimensions(
             [('/lat', '/lon')], target_ds, _generate_test_area, var_info
         )
 
@@ -635,7 +672,7 @@ def test_create_resampled_dimensions_group_level_dimensions(
     _generate_test_area = test_area_fxn()
     target_file = test_file
     with Dataset(target_file, mode='w') as target_ds:
-        rs._create_resampled_dimensions(
+        _create_resampled_dimensions(
             [('/Grid/lon', '/Grid/lat')],
             target_ds,
             _generate_test_area,
@@ -650,14 +687,14 @@ def test_create_resampled_dimensions_group_level_dimensions(
 def test_resampler_kwargs_floating_data():
     data = np.array([1.0, 2.0, 3.0, 4.0], dtype='float')
     expected_args = {'rows_per_scan': 2}
-    actual_args = rs._resampler_kwargs(data, 'float')
+    actual_args = _resampler_kwargs(data, 'float')
     assert expected_args == actual_args
 
 
 def test_resampler_kwargs_all_rows_needed():
     data = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], dtype='float')
     expected_args = {'rows_per_scan': 7}
-    actual_args = rs._resampler_kwargs(data, 'float')
+    actual_args = _resampler_kwargs(data, 'float')
     assert expected_args == actual_args
 
 
@@ -667,7 +704,7 @@ def test_resampler_kwargs_integer_data():
         'rows_per_scan': 3,
         'maximum_weight_mode': True,
     }
-    actual_args = rs._resampler_kwargs(data, 'int16')
+    actual_args = _resampler_kwargs(data, 'int16')
     assert expected_args == actual_args
 
 
@@ -686,16 +723,16 @@ def test_write_grid_mappings(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        rs._transfer_metadata(source_ds, target_ds)
-        rs._transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_metadata(source_ds, target_ds)
+        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
 
-        actual_crs_map = rs._write_grid_mappings(
-            target_ds, rs._resampled_dimension_pairs(var_info), _generate_test_area
+        actual_crs_map = _write_grid_mappings(
+            target_ds, _resampled_dimension_pairs(var_info), _generate_test_area
         )
         assert expected_crs_map == actual_crs_map
 
     with Dataset(target_file, mode='r') as validate:
-        crs = rs._get_variable(validate, '/crs')
+        crs = _get_variable(validate, '/crs')
         expected_crs_metadata = _generate_test_area.crs.to_cf()
 
         actual_crs_metadata = {attr: crs.getncattr(attr) for attr in crs.ncattrs()}
@@ -705,11 +742,11 @@ def test_write_grid_mappings(
 
 def test_get_variable(test_ATL14_ncfile):
     with Dataset(test_ATL14_ncfile, mode='r') as source_ds:
-        var_grouped = rs._get_variable(source_ds, '/tile_stats/RMS_data')
+        var_grouped = _get_variable(source_ds, '/tile_stats/RMS_data')
         expected_grouped = source_ds['tile_stats'].variables['RMS_data']
         assert expected_grouped == var_grouped
 
-        var_flat = rs._get_variable(source_ds, '/ice_area')
+        var_flat = _get_variable(source_ds, '/ice_area')
         expected_flat = source_ds.variables['ice_area']
         assert expected_flat == var_flat
 
@@ -718,7 +755,7 @@ def test_create_dimension(test_file):
     name = '/somedim'
     size = 1000
     with Dataset(test_file, mode='w') as target_ds:
-        dim = rs._create_dimension(target_ds, name, size)
+        dim = _create_dimension(target_ds, name, size)
         assert isinstance(dim, Dimension)
         assert dim.size == size
         assert dim.name == 'somedim'
@@ -728,7 +765,7 @@ def test_create_nested_dimension(test_file):
     name = '/some/deeply/nested/dimname'
     size = 2000
     with Dataset(test_file, mode='w') as target_ds:
-        dim = rs._create_dimension(target_ds, name, size)
+        dim = _create_dimension(target_ds, name, size)
         assert isinstance(dim, Dimension)
         assert dim.size == size
         assert dim.name == 'dimname'
@@ -736,7 +773,7 @@ def test_create_nested_dimension(test_file):
 
 def test_get_flat_dimension(test_1D_dimensions_ncfile, latitudes):
     with Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds:
-        lat_dim = rs._get_dimension(source_ds, '/lat')
+        lat_dim = _get_dimension(source_ds, '/lat')
         assert isinstance(lat_dim, Dimension)
         assert lat_dim.size == len(latitudes)
         assert lat_dim.name == 'lat'
@@ -744,7 +781,7 @@ def test_get_flat_dimension(test_1D_dimensions_ncfile, latitudes):
 
 def test_get_nested_dimension(test_IMERG_ncfile):
     with Dataset(test_IMERG_ncfile, mode='r') as source_ds:
-        lat_dim = rs._get_dimension(source_ds, '/Grid/lat')
+        lat_dim = _get_dimension(source_ds, '/Grid/lat')
         assert isinstance(lat_dim, Dimension)
         assert lat_dim.name == 'lat'
         assert lat_dim.size == 1800
@@ -755,11 +792,11 @@ def test_copy_dimension(test_file, test_1D_dimensions_ncfile, longitudes):
         Dataset(test_file, mode='w') as target_ds,
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
     ):
-        time_dimension = rs._copy_dimension('/time', source_ds, target_ds)
+        time_dimension = _copy_dimension('/time', source_ds, target_ds)
         assert time_dimension.isunlimited() is True
         assert time_dimension.size == 0
 
-        lon_dimension = rs._copy_dimension('/lon', source_ds, target_ds)
+        lon_dimension = _copy_dimension('/lon', source_ds, target_ds)
         assert lon_dimension.isunlimited() is False
         assert lon_dimension.size == len(longitudes)
 
@@ -770,7 +807,7 @@ def test_copy_dimensions(test_file, test_1D_dimensions_ncfile, latitudes, longit
         Dataset(test_target, mode='w') as target_ds,
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
     ):
-        rs._copy_dimensions({'/lat', '/lon', '/time', '/bnds'}, source_ds, target_ds)
+        _copy_dimensions({'/lat', '/lon', '/time', '/bnds'}, source_ds, target_ds)
 
     with Dataset(test_target, mode='r') as validate:
         assert validate.dimensions['time'].isunlimited() is True
@@ -785,7 +822,7 @@ def test_copy_dimensions_with_groups(test_file, test_IMERG_ncfile):
         Dataset(test_file, mode='w') as target_ds,
         Dataset(test_IMERG_ncfile, mode='r') as source_ds,
     ):
-        rs._copy_dimensions(
+        _copy_dimensions(
             {'/Grid/latv', '/Grid/lonv', '/Grid/nv', '/Grid/time'},
             source_ds,
             target_ds,
@@ -802,30 +839,28 @@ def test_copy_dimensions_with_groups(test_file, test_IMERG_ncfile):
 def test_horizontal_dims_for_variable_grouped(test_IMERG_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_IMERG_ncfile)
     expected_dims = ('/Grid/lon', '/Grid/lat')
-    actual_dims = rs._horizontal_dims_for_variable(
-        var_info, '/Grid/IRkalmanFilterWeight'
-    )
+    actual_dims = _horizontal_dims_for_variable(var_info, '/Grid/IRkalmanFilterWeight')
     assert expected_dims == actual_dims
 
 
 def test_horizontal_dims_for_variable(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_dims = ('/lon', '/lat')
-    actual_dims = rs._horizontal_dims_for_variable(var_info, '/data')
+    actual_dims = _horizontal_dims_for_variable(var_info, '/data')
     assert expected_dims == actual_dims
 
 
 def test_horizontal_dims_for_missing_variable(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_dims = None
-    actual_dims = rs._horizontal_dims_for_variable(var_info, '/missing')
+    actual_dims = _horizontal_dims_for_variable(var_info, '/missing')
     assert expected_dims == actual_dims
 
 
 def test_resampled_dimenension_pairs_1d_file(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_pairs = [('/lon', '/lat')]
-    actual_pairs = rs._resampled_dimension_pairs(var_info)
+    actual_pairs = _resampled_dimension_pairs(var_info)
     assert expected_pairs == actual_pairs
 
 
@@ -834,21 +869,21 @@ def test_resampled_dimenension_pairs_multiple_horizontal_pairs(
 ):
     var_info = var_info_fxn(test_ATL14_ncfile)
     expected_pairs = [('/y', '/x'), ('/tile_stats/y', '/tile_stats/x')]
-    actual_pairs = rs._resampled_dimension_pairs(var_info)
+    actual_pairs = _resampled_dimension_pairs(var_info)
     assert set(expected_pairs) == set(actual_pairs)
 
 
 def test_all_dimensions(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_dimensions = {'/time', '/lon', '/lat', '/bnds'}
-    actual_dimensions = rs._all_dimensions(var_info)
+    actual_dimensions = _all_dimensions(var_info)
     assert expected_dimensions == actual_dimensions
 
 
 def test_unresampled_variables_flat_ungrouped(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_vars = {'/time', '/time_bnds'}
-    actual_vars = rs._unresampled_variables(var_info)
+    actual_vars = _unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
@@ -856,7 +891,7 @@ def test_unresampled_variables_IMERG_grouped(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
 
     expected_vars = {'/Grid/time', '/Grid/time_bnds'}
-    actual_vars = rs._unresampled_variables(var_info)
+    actual_vars = _unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
@@ -864,7 +899,7 @@ def test_unresampled_variables_MERRA2_includes_levels(var_info_fxn, test_MERRA2_
     var_info = var_info_fxn(test_MERRA2_ncfile)
 
     expected_vars = {'/lev', '/time'}
-    actual_vars = rs._unresampled_variables(var_info)
+    actual_vars = _unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
@@ -881,28 +916,28 @@ def test_unresampled_variables_ATL14_lots_of_deep_group_vars(
         '/quality_assessment/qa_granule_fail_reason',
         '/quality_assessment/qa_granule_pass_fail',
     }
-    actual_vars = rs._unresampled_variables(var_info)
+    actual_vars = _unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
 def test_all_dimension_variables_1d_file(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_vars = {'/lat', '/lon', '/time'}
-    actual_vars = rs._all_dimension_variables(var_info)
+    actual_vars = _all_dimension_variables(var_info)
     assert expected_vars == actual_vars
 
 
 def test_all_dimension_variables_2D_file(var_info_fxn, test_2D_dimensions_ncfile):
     var_info = var_info_fxn(test_2D_dimensions_ncfile)
     expected_vars = {'/lat', '/lon'}
-    actual_vars = rs._all_dimension_variables(var_info)
+    actual_vars = _all_dimension_variables(var_info)
     assert expected_vars == actual_vars
 
 
 def test_resampled_dimensions_1D_file(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_dimensions = {'/lat', '/lon'}
-    actual_dimensions = rs._resampled_dimensions(var_info)
+    actual_dimensions = _resampled_dimensions(var_info)
     assert expected_dimensions == actual_dimensions
 
 
@@ -910,19 +945,19 @@ def test_resampled_dimensions_ATL14_multiple_grids(var_info_fxn, test_ATL14_ncfi
     var_info = var_info_fxn(test_ATL14_ncfile)
 
     expected_dimensions = {'/x', '/y', '/tile_stats/x', '/tile_stats/y'}
-    actual_dimensions = rs._resampled_dimensions(var_info)
+    actual_dimensions = _resampled_dimensions(var_info)
     assert expected_dimensions == actual_dimensions
 
 
 def test_needs_rotation_needs_rotation(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert rs._needs_rotation(var_info, '/data') is True
+    assert _needs_rotation(var_info, '/data') is True
 
 
 def test_needs_rotation_no_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
-    assert rs._needs_rotation(var_info, '/PHIS') is False
-    assert rs._needs_rotation(var_info, '/OMEGA') is False
+    assert _needs_rotation(var_info, '/PHIS') is False
+    assert _needs_rotation(var_info, '/OMEGA') is False
 
 
 def test_validate_remaining_variables_success():
@@ -931,7 +966,7 @@ def test_validate_remaining_variables_success():
         3: {'more', 'cubes'},
         4: {'hypercube', 'data'},
     }
-    assert rs._validate_remaining_variables(test_vars) is None
+    assert _validate_remaining_variables(test_vars) is None
 
 
 def test_validate_remaining_variables_failure():
@@ -945,7 +980,7 @@ def test_validate_remaining_variables_failure():
     with pytest.raises(
         RegridderException, match='Variables with dimensions.*cannot be handled.'
     ):
-        rs._validate_remaining_variables(test_vars)
+        _validate_remaining_variables(test_vars)
 
 
 @pytest.mark.parametrize(
@@ -964,16 +999,16 @@ def test_validate_remaining_variables_failure():
     ],
 )
 def test_integer_like(int_type):
-    assert rs._integer_like(int_type) is True
+    assert _integer_like(int_type) is True
 
 
 @pytest.mark.parametrize('float_type', [np.float16, np.float32, np.float64])
 def test_integer_like_false(float_type):
-    assert rs._integer_like(float_type) is False
+    assert _integer_like(float_type) is False
 
 
 def test_integer_like_string():
-    assert rs._integer_like(str) is False
+    assert _integer_like(str) is False
 
 
 @patch(
@@ -1003,7 +1038,7 @@ def test_compute_target_area(mock_area):
     expected_height = 90
     expected_width = 360
 
-    actual_area = rs._compute_target_area(message)
+    actual_area = _compute_target_area(message)
 
     assert actual_area.shape == (expected_height, expected_width)
     assert actual_area.area_extent == (xmin, ymin, xmax, ymax)
@@ -1021,25 +1056,25 @@ def test_compute_target_area(mock_area):
 
 def test_grid_height_message_with_scale_size(test_message_with_scale_size):
     expected_grid_height = 50
-    actual_grid_height = rs._grid_height(test_message_with_scale_size)
+    actual_grid_height = _grid_height(test_message_with_scale_size)
     assert expected_grid_height == actual_grid_height
 
 
 def test_grid_height_mesage_includes_height(test_message_with_height_width):
     expected_grid_height = 80
-    actual_grid_height = rs._grid_height(test_message_with_height_width)
+    actual_grid_height = _grid_height(test_message_with_height_width)
     assert expected_grid_height == actual_grid_height
 
 
 def test_grid_width_message_with_scale_size(test_message_with_scale_size):
     expected_grid_width = 100
-    actual_grid_width = rs._grid_width(test_message_with_scale_size)
+    actual_grid_width = _grid_width(test_message_with_scale_size)
     assert expected_grid_width == actual_grid_width
 
 
 def test_grid_width_message_with_width(test_message_with_height_width):
     expected_grid_width = 40
-    actual_grid_width = rs._grid_width(test_message_with_height_width)
+    actual_grid_width = _grid_width(test_message_with_height_width)
     assert expected_grid_width == actual_grid_width
 
 
@@ -1063,8 +1098,8 @@ def test_compute_num_elements():
 
     expected_x_elements = 100
     expected_y_elements = 50
-    actual_x_elements = rs._compute_num_elements(message, 'x')
-    actual_y_elements = rs._compute_num_elements(message, 'y')
+    actual_x_elements = _compute_num_elements(message, 'x')
+    actual_y_elements = _compute_num_elements(message, 'y')
 
     assert expected_x_elements == actual_x_elements
     assert expected_y_elements == actual_y_elements
@@ -1072,22 +1107,22 @@ def test_compute_num_elements():
 
 def test_is_projection_dim_test_valid_x(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert rs._is_horizontal_dim('/lon', var_info) is True
+    assert _is_horizontal_dim('/lon', var_info) is True
 
 
 def test_is_projection_dim_test_invalid_x(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert rs._is_horizontal_dim('/lat', var_info) is False
+    assert _is_horizontal_dim('/lat', var_info) is False
 
 
 def test_is_projection_dim_test_valid_y(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert rs._is_vertical_dim('/lat', var_info) is True
+    assert _is_vertical_dim('/lat', var_info) is True
 
 
 def test_is_projection_dim_test_invalid_y(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert rs._is_vertical_dim('/lon', var_info) is False
+    assert _is_vertical_dim('/lon', var_info) is False
 
 
 def test_get_projection_dims_x_dims(test_1D_dimensions_ncfile, var_info_fxn):
@@ -1095,7 +1130,7 @@ def test_get_projection_dims_x_dims(test_1D_dimensions_ncfile, var_info_fxn):
     dims = ('/lat', '/lon')
     expected_dim = ['/lon']
 
-    actual = rs._get_horizontal_dims(dims, var_info)
+    actual = _get_horizontal_dims(dims, var_info)
     assert expected_dim == actual
 
 
@@ -1104,7 +1139,7 @@ def test_get_projection_dims_y_dims(test_1D_dimensions_ncfile, var_info_fxn):
     dims = ('/lat', '/lon')
     expected_dim = ['/lat']
 
-    actual = rs._get_vertical_dims(dims, var_info)
+    actual = _get_vertical_dims(dims, var_info)
     assert expected_dim == actual
 
 
@@ -1115,7 +1150,7 @@ def test_get_projection_dims_y_dims_no_variables(
     dims = ('/baddim1', '/baddim2')
 
     expected_dims = []
-    actual_dims = rs._get_vertical_dims(dims, var_info)
+    actual_dims = _get_vertical_dims(dims, var_info)
     assert expected_dims == actual_dims
 
 
@@ -1125,7 +1160,7 @@ def test_get_projection_dims_x_dims_no_variables(
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/baddim1', '/baddim2')
     expected_dims = []
-    actual_dims = rs._get_horizontal_dims(dims, var_info)
+    actual_dims = _get_horizontal_dims(dims, var_info)
     assert expected_dims == actual_dims
 
 
@@ -1136,7 +1171,7 @@ def test_get_projection_dims_x_dims_with_bad_variable(
     dims = ('/baddim1', '/lon')
     expected_dim = ['/lon']
 
-    actual_dim = rs._get_horizontal_dims(dims, var_info)
+    actual_dim = _get_horizontal_dims(dims, var_info)
     assert expected_dim == actual_dim
 
 
@@ -1147,7 +1182,7 @@ def test_get_projection_dims_y_dims_multiple_values(
     dims = ('/lat', '/lon', '/lat', '/ba')
     expected_dim = ['/lat', '/lat']
 
-    actual = rs._get_vertical_dims(dims, var_info)
+    actual = _get_vertical_dims(dims, var_info)
     assert expected_dim == actual
 
 
@@ -1178,7 +1213,7 @@ def test_expected_result__compute_horizontal_source_grids(
         ]
     )
 
-    longitudes, latitudes = rs._compute_horizontal_source_grids(
+    longitudes, latitudes = _compute_horizontal_source_grids(
         test_arg, test_1D_dimensions_ncfile, var_info
     )
 
@@ -1214,7 +1249,7 @@ def test__compute_projected_horizontal_source_grids(
         ]
     )
 
-    longitudes, latitudes = rs._compute_projected_horizontal_source_grids(
+    longitudes, latitudes = _compute_projected_horizontal_source_grids(
         grid_dimensions,
         smap_projected_netcdf_file,
         var_info,
@@ -1235,7 +1270,7 @@ def test_2D_lat_lon_input_compute_horizontal_source_grids(
         'Incorrect source data dimensions. rows:(6, 5), columns:(6, 5)'
     )
     with pytest.raises(InvalidSourceDimensions, match=expected_regex):
-        rs._compute_horizontal_source_grids(
+        _compute_horizontal_source_grids(
             grid_dimensions, test_2D_dimensions_ncfile, var_info
         )
 
@@ -1251,7 +1286,7 @@ def test_2D_lat_lon_input_compute_horizontal_source_grids(
 )
 def test__get_rows_per_scan(input_value, expected, description):
     """Test _get_rows_per_scan with various input types."""
-    assert rs._get_rows_per_scan(input_value) == expected, f'Failed for {description}'
+    assert _get_rows_per_scan(input_value) == expected, f'Failed for {description}'
 
 
 @pytest.mark.parametrize(
@@ -1314,7 +1349,7 @@ def test__dims_are_projected_x_y(
     """Test if dimensions are projected x/y coordinates."""
     file_fixture = request.getfixturevalue(file_fixture_name)
     var_info = var_info_fxn(file_fixture)
-    assert rs._dims_are_projected_x_y(dimensions, var_info) is expected_result
+    assert _dims_are_projected_x_y(dimensions, var_info) is expected_result
 
 
 @pytest.mark.parametrize(
@@ -1330,7 +1365,7 @@ def test__dims_are_lon_lat(
     """Test if dimensions are lon/lat coordinates."""
     file_fixture = request.getfixturevalue(file_fixture_name)
     var_info = var_info_fxn(file_fixture)
-    assert rs._dims_are_lon_lat(dimensions, var_info) is expected_result
+    assert _dims_are_lon_lat(dimensions, var_info) is expected_result
 
 
 def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
@@ -1361,7 +1396,7 @@ def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
         'harmony_regridding_service.regridding_service.generate_output_filename',
         return_value=output_filename,
     ):
-        result_filename = rs.regrid(message, input_filename, source, logger_mock)
+        result_filename = regrid(message, input_filename, source, logger_mock)
 
     assert result_filename == output_filename
     assert Path(output_filename).exists()

@@ -5,20 +5,23 @@ to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
-## [v1.1.0] - 2025-04-29
+## [v1.1.0] - 2025-05-05
 
 ## Added
 
 - Adds Command line entrypoint for testing the service without Docker.
-- Adds support for input files that have projected coordinates. These include
-  the SMAP L4 Collections SPL4CMDL, SPL4SMAU, SPL4SMGP and SPL4SMLM.
-
-
-
+- Adds support and configuraton for input files that have projected
+  coordinates. These include the SMAP L4 Collections SPL4CMDL, SPL4SMAU,
+  SPL4SMGP and SPL4SMLM.
 
 ## Changed
 
-- Internal changes. Python lib dependencies are updated. Small refactors applied.
+- Internal changes.
+  + Python service lib updated to 3.12.
+  + Python lib dependencies are updated.
+  + Refactors applied.
+  + `test_regridding_service.py` converted to pytest.
+  + Adds python fixture for "SPL4SMAU like" test file.
 
 
 ## [v1.0.6] - 2025-03-24
