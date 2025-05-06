@@ -60,6 +60,7 @@ from harmony_regridding_service.regridding_service import (
     _is_vertical_dim,
     _needs_rotation,
     _prepare_data_plane,
+    _resample_layer,
     _resampled_dimension_pairs,
     _resampled_dimension_variable_names,
     _resampled_dimensions,
@@ -401,13 +402,89 @@ def test_copy_dimension_variables(
         assert validate.dimensions['lev'].size == 42
 
 
+def test_resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
+    """Test resampler.compute with float input and explicit fill value."""
+    var_info = var_info_fxn(test_MERRA2_ncfile)
+    source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
+    resampler_mock = MagicMock()
+    var_name = '/T'
+    eventual_fill_value = np.float64(-9999.0)
+
+    expected_source = source_plane.astype(np.float64)
+    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+
+    _resample_layer(
+        source_plane, resampler_mock, var_info, var_name, eventual_fill_value
+    )
+
+    call_args, call_kwargs = resampler_mock.compute.call_args
+    actual_source = call_args[0]
+    actual_fill_value = call_kwargs['fill_value']
+    actual_rps = call_kwargs['rows_per_scan']
+
+    np.testing.assert_array_equal(expected_source, actual_source)
+    assert actual_fill_value == eventual_fill_value
+    assert actual_rps == expected_rps
+    assert 'maximum_weight_mode' not in call_kwargs  # Default for float
+
+
+def test_resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
+    """Test resampler.compute with int input and explicit fill value."""
+    var_info = var_info_fxn(test_MERRA2_ncfile)
+    source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.int32)
+    resampler_mock = MagicMock()
+    var_name = '/T'
+    eventual_fill_value = np.int32(9999.0)
+
+    expected_source = source_plane.astype(np.float64)
+    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+
+    _resample_layer(
+        source_plane, resampler_mock, var_info, var_name, eventual_fill_value
+    )
+
+    call_args, call_kwargs = resampler_mock.compute.call_args
+    actual_source = call_args[0]
+    actual_fill_value = call_kwargs['fill_value']
+    actual_rps = call_kwargs['rows_per_scan']
+
+    np.testing.assert_array_equal(expected_source, actual_source)
+    assert actual_fill_value == eventual_fill_value
+    assert actual_rps == expected_rps
+    assert call_kwargs['maximum_weight_mode'] is True
+
+
+def test_resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile):
+    """Test resampler.compute with float input and no explicit fill value."""
+    var_info = var_info_fxn(test_MERRA2_ncfile)
+    source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
+    resampler_mock = MagicMock()
+    resampler_mock._get_default_fill.return_value = -999.0
+    var_name = '/T'
+
+    expected_source = source_plane.astype(np.float64)
+    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+
+    _resample_layer(source_plane, resampler_mock, var_info, var_name, None)
+
+    call_args, call_kwargs = resampler_mock.compute.call_args
+    actual_source = call_args[0]
+    actual_fill_value = call_kwargs['fill_value']
+    actual_rps = call_kwargs['rows_per_scan']
+
+    np.testing.assert_array_equal(expected_source, actual_source)
+    assert actual_fill_value == -999.0
+    assert actual_rps == expected_rps
+    assert 'maximum_weight_mode' not in call_kwargs
+
+    assert resampler_mock._get_default_fill.call_count == 1
+
+
 def test_prepare_data_plane_floating_without_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
-    test_data = np.ma.array(
-        np.arange(12).reshape(4, 3), fill_value=-9999.9, dtype=np.float32
-    )
+    test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
     var_name = '/T'
-    expected_data = np.ma.copy(test_data)
+    expected_data = np.copy(test_data)
     actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
@@ -699,7 +776,7 @@ def test_resampler_kwargs_all_rows_needed():
 
 
 def test_resampler_kwargs_integer_data():
-    data = np.ma.array([1, 2, 3], dtype='int16')
+    data = np.array([1, 2, 3], dtype='int16')
     expected_args = {
         'rows_per_scan': 3,
         'maximum_weight_mode': True,
