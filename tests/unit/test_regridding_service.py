@@ -407,7 +407,7 @@ def test_resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_nc
     var_info = var_info_fxn(test_MERRA2_ncfile)
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
     resampler_mock = MagicMock()
-    var_name = '/T'
+    var_name = '/SLP'
     eventual_fill_value = np.float64(-9999.0)
 
     expected_source = source_plane.astype(np.float64)
@@ -433,7 +433,7 @@ def test_resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncfi
     var_info = var_info_fxn(test_MERRA2_ncfile)
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.int32)
     resampler_mock = MagicMock()
-    var_name = '/T'
+    var_name = '/PS'
     eventual_fill_value = np.int32(9999.0)
 
     expected_source = source_plane.astype(np.float64)
@@ -460,7 +460,7 @@ def test_resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile):
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
     resampler_mock = MagicMock()
     resampler_mock._get_default_fill.return_value = -999.0
-    var_name = '/T'
+    var_name = '/QI'
 
     expected_source = source_plane.astype(np.float64)
     expected_rps = _get_rows_per_scan(source_plane.shape[0])
