@@ -184,29 +184,41 @@ def _resample_n_dimensional_variables(
         resampler = resampler_cache[_horizontal_dims_for_variable(var_info, var_name)]
 
         (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
+
         eventual_fill_value = getattr(t_var, '_FillValue', None)
         logger.debug(f'eventual_fill {eventual_fill_value}')
 
         t_var[:] = _resample_variable_data(
             s_var[:], t_var[:], resampler, var_info, var_name, eventual_fill_value
         )
+        logger.debug(f'Processed: {var_name}')
 
     return processed
 
 
 def _resample_layer(
-    source_plane: np.ma.array,
+    source_plane: np.array,
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
     eventual_fill_value: np.number | None,
-) -> np.ma.array:
+) -> np.array:
     """Prepare the input layer, resample and return the results."""
-    # pyresample only uses float64 so be explicit when we prepare the data.
+    # pyresample only uses float64 so cast all data to it before resampling and
+    # then back to your original data size.
+    cast_type = np.float64
+
+    if eventual_fill_value is not None:
+        resample_fill = eventual_fill_value.astype(cast_type)
+    else:
+        ## Use pyresample's default fill value, but still convert to float64.
+        resample_fill = resampler._get_default_fill(source_plane)  # pylint: disable=W0212
+        resample_fill = np.array([resample_fill]).astype(cast_type)[0]
+
+    # Cast input to float64 and transpose if necessary.
     prepped_source = _prepare_data_plane(
-        source_plane, var_info, var_name, cast_to=np.float64
+        source_plane, var_info, var_name, cast_to=cast_type
     )
-    resample_fill = eventual_fill_value.astype(prepped_source.dtype)
 
     target_data = resampler.compute(
         prepped_source,
@@ -229,22 +241,18 @@ def _prepare_data_plane(
     data: np.Array,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
-    cast_to: np.dtype,
+    cast_to: np.dtype | None,
 ) -> np.Array:
     """Perform Type casting and transpose 2d data array when necessary.
 
-    If an input data plane is an int, recast to the smallest floating point
-    data type that will contain the data.
-
-    Also perform a transposition if the data dimension
-    organization requires.
-
+    Also perform a transposition if the data dimension organization requires.
     """
-    logger.debug(f'casting {var_name} to {cast_to}')
-    data = data.astype(cast_to)
+    if cast_to is not None:
+        data = data.astype(cast_to)
 
     if _needs_rotation(var_info, var_name):
         data = np.ma.copy(data.T, order='C')
+
     return data
 
 
@@ -252,7 +260,6 @@ def _resampler_kwargs(data: np.nd.array, original_dtype: np.dtype) -> dict:
     """Return kwargs to be used in resampling compute call.
 
     If an input data plane is like int, set maximum_weight_mode to true.
-
     """
     kwargs = {}
 
@@ -764,7 +771,7 @@ def _cache_resamplers(
         # create swath definitions from each unique 2D grid dimensions found in
         # the input file.
         if len(dimensions) == 2:
-            logger.info(f'computing weights for dimensions {dimensions}')
+            logger.debug(f'computing weights for dimensions {dimensions}')
             source_swath = _compute_source_swath(
                 dimensions, filepath, var_info, variable_set
             )
