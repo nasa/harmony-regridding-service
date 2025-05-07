@@ -247,7 +247,7 @@ def _prepare_data_plane(
 
     Also perform a transposition if the data dimension organization requires.
     """
-    if cast_to is not None:
+    if cast_to is not None and data.dtype != cast_to:
         data = data.astype(cast_to)
 
     if _needs_rotation(var_info, var_name):
