@@ -546,15 +546,15 @@ def _crs_variable_name(
 
 
 def _clone_variables(
-    source_ds: Dataset, target_ds: Dataset, dimensions: set[str]
+    source_ds: Dataset, target_ds: Dataset, variables: set[str]
 ) -> set[str]:
     """Clone variables from source to target.
 
     Copy variables and their attributes directly from the source Dataset to the
     target Dataset.
     """
-    for dimension_name in dimensions:
-        (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, dimension_name)
+    for variable_name in variables:
+        (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, variable_name)
         try:
             t_var[:] = s_var[:]
         except IndexError as vlen_error:
@@ -565,7 +565,7 @@ def _clone_variables(
                 logger.error('Unable to clone variable {s_var}')
                 raise SourceDataError('Unhandled variable clone') from vlen_error
 
-    return dimensions
+    return variables
 
 
 def _copy_var_with_attrs(
