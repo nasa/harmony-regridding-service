@@ -236,11 +236,11 @@ def _integer_like(test_type: np.dtype) -> bool:
 
 
 def _prepare_data_plane(
-    data: np.Array,
+    data: np.array,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
     cast_to: np.dtype | None,
-) -> np.Array:
+) -> np.array:
     """Perform Type casting and transpose 2d data array when necessary.
 
     Also perform a transposition if the data dimension organization requires.
@@ -254,7 +254,7 @@ def _prepare_data_plane(
     return data
 
 
-def _resampler_kwargs(data: np.nd.array, original_dtype: np.dtype) -> dict:
+def _resampler_kwargs(data: np.ndarray, original_dtype: np.dtype) -> dict:
     """Return kwargs to be used in resampling compute call.
 
     If an input data plane is like int, set maximum_weight_mode to true.
@@ -919,27 +919,24 @@ def _dims_are_projected_x_y(
     dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
 ) -> bool:
     """Does the dimension pair represent projected x/y values."""
-    for dim_name in dimensions:
-        dim_var = var_info.get_variable(dim_name)
-        if not dim_var.is_projection_x_or_y():
-            return False
-    return True
+    return all(
+        var_info.get_variable(dim_name).is_projection_x_or_y()
+        for dim_name in dimensions
+    )
 
 
 def _dims_are_lon_lat(
     dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
 ) -> bool:
     """Does the dimension pair represent longitudes/latitudes."""
-    for dim_name in dimensions:
-        dim_var = var_info.get_variable(dim_name)
-        if not dim_var.is_geographic():
-            return False
-    return True
+    return all(
+        var_info.get_variable(dim_name).is_geographic() for dim_name in dimensions
+    )
 
 
 def _compute_area_extent_from_regular_x_y_coords(
     xvalues: np.ndarray, yvalues: np.ndarray
-) -> tuple(np.float64, np.float64, np.float64, np.float64):
+) -> tuple[np.float64, np.float64, np.float64, np.float64]:
     """Return outer extent of regularly defined grid.
 
     given xvalues and yvalues represent the center values of a regularly spaced array,
@@ -960,7 +957,7 @@ def _compute_area_extent_from_regular_x_y_coords(
     )
 
 
-def _compute_array_bounds(values: np.ndarray) -> tuple(np.float64, np.float64):
+def _compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
     """Returns external edges of array bounds.
 
     If values holds an array of regulary spaced cell centers, return the outer
