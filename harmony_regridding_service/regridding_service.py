@@ -1,7 +1,5 @@
 """Regridding service code."""
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from logging import Logger, getLogger
 from pathlib import Path, PurePath
