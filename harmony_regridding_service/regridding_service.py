@@ -976,8 +976,8 @@ def _compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
         raise SourceDataError('coordinates must have at least 2 values')
 
     diffs = np.diff(values)
-    # SPL4CMDL (v7,v8) have +/1 1.5m variance in their cell
-    # centers. relax spacing to allow for up to 3 meters difference in adjacent cells.
+    # SPL4CMDL (v7,v8) have +/- 1.5m variance in their cell centers. relax
+    # spacing to allow for up to 3 meters difference in adjacent cells.
     if not np.allclose(diffs, diffs[0], atol=3):
         raise SourceDataError('coordinates are not regularly spaced')
 
