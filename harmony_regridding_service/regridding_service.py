@@ -303,38 +303,6 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
     return needs_rotation
 
 
-def _validate_remaining_variables(resampled_variables: dict) -> None:
-    """Ensure every remaining variable can be processed.
-
-    We should not have any 0D or 1D variables left and we do not handle greater
-    than 4D variables in the service.
-    """
-    valid_dimensions = {2, 3, 4}
-    variable_dimensions = set(resampled_variables.keys())
-    extra_dimensions = variable_dimensions.difference(valid_dimensions)
-    if len(extra_dimensions) != 0:
-        raise RegridderException(
-            f'Variables with dimensions {extra_dimensions} cannot be handled.'
-        )
-
-
-def _group_by_ndim(var_info: VarInfoFromNetCDF4, variables: set) -> dict:
-    """Sort a list of variables by their number of dimensions.
-
-    Return a dictionary of {num_dimensions : set(variable names)}
-    """
-    grouped_vars = {}
-    for v in variables:
-        var = var_info.get_variable(v)
-        n_dim = len(var.dimensions)
-        try:
-            grouped_vars[n_dim].update({v})
-        except KeyError:
-            grouped_vars[n_dim] = {v}
-
-    return grouped_vars
-
-
 def _copy_resampled_bounds_variable(
     source_ds: Dataset,
     target_ds: Dataset,

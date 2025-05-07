@@ -19,7 +19,6 @@ from varinfo import VarInfoFromNetCDF4
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
-    RegridderException,
     SourceDataError,
 )
 from harmony_regridding_service.regridding_service import (
@@ -53,7 +52,6 @@ from harmony_regridding_service.regridding_service import (
     _get_vertical_dims,
     _grid_height,
     _grid_width,
-    _group_by_ndim,
     _horizontal_dims_for_variable,
     _integer_like,
     _is_horizontal_dim,
@@ -68,7 +66,6 @@ from harmony_regridding_service.regridding_service import (
     _transfer_dimensions,
     _transfer_metadata,
     _unresampled_variables,
-    _validate_remaining_variables,
     _walk_groups,
     _write_grid_mappings,
     regrid,
@@ -264,24 +261,6 @@ def test_area_fxn():
 
 
 ### TESTS
-def test_group_by_ndim_one_variable(test_1D_dimensions_ncfile, var_info_fxn):
-    """Test _group_by_ndim for 1D file."""
-    var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    variables = {'/data'}
-    expected_sorted = {2: {'/data'}}
-    actual_sorted = _group_by_ndim(var_info, variables)
-    assert expected_sorted == actual_sorted
-
-
-def test_group_by_ndim_merra2(test_MERRA2_ncfile, var_info_fxn):
-    """Test _group_by_ndim with MERRA2 data."""
-    var_info_merra2 = var_info_fxn(test_MERRA2_ncfile)
-    variables = {'/OMEGA', '/RH', '/PHIS', '/PS', '/lat'}
-    expected_sorted = {4: {'/OMEGA', '/RH'}, 3: {'/PHIS', '/PS'}, 1: {'/lat'}}
-    actual_sorted = _group_by_ndim(var_info_merra2, variables)
-    assert expected_sorted == actual_sorted
-
-
 def test_walk_groups(test_file):
     """Demonstrate traversing all groups."""
     target_path = test_file
@@ -1035,29 +1014,6 @@ def test_needs_rotation_no_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
     assert _needs_rotation(var_info, '/PHIS') is False
     assert _needs_rotation(var_info, '/OMEGA') is False
-
-
-def test_validate_remaining_variables_success():
-    test_vars = {
-        2: {'some', '2d', 'vars'},
-        3: {'more', 'cubes'},
-        4: {'hypercube', 'data'},
-    }
-    assert _validate_remaining_variables(test_vars) is None
-
-
-def test_validate_remaining_variables_failure():
-    test_vars = {
-        1: {'1d', 'should', 'have been', 'processed'},
-        2: {'some', '2d', 'vars'},
-        3: {'more', 'cubes'},
-        4: {'hypercube', 'data'},
-    }
-
-    with pytest.raises(
-        RegridderException, match='Variables with dimensions.*cannot be handled.'
-    ):
-        _validate_remaining_variables(test_vars)
 
 
 @pytest.mark.parametrize(
