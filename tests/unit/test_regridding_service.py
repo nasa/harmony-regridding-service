@@ -1373,6 +1373,16 @@ def test__crs_from_source_data_missing(smap_projected_netcdf_file):
         _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
+def test__crs_from_source_data_bad(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    dt['EASE2_global_projection'].attrs['grid_mapping_name'] = 'nonsense projection'
+    dt['/Forecast_Data/sm_profile_forecast'].attrs['grid_mapping']
+    with pytest.raises(
+        InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
+    ):
+        _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
 @pytest.mark.parametrize(
     'file_fixture_name, dimensions, expected_result',
     [
