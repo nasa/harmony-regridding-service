@@ -840,7 +840,7 @@ def _get_target_grid_parameters(
     exist, they are created.
 
     """
-    if has_scale_extents(message) and has_scale_sizes(message) is None:
+    if has_scale_extents(message) and has_scale_sizes(message):
         return _get_grid_parameters_from_message(message)
     else:
         return _create_grid_parameters(message, filepath, var_info)
