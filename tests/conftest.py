@@ -68,7 +68,6 @@ def create_projected_datatree():
             'axis': 'X',
             'units': 'm',
         },
-        name='x',
     )
 
     y_coords = DataArray(
@@ -89,7 +88,6 @@ def create_projected_datatree():
             'axis': 'Y',
             'units': 'm',
         },
-        name='y',
     )
 
     sm_profile_values = np.array(
@@ -193,9 +191,7 @@ def create_projected_datatree():
         Dataset(
             coords={'y': y_coords, 'x': x_coords},
             data_vars={
-                'EASE2_global_projection': DataArray(
-                    '', name='EASE2_global_projection', attrs=ease2_attributes
-                )
+                'EASE2_global_projection': DataArray('', attrs=ease2_attributes)
             },
         )
     )
