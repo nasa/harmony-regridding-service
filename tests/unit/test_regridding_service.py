@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
 import numpy as np
@@ -23,6 +23,7 @@ from harmony_regridding_service.exceptions import (
 )
 from harmony_regridding_service.regridding_service import (
     HRS_VARINFO_CONFIG_FILENAME,
+    _add_grid_mapping_metadata,
     _all_dimension_variables,
     _all_dimensions,
     _clone_variables,
@@ -1396,6 +1397,50 @@ def test__crs_from_source_data_bad(smap_projected_netcdf_file):
         InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
     ):
         _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
+@patch('harmony_regridding_service.regridding_service._get_variable')
+@patch('harmony_regridding_service.regridding_service._horizontal_dims_for_variable')
+def test_add_grid_mapping_metadata_sets_attributes(
+    mock_horizontal_dims_for_variable,
+    mock_get_variable,
+):
+    # Setup
+    variables = {'var1', 'var2'}
+
+    mock_varinfo = MagicMock()
+
+    mock_dataset = MagicMock()
+    mock_var1 = MagicMock()
+    mock_var2 = MagicMock()
+    mock_dataset['var1'] = mock_var1
+    mock_dataset['var2'] = mock_var2
+
+    def dims_side_effect(var_info, var_name):
+        if var_name == 'var1':
+            return ('/y', '/x')
+        return ('/y2', '/x2')
+
+    mock_horizontal_dims_for_variable.side_effect = dims_side_effect
+
+    crs_map = {('/y', '/x'): 'crs_var1', ('/y2', '/x2'): 'crs_var2'}
+
+    def _get_variable_side_effect(datset, var_name):
+        return mock_var1 if var_name == 'var1' else mock_var2
+
+    mock_get_variable.side_effect = _get_variable_side_effect
+
+    _add_grid_mapping_metadata(mock_dataset, variables, mock_varinfo, crs_map)
+
+    mock_horizontal_dims_for_variable.assert_has_calls(
+        [call(mock_varinfo, 'var1'), call(mock_varinfo, 'var2')], any_order=True
+    )
+
+    mock_get_variable.assert_has_calls(
+        [call(mock_dataset, 'var1'), call(mock_dataset, 'var2')], any_order=True
+    )
+    mock_var1.setncattr.assert_called_once_with('grid_mapping', 'crs_var1')
+    mock_var2.setncattr.assert_called_once_with('grid_mapping', 'crs_var2')
 
 
 @pytest.mark.parametrize(
