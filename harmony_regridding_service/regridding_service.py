@@ -12,6 +12,7 @@ from harmony_service_lib.message import Source as HarmonySource
 from harmony_service_lib.message_utility import (
     has_dimensions,
     has_scale_extents,
+    has_scale_sizes,
     has_self_consistent_grid,
 )
 from harmony_service_lib.util import generate_output_filename
@@ -839,7 +840,7 @@ def _get_target_grid_parameters(
     exist, they are created.
 
     """
-    if has_scale_extents(message) and has_scale_extents(message) is None:
+    if has_scale_extents(message) and has_scale_sizes(message) is None:
         return _get_grid_parameters_from_message(message)
     else:
         return _create_grid_parameters(message, filepath, var_info)
