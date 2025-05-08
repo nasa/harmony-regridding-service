@@ -9,7 +9,11 @@ import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import ScaleExtent, ScaleSize
 from harmony_service_lib.message import Source as HarmonySource
-from harmony_service_lib.message_utility import has_dimensions, has_self_consistent_grid
+from harmony_service_lib.message_utility import (
+    has_dimensions,
+    has_scale_extents,
+    has_self_consistent_grid,
+)
 from harmony_service_lib.util import generate_output_filename
 from netCDF4 import (
     Dataset,
@@ -800,7 +804,7 @@ def _compute_target_area(
     # ScaleExtent is required and validated.
     logger.info('compute target_area')
 
-    # Get the target grid parameters from either the Harmony Message or the
+    # Get the target grid parameters from either the Harmony Message or
     # from input file if the grid parameters are not specified.
     projection = message.format.crs or 'EPSG:4326'
     area_extent, height, width = _get_target_grid_parameters(
@@ -832,13 +836,13 @@ def _get_target_grid_parameters(
 
     If all the required parameters exist in the Harmony message,
     they are simply extracted from the message. If all the parameters do not
-    exist they are created.
+    exist, they are created.
 
     """
-    if message.format.scaleExtent is None and message.format.scaleSize is None:
-        return _create_grid_parameters(message, filepath, var_info)
-    else:
+    if has_scale_extents(message) and has_scale_extents(message) is None:
         return _get_grid_parameters_from_message(message)
+    else:
+        return _create_grid_parameters(message, filepath, var_info)
 
 
 def _create_grid_parameters(
