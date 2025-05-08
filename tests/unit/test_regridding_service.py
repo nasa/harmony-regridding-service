@@ -26,6 +26,7 @@ from harmony_regridding_service.regridding_service import (
     _all_dimension_variables,
     _all_dimensions,
     _clone_variables,
+    _compute_area_extent_from_regular_x_y_coords,
     _compute_array_bounds,
     _compute_horizontal_source_grids,
     _compute_num_elements,
@@ -1339,6 +1340,20 @@ def test__get_rows_per_scan(input_value, expected, description):
 def test__compute_array_bounds(input_values, expected):
     """Test expected cases."""
     actual = _compute_array_bounds(input_values)
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    'x_values, y_values, expected',
+    [
+        ([1, 2, 3], [-1, -2, -3], (0.5, -3.5, 3.5, -0.5)),
+        ([-1, -2, -3], [-1, 0, 1, 2, 3], (-3.5, -1.5, -0.5, 3.5)),
+        ([1, 2, 3, 4], [3, 2, 1, 0, -1], (0.5, -1.5, 4.5, 3.5)),
+        ([9, 10], [2, 1, 0, -1, -2, -3], (8.5, -3.5, 10.5, 2.5)),
+    ],
+)
+def test_compute_area_extent_from_regular_x_y_coords(x_values, y_values, expected):
+    actual = _compute_area_extent_from_regular_x_y_coords(x_values, y_values)
     assert actual == expected
 
 
