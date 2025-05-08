@@ -389,14 +389,12 @@ def test__resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_n
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
     resampler_mock = MagicMock()
     var_name = '/SLP'
-    eventual_fill_value = np.float64(-9999.0)
+    fill_value = np.float64(-9999.0)
 
     expected_source = source_plane.astype(np.float64)
     expected_rps = _get_rows_per_scan(source_plane.shape[0])
 
-    _resample_layer(
-        source_plane, resampler_mock, var_info, var_name, eventual_fill_value
-    )
+    _resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
 
     call_args, call_kwargs = resampler_mock.compute.call_args
     actual_source = call_args[0]
@@ -404,7 +402,7 @@ def test__resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_n
     actual_rps = call_kwargs['rows_per_scan']
 
     np.testing.assert_array_equal(expected_source, actual_source)
-    assert actual_fill_value == eventual_fill_value
+    assert actual_fill_value == fill_value
     assert actual_rps == expected_rps
     assert 'maximum_weight_mode' not in call_kwargs  # Default for float
 
@@ -415,14 +413,12 @@ def test__resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncf
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.int32)
     resampler_mock = MagicMock()
     var_name = '/PS'
-    eventual_fill_value = np.int32(9999.0)
+    fill_value = np.int32(9999.0)
 
     expected_source = source_plane.astype(np.float64)
     expected_rps = _get_rows_per_scan(source_plane.shape[0])
 
-    _resample_layer(
-        source_plane, resampler_mock, var_info, var_name, eventual_fill_value
-    )
+    _resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
 
     call_args, call_kwargs = resampler_mock.compute.call_args
     actual_source = call_args[0]
@@ -430,7 +426,7 @@ def test__resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncf
     actual_rps = call_kwargs['rows_per_scan']
 
     np.testing.assert_array_equal(expected_source, actual_source)
-    assert actual_fill_value == eventual_fill_value
+    assert actual_fill_value == fill_value
     assert actual_rps == expected_rps
     assert call_kwargs['maximum_weight_mode'] is True
 

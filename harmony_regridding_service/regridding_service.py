@@ -142,7 +142,7 @@ def _resample_variable_data(
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
-    eventual_fill_value: np.number | None,
+    fill_value: np.number | None,
 ) -> None:
     """Recursively resample variable data in N-dimensions.
 
@@ -159,11 +159,11 @@ def _resample_variable_data(
                 resampler,
                 var_info,
                 var_name,
-                eventual_fill_value,
+                fill_value,
             )
         return t_var
 
-    return _resample_layer(s_var[:], resampler, var_info, var_name, eventual_fill_value)
+    return _resample_layer(s_var[:], resampler, var_info, var_name, fill_value)
 
 
 def _resample_n_dimensional_variables(
@@ -183,11 +183,13 @@ def _resample_n_dimensional_variables(
 
         (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
 
-        eventual_fill_value = getattr(t_var, '_FillValue', None)
-        logger.debug(f'eventual_fill {eventual_fill_value}')
+        # We have to get the fill value off of the variable here because we
+        # only pass the numpy.ndarray into _resample_variable_data and we need
+        # to know the fill value for the actual resampler.compute call.
+        fill_value = getattr(t_var, '_FillValue', None)
 
         t_var[:] = _resample_variable_data(
-            s_var[:], t_var[:], resampler, var_info, var_name, eventual_fill_value
+            s_var[:], t_var[:], resampler, var_info, var_name, fill_value
         )
         logger.debug(f'Processed: {var_name}')
 
@@ -199,15 +201,15 @@ def _resample_layer(
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
-    eventual_fill_value: np.number | None,
+    fill_value: np.number | None,
 ) -> np.array:
     """Prepare the input layer, resample and return the results."""
-    # pyresample only uses float64 so cast all data to it before resampling and
+    # pyresample only uses float64 so cast all data before resampling and
     # then back to your original data size.
     cast_type = np.float64
 
-    if eventual_fill_value is not None:
-        resample_fill = eventual_fill_value.astype(cast_type)
+    if fill_value is not None:
+        resample_fill = fill_value.astype(cast_type)
     else:
         ## Use pyresample's default fill value, but still convert to float64.
         resample_fill = resampler._get_default_fill(source_plane)  # pylint: disable=W0212
