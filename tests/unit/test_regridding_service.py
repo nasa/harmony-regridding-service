@@ -115,7 +115,6 @@ def latitudes():
 def test_1D_dimensions_ncfile(tmp_path_factory, longitudes, latitudes):
     """Create and return a test file with 1D /lon and /lat root vars."""
     # overide xarray's import
-    from netCDF4 import Dataset
 
     tmp_dir = tmp_path_factory.mktemp('1d_test')
     test_file = Path(tmp_dir, '1D_test.nc')
@@ -163,8 +162,6 @@ def test_1D_dimensions_ncfile(tmp_path_factory, longitudes, latitudes):
 @pytest.fixture(scope='session')
 def test_2D_dimensions_ncfile(tmp_path_factory, longitudes, latitudes):
     """Create and return a test file with 2D dimensions."""
-    from netCDF4 import Dataset
-
     tmp_dir = tmp_path_factory.mktemp('2d_test')
     test_file = Path(tmp_dir, '2D_test.nc')
 
