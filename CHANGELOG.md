@@ -85,6 +85,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.1.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.1.0
 [v1.0.6]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.6
 [v1.0.5]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.5
 [v1.0.4]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.4
