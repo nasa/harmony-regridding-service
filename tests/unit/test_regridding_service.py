@@ -48,17 +48,17 @@ from harmony_regridding_service.regridding_service import (
     _dims_are_lon_lat,
     _dims_are_projected_x_y,
     _get_bounds_var,
+    _get_column_dims,
     _get_dimension,
-    _get_horizontal_dims,
+    _get_row_dims,
     _get_rows_per_scan,
     _get_variable,
-    _get_vertical_dims,
     _grid_height,
     _grid_width,
     _horizontal_dims_for_variable,
     _integer_like,
-    _is_horizontal_dim,
-    _is_vertical_dim,
+    _is_column_dim,
+    _is_row_dim,
     _needs_rotation,
     _prepare_data_plane,
     _resample_layer,
@@ -1138,84 +1138,78 @@ def test__compute_num_elements():
     assert expected_y_elements == actual_y_elements
 
 
-def test__is_horizontal_dim_test_valid_x(test_1D_dimensions_ncfile, var_info_fxn):
+def test__is_column_dim_test_valid_x(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert _is_horizontal_dim('/lon', var_info) is True
+    assert _is_column_dim('/lon', var_info) is True
 
 
-def test__is_horizontal_dim_test_invalid_x(test_1D_dimensions_ncfile, var_info_fxn):
+def test__is_column_dim_test_invalid_x(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert _is_horizontal_dim('/lat', var_info) is False
+    assert _is_column_dim('/lat', var_info) is False
 
 
-def test__is_vertical_dim_test_valid_y(test_1D_dimensions_ncfile, var_info_fxn):
+def test__is_row_dim_test_valid_y(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert _is_vertical_dim('/lat', var_info) is True
+    assert _is_row_dim('/lat', var_info) is True
 
 
-def test__is_vertical_dim_test_invalid_y(test_1D_dimensions_ncfile, var_info_fxn):
+def test__is_row_dim_test_invalid_y(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert _is_vertical_dim('/lon', var_info) is False
+    assert _is_row_dim('/lon', var_info) is False
 
 
-def test__get_horizontal_dims_x_dims(test_1D_dimensions_ncfile, var_info_fxn):
+def test__get_column_dims_x_dims(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/lat', '/lon')
     expected_dim = ['/lon']
 
-    actual = _get_horizontal_dims(dims, var_info)
+    actual = _get_column_dims(dims, var_info)
     assert expected_dim == actual
 
 
-def test__get_vertical_dims_y_dims(test_1D_dimensions_ncfile, var_info_fxn):
+def test__get_row_dims_y_dims(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/lat', '/lon')
     expected_dim = ['/lat']
 
-    actual = _get_vertical_dims(dims, var_info)
+    actual = _get_row_dims(dims, var_info)
     assert expected_dim == actual
 
 
-def test__get_vertical_dims_y_dims_no_variables(
-    test_1D_dimensions_ncfile, var_info_fxn
-):
+def test__get_row_dims_y_dims_no_variables(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/baddim1', '/baddim2')
 
     expected_dims = []
-    actual_dims = _get_vertical_dims(dims, var_info)
+    actual_dims = _get_row_dims(dims, var_info)
     assert expected_dims == actual_dims
 
 
-def test__get_horizontal_dims_x_dims_no_variables(
-    test_1D_dimensions_ncfile, var_info_fxn
-):
+def test__get_column_dims_x_dims_no_variables(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/baddim1', '/baddim2')
     expected_dims = []
-    actual_dims = _get_horizontal_dims(dims, var_info)
+    actual_dims = _get_column_dims(dims, var_info)
     assert expected_dims == actual_dims
 
 
-def test__get_horizontal_dims_x_dims_with_bad_variable(
+def test__get_column_dims_x_dims_with_bad_variable(
     test_1D_dimensions_ncfile, var_info_fxn
 ):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/baddim1', '/lon')
     expected_dim = ['/lon']
 
-    actual_dim = _get_horizontal_dims(dims, var_info)
+    actual_dim = _get_column_dims(dims, var_info)
     assert expected_dim == actual_dim
 
 
-def test___get_vertical_dims_y_dims_multiple_values(
-    test_1D_dimensions_ncfile, var_info_fxn
-):
+def test___get_row_dims_y_dims_multiple_values(test_1D_dimensions_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dims = ('/lat', '/lon', '/lat', '/ba')
     expected_dim = ['/lat', '/lat']
 
-    actual = _get_vertical_dims(dims, var_info)
+    actual = _get_row_dims(dims, var_info)
     assert expected_dim == actual
 
 
