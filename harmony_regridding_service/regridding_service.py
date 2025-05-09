@@ -909,8 +909,9 @@ def _compute_area_extent_from_regular_x_y_coords(
 ) -> tuple[np.float64, np.float64, np.float64, np.float64]:
     """Return outer extent of regularly defined grid.
 
-    given xvalues and yvalues represent the center values of a regularly spaced array,
-    compute the cell height and width, return the total extent of the grid area.
+    Given xvalues and yvalues represent the center values of a regularly spaced
+    array, compute the cell height and width, return the outer bounds extent of
+    the grid area.
 
     Returns:
       tuple: area_extent defintion
