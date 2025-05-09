@@ -21,7 +21,7 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
   + Python lib dependencies are updated.
   + Refactors applied.
   + `test_regridding_service.py` converted to pytest.
-  + Adds python fixture for "SPL4SMAU like" test file.
+  + Adds python fixture for SPL4SMAU-like test file.
 
 
 ## [v1.0.6] - 2025-03-24
