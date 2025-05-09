@@ -57,3 +57,10 @@ class InvalidSourceDimensions(RegridderException):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class InvalidRequestGridParameters(RegridderException):
+    """Raised when a request's grid parameters are inconsistent."""
+
+    def __init__(self, message: str):
+        super().__init__(message)
