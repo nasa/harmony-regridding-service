@@ -5,5 +5,5 @@ harmony-service-lib~=2.6.0
 netCDF4~=1.7.2
 numpy~=2.2.4
 pyproj~=3.7.1
-pyresample~=1.33.0
+pyresample~=1.34.0
 xarray~=2025.3.1
