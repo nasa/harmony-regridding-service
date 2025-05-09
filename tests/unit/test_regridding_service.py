@@ -13,7 +13,7 @@ from harmony_service_lib.message import Source as HarmonySource
 from netCDF4 import Dataset, Dimension
 from numpy.testing import assert_array_equal
 from pyproj import CRS
-from pyresample.geometry import AreaDefinition
+from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import (
@@ -32,6 +32,7 @@ from harmony_regridding_service.regridding_service import (
     _compute_horizontal_source_grids,
     _compute_num_elements,
     _compute_projected_horizontal_source_grids,
+    _compute_source_swath,
     _compute_target_area,
     _copy_1d_dimension_variables,
     _copy_dimension,
@@ -1390,6 +1391,113 @@ def test__crs_from_source_data_bad(smap_projected_netcdf_file):
         InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
     ):
         _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
+@patch(
+    'harmony_regridding_service.regridding_service._compute_projected_horizontal_source_grids'
+)
+@patch('harmony_regridding_service.regridding_service._compute_horizontal_source_grids')
+@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
+@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+def test__compute_source_swath_lon_lat(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test _compute_source_swath with longitude/latitude dimensions."""
+    mock_dims_are_lon_lat.return_value = True
+    mock_dims_are_projected_x_y.return_value = False
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+
+    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/longitude', '/latitude')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+    variable_set = {'variable'}
+
+    swath_def = _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info
+    )
+
+    mock_dims_are_projected_x_y.assert_not_called()
+    mock_compute_projected_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch(
+    'harmony_regridding_service.regridding_service._compute_projected_horizontal_source_grids'
+)
+@patch('harmony_regridding_service.regridding_service._compute_horizontal_source_grids')
+@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
+@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+def test__compute_source_swath_projected_xy(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test _compute_source_swath with projected x/y dimensions."""
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = True
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/y', '/x')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+    variable_set = {'variable'}
+
+    swath_def = _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_projected_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info, variable_set
+    )
+
+    mock_compute_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
+@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+def test__compute_source_swath_invalid_dimensions(
+    mock_dims_are_lon_lat, mock_dims_are_projected_x_y
+):
+    """Test _compute_source_swath with invalid dimensions."""
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = False
+
+    grid_dimensions = ('time', 'depth')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+    variable_set = {'variable'}
+
+    with pytest.raises(
+        SourceDataError, match='Cannot determine correct dimension type from source'
+    ):
+        _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
 @patch('harmony_regridding_service.regridding_service._get_variable')
