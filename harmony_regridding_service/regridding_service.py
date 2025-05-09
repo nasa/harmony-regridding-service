@@ -1004,7 +1004,6 @@ def _compute_projected_horizontal_source_grids(
     Given the input grid_dimensions pair, find the projected coordinate dimensions
     in the source data and use those to generate 2D longitude and latitude arrays.
 
-
     """
     xdim_name = _get_horizontal_dims(grid_dimensions, var_info)[0]
     ydim_name = _get_vertical_dims(grid_dimensions, var_info)[0]
