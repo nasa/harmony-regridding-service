@@ -704,21 +704,19 @@ def _resampled_dimension_pairs(var_info: VarInfoFromNetCDF4) -> list[tuple[str, 
 
     Gives a list of the 2-element horizontal dimensions that are used in
     regridding this granule file.
-
     """
-    dimension_pairs = []
-    for dims in var_info.group_variables_by_horizontal_dimensions():
-        if len(dims) == 2:
-            dimension_pairs.append(dims)
-    return dimension_pairs
+    return [
+        dims
+        for dims in var_info.group_variables_by_horizontal_dimensions()
+        if len(dims) == 2
+    ]
 
 
 def _resampled_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a set of all resampled dimension names."""
-    dimensions = set()
-    for dim_pair in _resampled_dimension_pairs(var_info):
-        dimensions.update(list(dim_pair))
-    return dimensions
+    return {
+        dim for dim_pair in _resampled_dimension_pairs(var_info) for dim in dim_pair
+    }
 
 
 def _cache_resamplers(
