@@ -1,6 +1,6 @@
 {
   "Identification": "harmony_regridding_service_varinfo_config",
-  "Version": 3,
+  "Version": 4,
   "CollectionShortNamePath": [
     "/HDF5_GLOBAL/short_name",
     "/NC_GLOBAL/short_name",
@@ -14,7 +14,8 @@
     "ShortName"
   ],
   "Mission": {
-    "ATL\\d{2}": "ICESat2"
+    "ATL\\d{2}": "ICESat2",
+    "SPL4.+": "SMAP"
   },
  "ExcludedScienceVariables": [
     {
@@ -54,6 +55,62 @@
           "Value": "projection_y_coordinate"
         }
       ]
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMAU",
+	      "VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4CMDL",
+	      "VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMGP",
+	      "VariablePattern": "^/Geophysical_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL4SMLM",
+	      "VariablePattern": "^/Land-Model-Constants_Data/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
     }
   ]
 }

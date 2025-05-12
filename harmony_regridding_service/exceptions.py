@@ -15,6 +15,20 @@ class RegridderException(HarmonyException):
         super().__init__(message, 'harmony-regridding-service')
 
 
+class SourceDataError(RegridderException):
+    """Incorrect or missing information in the source data."""
+
+    def __init__(self, message: str):
+        super().__init__(f'Source Data Error: "{message}"')
+
+
+class InvalidSourceCRS(RegridderException):
+    """An Unsupported or incomplete Source Coordinate Reference System."""
+
+    def __init__(self, message: str):
+        super().__init__(f'Source CRS not supported: "{message}"')
+
+
 class InvalidTargetCRS(RegridderException):
     """An unsupported target Coordinate Reference System."""
 
