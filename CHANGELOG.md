@@ -7,15 +7,16 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [v1.1.0] - 2025-05-05
 
-## Added
-
+### Added
 - Adds Command line entrypoint for testing the service without Docker.
 - Adds support and configuraton for input files that have projected
   coordinates. These include the SMAP L4 Collections SPL4CMDL, SPL4SMAU,
   SPL4SMGP and SPL4SMLM.
 
-## Changed
+### Fixed
+- Fixes handling of certain fill values.
 
+### Changed
 - Internal changes.
   + Python service lib updated to 3.12.
   + Python lib dependencies are updated.
@@ -26,22 +27,20 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [v1.0.6] - 2025-03-24
 
-## Changed
-
+### Changed
 - This version should show no user facing changes. Python libraries are updated
   and inconsequential internal refactorings have been made.
 
 
 ## [v1.0.5] - 2025-03-20
 
-## Changed
-
+### Changed
 - This version should show no user facing changes. The pre-commit and
   linting is updated to a more modern mechanism.
 
 ## [v1.0.4] - 2024-09-30
 
-## Changed
+### Changed
 This version of the Harmony Regridding Service updates most dependency versions,
 most notably updating to `harmony-service-lib-py==2.0.0`. This is a breaking
 change in the package, requiring the renaming of imports in the Harmony
@@ -49,7 +48,7 @@ Regridding Service.
 
 ## [v1.0.3] - 2024-09-26
 
-## Changed
+### Changed
 This version of the Harmony Regridding Service updates the version of the
 `harmony-service-lib` used to 1.1.0. There are no functional updates in this
 version of the Harmony Regridding Service.
