@@ -1,4 +1,4 @@
-"""Tests for regridding_utility.py module."""
+"""Tests for regridding_utilities.py module."""
 
 from unittest.mock import MagicMock, patch
 
@@ -6,7 +6,7 @@ import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 
-from harmony_regridding_service.regridding_utility import (
+from harmony_regridding_service.regridding_utilities import (
     get_harmony_message_from_params,
     regrid_cli_entry,
 )
@@ -34,7 +34,7 @@ def message_params():
     return params
 
 
-@patch('harmony_regridding_service.regridding_utility.regrid')
+@patch('harmony_regridding_service.regridding_utilities.regrid')
 def test_regrid_cli_entry(mock_regrid, message_params):
     """Test the regrid_cli_entry function."""
     source_filename = 'source_filename.nc'
