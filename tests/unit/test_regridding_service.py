@@ -16,17 +16,28 @@ from pyproj import CRS
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
+from harmony_regridding_service.dimensions import (
+    _all_dimension_variables,
+    _all_dimensions,
+    _copy_1d_dimension_variables,
+    _copy_dimension,
+    _copy_dimensions,
+    _create_dimension,
+    _dims_are_lon_lat,
+    _dims_are_projected_x_y,
+    _get_column_dims,
+    _get_dimension,
+    _get_row_dims,
+    _horizontal_dims_for_variable,
+    _is_column_dim,
+    _is_row_dim,
+)
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
     SourceDataError,
 )
-from harmony_regridding_service.regridding_service import (
-    HRS_VARINFO_CONFIG_FILENAME,
-    _add_grid_mapping_metadata,
-    _all_dimension_variables,
-    _all_dimensions,
-    _clone_variables,
+from harmony_regridding_service.grid import (
     _compute_area_extent_from_regular_x_y_coords,
     _compute_array_bounds,
     _compute_horizontal_source_grids,
@@ -34,44 +45,43 @@ from harmony_regridding_service.regridding_service import (
     _compute_projected_horizontal_source_grids,
     _compute_source_swath,
     _compute_target_area,
-    _copy_1d_dimension_variables,
-    _copy_dimension,
-    _copy_dimension_variables,
-    _copy_dimensions,
-    _copy_resampled_bounds_variable,
-    _copy_var_with_attrs,
-    _copy_var_without_metadata,
-    _create_dimension,
-    _create_resampled_dimensions,
     _crs_from_source_data,
-    _crs_variable_name,
-    _dims_are_lon_lat,
-    _dims_are_projected_x_y,
-    _get_bounds_var,
-    _get_column_dims,
-    _get_dimension,
-    _get_row_dims,
-    _get_rows_per_scan,
-    _get_variable,
     _grid_height,
     _grid_width,
-    _horizontal_dims_for_variable,
-    _integer_like,
-    _is_column_dim,
-    _is_row_dim,
-    _needs_rotation,
-    _prepare_data_plane,
+)
+from harmony_regridding_service.regridding_service import (
+    HRS_VARINFO_CONFIG_FILENAME,
+    _add_grid_mapping_metadata,
+    _copy_dimension_variables,
+    _crs_variable_name,
+    _transfer_metadata,
+    _walk_groups,
+    _write_grid_mappings,
+    regrid,
+)
+from harmony_regridding_service.resample import (
+    _copy_resampled_bounds_variable,
+    _create_resampled_dimensions,
     _resample_layer,
     _resampled_dimension_pairs,
     _resampled_dimension_variable_names,
     _resampled_dimensions,
     _resampler_kwargs,
     _transfer_dimensions,
-    _transfer_metadata,
     _unresampled_variables,
-    _walk_groups,
-    _write_grid_mappings,
-    regrid,
+)
+from harmony_regridding_service.resample_utilities import (
+    _get_rows_per_scan,
+    _integer_like,
+    _needs_rotation,
+    _prepare_data_plane,
+)
+from harmony_regridding_service.variable_utilities import (
+    _clone_variables,
+    _copy_var_with_attrs,
+    _copy_var_without_metadata,
+    _get_bounds_var,
+    _get_variable,
 )
 
 
@@ -1044,9 +1054,7 @@ def test__integer_like_string():
     assert _integer_like(str) is False
 
 
-@patch(
-    'harmony_regridding_service.regridding_service.AreaDefinition', wraps=AreaDefinition
-)
+@patch('harmony_regridding_service.grid.AreaDefinition', wraps=AreaDefinition)
 def test__compute_target_area(mock_area):
     """Ensure Area Definition correctly generated."""
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
@@ -1387,12 +1395,10 @@ def test__crs_from_source_data_bad(smap_projected_netcdf_file):
         _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
-@patch(
-    'harmony_regridding_service.regridding_service._compute_projected_horizontal_source_grids'
-)
-@patch('harmony_regridding_service.regridding_service._compute_horizontal_source_grids')
-@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
-@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+@patch('harmony_regridding_service.grid._compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.grid._compute_horizontal_source_grids')
+@patch('harmony_regridding_service.dimensions._dims_are_projected_x_y')
+@patch('harmony_regridding_service.dimensions._dims_are_lon_lat')
 def test__compute_source_swath_lon_lat(
     mock_dims_are_lon_lat,
     mock_dims_are_projected_x_y,
@@ -1429,12 +1435,10 @@ def test__compute_source_swath_lon_lat(
     np.testing.assert_array_equal(swath_def.lats, mock_lats)
 
 
-@patch(
-    'harmony_regridding_service.regridding_service._compute_projected_horizontal_source_grids'
-)
-@patch('harmony_regridding_service.regridding_service._compute_horizontal_source_grids')
-@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
-@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+@patch('harmony_regridding_service.grid._compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.grid._compute_horizontal_source_grids')
+@patch('harmony_regridding_service.dimensions._dims_are_projected_x_y')
+@patch('harmony_regridding_service.dimensions._dims_are_lon_lat')
 def test__compute_source_swath_projected_xy(
     mock_dims_are_lon_lat,
     mock_dims_are_projected_x_y,
@@ -1471,8 +1475,8 @@ def test__compute_source_swath_projected_xy(
     np.testing.assert_array_equal(swath_def.lats, mock_lats)
 
 
-@patch('harmony_regridding_service.regridding_service._dims_are_projected_x_y')
-@patch('harmony_regridding_service.regridding_service._dims_are_lon_lat')
+@patch('harmony_regridding_service.dimensions._dims_are_projected_x_y')
+@patch('harmony_regridding_service.dimensions._dims_are_lon_lat')
 def test__compute_source_swath_invalid_dimensions(
     mock_dims_are_lon_lat, mock_dims_are_projected_x_y
 ):
@@ -1494,8 +1498,8 @@ def test__compute_source_swath_invalid_dimensions(
     mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
-@patch('harmony_regridding_service.regridding_service._get_variable')
-@patch('harmony_regridding_service.regridding_service._horizontal_dims_for_variable')
+@patch('harmony_regridding_service.variable_utilities._get_variable')
+@patch('harmony_regridding_service.dimensions._horizontal_dims_for_variable')
 def test_add_grid_mapping_metadata_sets_attributes(
     mock_horizontal_dims_for_variable,
     mock_get_variable,
