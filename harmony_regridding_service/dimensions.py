@@ -14,6 +14,11 @@ from harmony_regridding_service.variable_utilities import (
 )
 
 
+def _all_dimension_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
+    """Return a set of every dimension variable name in the file."""
+    return var_info.get_required_dimensions(var_info.get_all_variables())
+
+
 def _horizontal_dims_for_variable(
     var_info: VarInfoFromNetCDF4, var_name: str
 ) -> tuple[str, str]:
