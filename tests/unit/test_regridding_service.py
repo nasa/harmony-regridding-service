@@ -16,6 +16,13 @@ from pyproj import CRS
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
+from harmony_regridding_service.crs import (
+    _add_grid_mapping_metadata,
+    _crs_from_source_data,
+    _crs_variable_name,
+    _is_geographic_crs,
+    _write_grid_mappings,
+)
 from harmony_regridding_service.dimensions import (
     _all_dimension_variables,
     _all_dimensions,
@@ -35,6 +42,7 @@ from harmony_regridding_service.dimensions import (
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
+    InvalidTargetCRS,
     SourceDataError,
 )
 from harmony_regridding_service.grid import (
@@ -45,43 +53,40 @@ from harmony_regridding_service.grid import (
     _compute_projected_horizontal_source_grids,
     _compute_source_swath,
     _compute_target_area,
-    _crs_from_source_data,
     _grid_height,
     _grid_width,
 )
+from harmony_regridding_service.message_utilities import (
+    has_valid_crs,
+)
 from harmony_regridding_service.regridding_service import (
     HRS_VARINFO_CONFIG_FILENAME,
-    _add_grid_mapping_metadata,
-    _copy_dimension_variables,
-    _crs_variable_name,
+    _copy_resampled_dimension_variables,
     _transfer_metadata,
-    _walk_groups,
-    _write_grid_mappings,
     regrid,
 )
 from harmony_regridding_service.resample import (
     _copy_resampled_bounds_variable,
     _create_resampled_dimensions,
+    _get_rows_per_scan,
+    _needs_rotation,
+    _prepare_data_plane,
     _resample_layer,
     _resampled_dimension_pairs,
     _resampled_dimension_variable_names,
     _resampled_dimensions,
     _resampler_kwargs,
-    _transfer_dimensions,
+    _transfer_resampled_dimensions,
     _unresampled_variables,
 )
-from harmony_regridding_service.resample_utilities import (
-    _get_rows_per_scan,
-    _integer_like,
-    _needs_rotation,
-    _prepare_data_plane,
-)
-from harmony_regridding_service.variable_utilities import (
+from harmony_regridding_service.utilities import (
     _clone_variables,
     _copy_var_with_attrs,
     _copy_var_without_metadata,
     _get_bounds_var,
     _get_variable,
+    _integer_like,
+    _walk_groups,
 )
 
 
@@ -303,7 +308,7 @@ def test__copy_1d_dimension_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
         vars_copied = _copy_1d_dimension_variables(
             source_ds, target_ds, dim_var_names, target_area, var_info
         )
@@ -327,7 +332,7 @@ def test__copy_vars_without_metadata(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
         _copy_var_without_metadata(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
@@ -349,7 +354,7 @@ def test__copy_var_with_attrs(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
         _copy_var_with_attrs(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
@@ -360,7 +365,7 @@ def test__copy_var_with_attrs(
         assert actual_metadata == expected_metadata
 
 
-def test__copy_dimension_variables(
+def test__copy_resampled_dimension_variables(
     test_file,
     test_area_fxn,
     test_MERRA2_ncfile,
@@ -377,9 +382,9 @@ def test__copy_dimension_variables(
         Dataset(test_MERRA2_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
 
-        vars_copied = _copy_dimension_variables(
+        vars_copied = _copy_resampled_dimension_variables(
             source_ds, target_ds, target_area, var_info
         )
 
@@ -541,7 +546,7 @@ def test__copy_resampled_bounds_variable(
         Dataset(test_IMERG_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, target_area, var_info)
+        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
 
         var_copied = _copy_resampled_bounds_variable(
             source_ds, target_ds, bnds_var, target_area, var_info
@@ -651,12 +656,14 @@ def test__transfer_metadata(test_file, test_1D_dimensions_ncfile):
         assert expected_nested_metadata == nested_metadata
 
 
-def test__transfer_dimensions(test_area_fxn, var_info_fxn, test_1D_dimensions_ncfile):
+def test__transfer_resampled_dimensions(
+    test_area_fxn, var_info_fxn, test_1D_dimensions_ncfile
+):
     """Tests transfer of all dimensions.
 
     test transfer of dimensions from source to target including resizing
     for the target's area definition.  The internal functions of
-    _transfer_dimensions are tested further down in this file.
+    _transfer_resampled_dimensions are tested further down in this file.
 
     """
     width = 36
@@ -668,7 +675,9 @@ def test__transfer_dimensions(test_area_fxn, var_info_fxn, test_1D_dimensions_nc
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_resampled_dimensions(
+            source_ds, target_ds, _generate_test_area, var_info
+        )
 
     with Dataset(target_file, mode='r') as validate:
         assert validate.dimensions['bnds'].size == 2
@@ -693,7 +702,9 @@ def test__clone_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_resampled_dimensions(
+            source_ds, target_ds, _generate_test_area, var_info
+        )
 
         copied = _clone_variables(source_ds, target_ds, copy_vars)
 
@@ -788,7 +799,9 @@ def test__write_grid_mappings(
         Dataset(target_file, mode='w') as target_ds,
     ):
         _transfer_metadata(source_ds, target_ds)
-        _transfer_dimensions(source_ds, target_ds, _generate_test_area, var_info)
+        _transfer_resampled_dimensions(
+            source_ds, target_ds, _generate_test_area, var_info
+        )
 
         actual_crs_map = _write_grid_mappings(
             target_ds, _resampled_dimension_pairs(var_info), _generate_test_area
@@ -1498,8 +1511,8 @@ def test__compute_source_swath_invalid_dimensions(
     mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
-@patch('harmony_regridding_service.regridding_service._get_variable')
-@patch('harmony_regridding_service.regridding_service._horizontal_dims_for_variable')
+@patch('harmony_regridding_service.crs._get_variable')
+@patch('harmony_regridding_service.crs._horizontal_dims_for_variable')
 def test_add_grid_mapping_metadata_sets_attributes(
     mock_horizontal_dims_for_variable,
     mock_get_variable,
@@ -1625,3 +1638,85 @@ def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
             ds_out['Observations_Data/tb_v_obs'].attrs['long_name']
             == 'Composite resolution observed (L2_SM_AP or L1C_TB) V-pol ...'
         )
+
+
+@pytest.mark.parametrize(
+    'message, expected, description',
+    [
+        ('EPSG:4326', True, 'EPSG:4326 is geographic'),
+        ('+proj=longlat', True, '+proj=longlat is geographic'),
+        ('4326', True, '4326 is geographic'),
+        ('EPSG:6933', False, 'EPSG:6933 is non-geographic'),
+        ('+proj=cea', False, '+proj=cea is non-geographic'),
+    ],
+)
+def test_is_geographic_crs(message, expected, description):
+    """Test _is_geographic_crs.
+
+    Ensure function correctly determines if a supplied string resolves
+    to a `pyproj.CRS` object with a geographic Coordinate Reference
+    System (CRS). Exceptions arising from invalid CRS strings should
+    also be handled.
+
+    """
+    assert _is_geographic_crs(message) == expected, f'Failed for {description}'
+
+
+def test_is_geographic_raises_exception():
+    """Test _is_geographic_crs when it throws an exception."""
+    crs_string = 'invalid CRS'
+    with pytest.raises(InvalidTargetCRS, match=crs_string):
+        _is_geographic_crs(crs_string)
+
+
+@pytest.mark.parametrize(
+    'message, expected, description',
+    [
+        (HarmonyMessage({}), True, 'CRS = None is valid'),
+        (HarmonyMessage({'format': {}}), True, 'format.crs = None is valid'),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:4326'}}),
+            True,
+            'format.crs = "EPSG:4326" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '+proj=longlat'}}),
+            True,
+            'format.crs = "+proj=longlat" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '4326'}}),
+            True,
+            'format.crs = "4326" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:6933'}}),
+            False,
+            'Non-geographic EPSG code is invalid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '+proj=cea'}}),
+            False,
+            'Non-geographic proj4 string is invalid',
+        ),
+    ],
+)
+def test_has_valid_crs(message, expected, description):
+    """Test has_valid_crs.
+
+    Ensure the function correctly determines if the input Harmony
+    message has a target Coordinate Reference System (CRS) that is
+    compatible with the service. Currently this is either to not
+    define the target CRS (assuming it to be geographic), or explicitly
+    requesting geographic CRS via EPSG code or proj4 string.
+
+    """
+    assert has_valid_crs(message) == expected, f'Failed for {description}'
+
+
+def test_has_valid_crs_raises_exception():
+    """Test has_valid_crs when an exception is thrown."""
+    crs_string = 'invalid CRS'
+    message = HarmonyMessage({'format': {'crs': crs_string}})
+    with pytest.raises(InvalidTargetCRS, match=crs_string):
+        has_valid_crs(message)

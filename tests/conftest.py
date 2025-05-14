@@ -16,6 +16,28 @@ HRS_VARINFO_CONFIG_FILENAME = str(
 )
 
 
+@pytest.fixture
+def message_params():
+    """Fixture for creating Harmony Messages."""
+    params = {
+        'mime': 'application/x-netcdf',
+        'crs': {'epsg': 'EPSG:4326'},
+        'srs': {
+            'epsg': 'EPSG:4326',
+            'proj4': '+proj=longlat +datum=WGS84 +no_defs',
+            'wkt': 'GEOGCS["WGS 84",DATUM...',
+        },
+        'scale_extent': {
+            'x': {'min': -180, 'max': 180},
+            'y': {'min': -90, 'max': 90},
+        },
+        'scale_size': {'x': 10, 'y': 9},
+        'height': 100,
+        'width': 99,
+    }
+    return params
+
+
 @pytest.fixture(scope='session')
 def smap_projected_datatree():
     """Provide the sample projected datatree object."""
