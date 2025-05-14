@@ -24,7 +24,6 @@ from harmony_regridding_service.crs import (
     _write_grid_mappings,
 )
 from harmony_regridding_service.dimensions import (
-    _all_dimension_variables,
     _all_dimensions,
     _copy_1d_dimension_variables,
     _copy_dimension,
@@ -996,20 +995,6 @@ def test__unresampled_variables_ATL14_lots_of_deep_group_vars(
         '/quality_assessment/qa_granule_pass_fail',
     }
     actual_vars = _unresampled_variables(var_info)
-    assert expected_vars == actual_vars
-
-
-def test__all_dimension_variables_1d_file(var_info_fxn, test_1D_dimensions_ncfile):
-    var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    expected_vars = {'/lat', '/lon', '/time'}
-    actual_vars = _all_dimension_variables(var_info)
-    assert expected_vars == actual_vars
-
-
-def test__all_dimension_variables_2D_file(var_info_fxn, test_2D_dimensions_ncfile):
-    var_info = var_info_fxn(test_2D_dimensions_ncfile)
-    expected_vars = {'/lat', '/lon'}
-    actual_vars = _all_dimension_variables(var_info)
     assert expected_vars == actual_vars
 
 
