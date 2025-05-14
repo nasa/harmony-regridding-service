@@ -1,4 +1,4 @@
-"""Module for accessing and creating grid paramerers."""
+"""Module for accessing and creating grid parameters."""
 
 from logging import getLogger
 
@@ -7,13 +7,13 @@ import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message_utility import has_dimensions
 from netCDF4 import Dataset
-from pyproj import CRS
-from pyproj.exceptions import CRSError
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
-from xarray import DataTree
 
+from harmony_regridding_service.crs import (
+    _crs_from_source_data,
+)
 from harmony_regridding_service.dimensions import (
     _dims_are_lon_lat,
     _dims_are_projected_x_y,
@@ -21,7 +21,6 @@ from harmony_regridding_service.dimensions import (
     _get_row_dims,
 )
 from harmony_regridding_service.exceptions import (
-    InvalidSourceCRS,
     InvalidSourceDimensions,
     SourceDataError,
 )
@@ -188,41 +187,6 @@ def _compute_projected_horizontal_source_grids(
     except Exception as e:
         logger.error(e)
         raise SourceDataError('cannot compute projected source grids') from e
-
-
-def _crs_from_source_data(dt: DataTree, variables: set) -> CRS:
-    """Create a CRS describing the grid in the source file.
-
-    Look through the variables for metadata that points to a grid_mapping
-    and generate a CRS from that information.
-
-    The metadata is not always clear or easy to parse into a CRS. Take a
-    shortcut when possible.
-
-    if the grid_mapping has a known EASE2 grid name, use the EPSG code known
-    apriori.
-
-    Args:
-      dt: the source file as an opened DataTree
-
-      variables: set of variables all sharing the same 2-dimensional grid is
-                 traversed looking for a grid_mapping.
-
-    Returns:
-      CRS object
-
-    """
-    for varname in variables:
-        var = dt[varname]
-        if 'grid_mapping' in var.attrs:
-            try:
-                return CRS.from_cf(dt[var.attrs['grid_mapping']].attrs)
-            except CRSError as e:
-                raise InvalidSourceCRS(
-                    'Could not create a CRS from grid_mapping metadata'
-                ) from e
-
-    raise InvalidSourceCRS('No grid_mapping metadata found.')
 
 
 def _compute_area_extent_from_regular_x_y_coords(

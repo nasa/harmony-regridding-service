@@ -8,7 +8,7 @@ from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import RegridderException
-from harmony_regridding_service.variable_utilities import (
+from harmony_regridding_service.utilities import (
     _copy_var_without_metadata,
     _get_bounds_var,
 )
