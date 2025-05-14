@@ -183,7 +183,8 @@ def _resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str
 
     This returns a list of the fully qualified variables that need to use the
     information from the target_area in order to compute the correct output
-    values.
+    values. However, this list will also include dimensions bounds variables
+    if the collection contains them, which we want to return as well.
 
     """
     dims_to_transfer = set()
