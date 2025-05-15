@@ -1,4 +1,4 @@
-"""Tests crs module."""
+"""Tests the crs module."""
 
 from unittest.mock import MagicMock, call, patch
 

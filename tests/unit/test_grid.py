@@ -1,4 +1,4 @@
-"""Tests for grid.py."""
+"""Tests the grid module."""
 
 import re
 from unittest.mock import MagicMock, patch

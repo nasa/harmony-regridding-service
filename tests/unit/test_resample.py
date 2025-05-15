@@ -1,4 +1,4 @@
-"""Module for testing resample.py."""
+"""Tests the resample module."""
 
 from unittest.mock import MagicMock
 

@@ -1,4 +1,4 @@
-"""Test the Utilities module."""
+"""Test the utilities module."""
 
 from unittest import TestCase
 

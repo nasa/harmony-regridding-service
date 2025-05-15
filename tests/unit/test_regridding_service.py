@@ -1,4 +1,4 @@
-"""Tests regridding service."""
+"""Tests the regridding service module."""
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch

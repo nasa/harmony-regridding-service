@@ -1,4 +1,4 @@
-"""Unit tests for regridding_cli.py."""
+"""Tests the regridding_cli module."""
 
 from unittest.mock import MagicMock, patch
 

@@ -1,4 +1,4 @@
-"""Tests for dimensions.py."""
+"""Tests the dimensions module."""
 
 import pytest
 from netCDF4 import Dataset, Dimension

@@ -1,4 +1,4 @@
-"""Unit tests for message_utilities.py."""
+"""Tests the message_utilities module."""
 
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
