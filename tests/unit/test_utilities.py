@@ -1,20 +1,37 @@
-"""Test the Utilities module."""
+"""Test the utilities module."""
 
 from unittest import TestCase
 
+import numpy as np
+import pytest
 from harmony_service_lib.message import Message
+from netCDF4 import Dataset
+from numpy.testing import assert_array_equal
 
-from harmony_regridding_service.exceptions import InvalidTargetCRS
-from harmony_regridding_service.utilities import (
-    _is_geographic_crs,
-    get_file_mime_type,
-    has_valid_crs,
+from harmony_regridding_service.message_utilities import (
     has_valid_interpolation,
+)
+from harmony_regridding_service.resample import (
+    transfer_resampled_dimensions,
+)
+from harmony_regridding_service.utilities import (
+    clone_variables,
+    copy_var_with_attrs,
+    copy_var_without_metadata,
+    get_bounds_var,
+    get_file_mime_type,
+    get_variable,
+    integer_like,
+    transfer_metadata,
+    walk_groups,
 )
 
 
 class TestUtilities(TestCase):
-    """A class testing the harmony_regridding_service.utilities module."""
+    """A class testing the harmony_regridding_service.utilities module.
+
+    TODO: Update this to pytest.
+    """
 
     def test_get_file_mime_type(self):
         """Ensure a MIME type can be retrieved from an input file path."""
@@ -29,86 +46,6 @@ class TestUtilities(TestCase):
 
         with self.subTest('Upper case letters handled.'):
             self.assertEqual(get_file_mime_type('file.HDF5'), 'application/x-hdf5')
-
-    def test_has_valid_crs(self):
-        """Test has_valid_crs.
-
-        Ensure the function correctly determines if the input Harmony
-        message has a target Coordinate Reference System (CRS) that is
-        compatible with the service. Currently this is either to not
-        define the target CRS (assuming it to be geographic), or explicitly
-        requesting geographic CRS via EPSG code or proj4 string.
-
-        """
-        with self.subTest('format = None returns True'):
-            test_message = Message({})
-            self.assertTrue(has_valid_crs(test_message))
-
-        with self.subTest('format.crs = None returns True'):
-            test_message = Message({'format': {}})
-            self.assertTrue(has_valid_crs(test_message))
-
-        with self.subTest('format.crs = "EPSG:4326" returns True'):
-            test_message = Message({'format': {'crs': 'EPSG:4326'}})
-            self.assertTrue(has_valid_crs(test_message))
-
-        with self.subTest('format.crs = "+proj=longlat" returns True'):
-            test_message = Message({'format': {'crs': '+proj=longlat'}})
-            self.assertTrue(has_valid_crs(test_message))
-
-        with self.subTest('format.crs = "4326" returns True'):
-            test_message = Message({'format': {'crs': '4326'}})
-            self.assertTrue(has_valid_crs(test_message))
-
-        with self.subTest('Non-geographic EPSG code returns False'):
-            test_message = Message({'format': {'crs': 'EPSG:6933'}})
-            self.assertFalse(has_valid_crs(test_message))
-
-        with self.subTest('Non-geographic proj4 string returns False'):
-            test_message = Message({'format': {'crs': '+proj=cea'}})
-            self.assertFalse(has_valid_crs(test_message))
-
-        with self.subTest('String that cannot be parsed raises exception'):
-            test_message = Message({'format': {'crs': 'invalid CRS'}})
-
-            with self.assertRaises(InvalidTargetCRS) as context:
-                has_valid_crs(test_message)
-
-            self.assertEqual(
-                context.exception.message, 'Target CRS not supported: "invalid CRS"'
-            )
-
-    def test_is_geographic_crs(self):
-        """Test _is_geographic_crs.
-
-        Ensure function correctly determines if a supplied string resolves
-        to a `pyproj.CRS` object with a geographic Coordinate Reference
-        System (CRS). Exceptions arising from invalid CRS strings should
-        also be handled.
-
-        """
-        with self.subTest('"EPSG:4326" returns True'):
-            self.assertTrue(_is_geographic_crs('EPSG:4326'))
-
-        with self.subTest('"+proj=longlat" returns True'):
-            self.assertTrue(_is_geographic_crs('+proj=longlat'))
-
-        with self.subTest('"4326" returns True'):
-            self.assertTrue(_is_geographic_crs('4326'))
-
-        with self.subTest('Non-geographic EPSG code returns False'):
-            self.assertFalse(_is_geographic_crs('EPSG:6933'))
-
-        with self.subTest('Non-geographic proj4 string returns False'):
-            self.assertFalse(_is_geographic_crs('+proj=cea'))
-
-        with self.subTest('String that cannot be parsed raises exception'):
-            with self.assertRaises(InvalidTargetCRS) as context:
-                _is_geographic_crs('invalid CRS')
-
-            self.assertEqual(
-                context.exception.message, 'Target CRS not supported: "invalid CRS"'
-            )
 
     def test_has_valid_interpolation(self):
         """Test has_valid_interpolation.
@@ -136,3 +73,171 @@ class TestUtilities(TestCase):
         with self.subTest('Unexpected interpolation returns False'):
             test_message = Message({'format': {'interpolation': 'Bilinear'}})
             self.assertFalse(has_valid_interpolation(test_message))
+
+
+def test_walk_groups(test_file):
+    """Demonstrate traversing all groups."""
+    target_path = test_file
+    groups = ['/a/nested/group', '/b/another/deeper/group2']
+    expected_visited = {'a', 'nested', 'group', 'b', 'another', 'deeper', 'group2'}
+
+    with Dataset(target_path, mode='w') as target_ds:
+        for group in groups:
+            target_ds.createGroup(group)
+
+    actual_visited = set()
+    with Dataset(target_path, mode='r') as validate:
+        for groups in walk_groups(validate):
+            for group in groups:
+                actual_visited.update([group.name])
+
+    assert expected_visited == actual_visited
+
+
+def test_transfer_metadata(test_file, test_1D_dimensions_ncfile):
+    """Tests to ensure root and group level metadata is transfered to target."""
+    _generate_test_file = test_file
+
+    # metadata Set in the test 1D file
+    expected_root_metadata = {
+        'root-attribute1': 'value1',
+        'root-attribute2': 'value2',
+    }
+    expected_root_groups = {'level1-nested1', 'level1-nested2'}
+    expected_nested_metadata = {'level2-nested1': 'level2-nested1-value1'}
+
+    with (
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+        Dataset(_generate_test_file, mode='w') as target_ds,
+    ):
+        transfer_metadata(source_ds, target_ds)
+
+    with Dataset(_generate_test_file, mode='r') as validate:
+        root_metadata = {attr: validate.getncattr(attr) for attr in validate.ncattrs()}
+        root_groups = set(validate.groups.keys())
+        nested_group = validate['/level1-nested1/level2-nested1']
+        nested_metadata = {
+            attr: nested_group.getncattr(attr) for attr in nested_group.ncattrs()
+        }
+
+        assert expected_root_groups == root_groups
+        assert expected_root_metadata == root_metadata
+        assert expected_nested_metadata == nested_metadata
+
+
+@pytest.mark.parametrize(
+    'int_type',
+    [
+        np.byte,
+        np.ubyte,
+        np.short,
+        np.ushort,
+        np.intc,
+        np.uintc,
+        np.int_,
+        np.uint,
+        np.longlong,
+        np.ulonglong,
+    ],
+)
+def test_integer_like(int_type):
+    assert integer_like(int_type) is True
+
+
+@pytest.mark.parametrize('float_type', [np.float16, np.float32, np.float64])
+def test_integer_like_false(float_type):
+    assert integer_like(float_type) is False
+
+
+def test_integer_like_string():
+    assert integer_like(str) is False
+
+
+def test_copy_var_with_attrs(
+    test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
+):
+    target_file = test_file
+    target_area = test_area_fxn()
+    var_info = var_info_fxn(test_1D_dimensions_ncfile)
+    expected_metadata = {'units': 'widgets per month'}
+    with (
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+        Dataset(target_file, mode='w') as target_ds,
+    ):
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        copy_var_with_attrs(source_ds, target_ds, '/data')
+
+    with Dataset(target_file, mode='r') as validate:
+        actual_metadata = {
+            attr: validate['/data'].getncattr(attr)
+            for attr in validate['/data'].ncattrs()
+        }
+        assert actual_metadata == expected_metadata
+
+
+def test_copy_vars_without_metadata(
+    test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
+):
+    target_file = test_file
+    target_area = test_area_fxn()
+    var_info = var_info_fxn(test_1D_dimensions_ncfile)
+    with (
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+        Dataset(target_file, mode='w') as target_ds,
+    ):
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        copy_var_without_metadata(source_ds, target_ds, '/data')
+
+    with Dataset(target_file, mode='r') as validate:
+        actual_metadata = {
+            attr: validate['/data'].getncattr(attr)
+            for attr in validate['/data'].ncattrs()
+        }
+        assert {} == actual_metadata
+
+
+def test_clone_variables(
+    test_file, var_info_fxn, test_area_fxn, test_1D_dimensions_ncfile
+):
+    target_file = test_file
+    var_info = var_info_fxn(test_1D_dimensions_ncfile)
+    width = 36
+    height = 18
+
+    _generate_test_area = test_area_fxn(width=width, height=height)
+
+    copy_vars = {'/time', '/time_bnds'}
+    with (
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+        Dataset(target_file, mode='w') as target_ds,
+    ):
+        transfer_resampled_dimensions(
+            source_ds, target_ds, _generate_test_area, var_info
+        )
+
+        copied = clone_variables(source_ds, target_ds, copy_vars)
+
+        assert copy_vars == copied
+
+        with Dataset(target_file, mode='r') as validate:
+            assert_array_equal(validate['time_bnds'], source_ds['time_bnds'])
+            assert_array_equal(validate['time'], source_ds['time'])
+
+
+def test_get_variable(test_ATL14_ncfile):
+    with Dataset(test_ATL14_ncfile, mode='r') as source_ds:
+        var_grouped = get_variable(source_ds, '/tile_stats/RMS_data')
+        expected_grouped = source_ds['tile_stats'].variables['RMS_data']
+        assert expected_grouped == var_grouped
+
+        var_flat = get_variable(source_ds, '/ice_area')
+        expected_flat = source_ds.variables['ice_area']
+        assert expected_flat == var_flat
+
+
+def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
+    var_info = var_info_fxn(test_IMERG_ncfile)
+    expected_bounds = 'lon_bnds'
+
+    actual_bounds = get_bounds_var(var_info, '/Grid/lon')
+    assert expected_bounds == actual_bounds

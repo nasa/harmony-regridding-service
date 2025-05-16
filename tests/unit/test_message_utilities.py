@@ -1,62 +1,13 @@
-"""Tests for regridding_utility.py module."""
-
-from unittest.mock import MagicMock, patch
+"""Tests the message_utilities module."""
 
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
-from harmony_service_lib.message import Source as HarmonySource
 
-from harmony_regridding_service.regridding_utility import (
+from harmony_regridding_service.exceptions import InvalidTargetCRS
+from harmony_regridding_service.message_utilities import has_valid_crs
+from harmony_regridding_service.regridding_cli import (
     get_harmony_message_from_params,
-    regrid_cli_entry,
 )
-
-
-@pytest.fixture
-def message_params():
-    """Fixture for creating Harmony Messages."""
-    params = {
-        'mime': 'application/x-netcdf',
-        'crs': {'epsg': 'EPSG:4326'},
-        'srs': {
-            'epsg': 'EPSG:4326',
-            'proj4': '+proj=longlat +datum=WGS84 +no_defs',
-            'wkt': 'GEOGCS["WGS 84",DATUM...',
-        },
-        'scale_extent': {
-            'x': {'min': -180, 'max': 180},
-            'y': {'min': -90, 'max': 90},
-        },
-        'scale_size': {'x': 10, 'y': 9},
-        'height': 100,
-        'width': 99,
-    }
-    return params
-
-
-@patch('harmony_regridding_service.regridding_utility.regrid')
-def test_regrid_cli_entry(mock_regrid, message_params):
-    """Test the regrid_cli_entry function."""
-    source_filename = 'source_filename.nc'
-    params = message_params
-    source = {'collection': 'collection shortname'}
-    call_logger = MagicMock()
-
-    regrid_cli_entry(source_filename, params, source, call_logger)
-
-    # Assert that regrid was called once
-    mock_regrid.assert_called_once()
-
-    # Get the arguments that regrid was called with
-    args, kwargs = mock_regrid.call_args
-
-    # Assert the arguments
-    harmony_message_arg, input_filename_arg, source_arg, logger_arg = args
-
-    assert isinstance(harmony_message_arg, HarmonyMessage)
-    assert isinstance(source_arg, HarmonySource)
-    assert input_filename_arg == source_filename
-    assert logger_arg == call_logger
 
 
 def test_get_harmony_message_all_params(message_params):
@@ -108,3 +59,56 @@ def test_get_harmony_message_no_params():
     assert message.format.scaleSize is None
     assert message.format.height is None
     assert message.format.width is None
+
+
+@pytest.mark.parametrize(
+    'message, expected, description',
+    [
+        (HarmonyMessage({}), True, 'CRS = None is valid'),
+        (HarmonyMessage({'format': {}}), True, 'format.crs = None is valid'),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:4326'}}),
+            True,
+            'format.crs = "EPSG:4326" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '+proj=longlat'}}),
+            True,
+            'format.crs = "+proj=longlat" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '4326'}}),
+            True,
+            'format.crs = "4326" is valid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:6933'}}),
+            False,
+            'Non-geographic EPSG code is invalid',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '+proj=cea'}}),
+            False,
+            'Non-geographic proj4 string is invalid',
+        ),
+    ],
+)
+def test_has_valid_crs(message, expected, description):
+    """Test has_valid_crs.
+
+    Ensure the function correctly determines if the input Harmony
+    message has a target Coordinate Reference System (CRS) that is
+    compatible with the service. Currently this is either to not
+    define the target CRS (assuming it to be geographic), or explicitly
+    requesting geographic CRS via EPSG code or proj4 string.
+
+    """
+    assert has_valid_crs(message) == expected, f'Failed for {description}'
+
+
+def test_has_valid_crs_raises_exception():
+    """Test has_valid_crs when an exception is thrown."""
+    crs_string = 'invalid CRS'
+    message = HarmonyMessage({'format': {'crs': crs_string}})
+    with pytest.raises(InvalidTargetCRS, match=crs_string):
+        has_valid_crs(message)
