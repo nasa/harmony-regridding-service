@@ -9,12 +9,12 @@ from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import RegridderException
 from harmony_regridding_service.utilities import (
-    _copy_var_without_metadata,
-    _get_bounds_var,
+    copy_var_without_metadata,
+    get_bounds_var,
 )
 
 
-def _horizontal_dims_for_variable(
+def horizontal_dims_for_variable(
     var_info: VarInfoFromNetCDF4, var_name: str
 ) -> tuple[str, str]:
     """Return the horizontal dimensions for desired variable."""
@@ -25,31 +25,31 @@ def _horizontal_dims_for_variable(
     )
 
 
-def _get_row_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
+def get_row_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
     """Return name for vertical grid dimension [row/latitude/y].
 
     This is the up/down dimension for a normal grid.
     """
-    return [dim for dim in dims if _is_row_dim(dim, var_info)]
+    return [dim for dim in dims if is_row_dim(dim, var_info)]
 
 
-def _get_column_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> list[str]:
+def get_column_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> list[str]:
     """Return name for grid dimension [column/longitude/x].
 
     This is the right/left dimension for a normal grid.
 
     """
-    return [dim for dim in dims if _is_column_dim(dim, var_info)]
+    return [dim for dim in dims if is_column_dim(dim, var_info)]
 
 
-def _create_dimension(dataset: Dataset, dimension_name: str, size: int) -> Dimension:
+def create_dimension(dataset: Dataset, dimension_name: str, size: int) -> Dimension:
     """Create a fully qualified dimension on the dataset."""
     dim = PurePath(dimension_name)
     group = dataset.createGroup(dim.parent)
     return group.createDimension(dim.name, size)
 
 
-def _is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+def is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a horizontal dimension."""
     try:
         dim_var = var_info.get_variable(dim)
@@ -59,7 +59,7 @@ def _is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     return is_x_dim
 
 
-def _is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
+def is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     """Test if dim is a projection Y dimension."""
     is_y_dim = False
     try:
@@ -70,16 +70,14 @@ def _is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     return is_y_dim
 
 
-def _dims_are_lon_lat(
-    dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
-) -> bool:
+def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) -> bool:
     """Does the dimension pair represent longitudes/latitudes."""
     return all(
         var_info.get_variable(dim_name).is_geographic() for dim_name in dimensions
     )
 
 
-def _dims_are_projected_x_y(
+def dims_are_projected_x_y(
     dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
 ) -> bool:
     """Does the dimension pair represent projected x/y values."""
@@ -89,7 +87,7 @@ def _dims_are_projected_x_y(
     )
 
 
-def _all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
+def get_all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a list of all dimensions in the file."""
     dimensions = set()
     for variable_name in var_info.get_all_variables():
@@ -100,7 +98,7 @@ def _all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     return dimensions
 
 
-def _copy_dimensions(
+def copy_dimensions(
     dimensions: set[str], source_ds: Dataset, target_ds: Dataset
 ) -> set[str]:
     """Copy each dimension from source to target.
@@ -110,18 +108,18 @@ def _copy_dimensions(
 
     def sort_unlimited_first(dimension_name):
         """Sort dimensions so that unlimited are first in list."""
-        the_dim = _get_dimension(source_ds, dimension_name)
+        the_dim = get_dimension(source_ds, dimension_name)
         return not the_dim.isunlimited()
 
     sorted_dims = sorted(list(dimensions), key=sort_unlimited_first)
 
     for dim in sorted_dims:
-        _copy_dimension(dim, source_ds, target_ds)
+        copy_dimension(dim, source_ds, target_ds)
 
 
-def _copy_dimension(dimension_name: str, source_ds: Dataset, target_ds: Dataset) -> str:
+def copy_dimension(dimension_name: str, source_ds: Dataset, target_ds: Dataset) -> str:
     """Copy dimension from source to target file."""
-    source_dimension = _get_dimension(source_ds, dimension_name)
+    source_dimension = get_dimension(source_ds, dimension_name)
 
     source_size = None
     if not source_dimension.isunlimited():
@@ -132,7 +130,7 @@ def _copy_dimension(dimension_name: str, source_ds: Dataset, target_ds: Dataset)
     return target_group.createDimension(dim.name, source_size)
 
 
-def _get_dimension(dataset: Dataset, dimension_name: str) -> Dimension:
+def get_dimension(dataset: Dataset, dimension_name: str) -> Dimension:
     """Return a dimension object for a dimension name.
 
     Return the Dimension for an arbitrarily nested dimension name.
@@ -141,7 +139,7 @@ def _get_dimension(dataset: Dataset, dimension_name: str) -> Dimension:
     return dataset.createGroup(dim.parent).dimensions[dim.name]
 
 
-def _copy_1d_dimension_variables(
+def copy_1d_dimension_variables(
     source_ds: Dataset,
     target_ds: Dataset,
     dim_var_names: set[str],
@@ -160,8 +158,8 @@ def _copy_1d_dimension_variables(
         if len(var_info.get_variable(dim_var_name).dimensions) == 1
     }
 
-    xdims = _get_column_dims(one_d_vars, var_info)
-    ydims = _get_row_dims(one_d_vars, var_info)
+    xdims = get_column_dims(one_d_vars, var_info)
+    ydims = get_row_dims(one_d_vars, var_info)
 
     for dim_name in one_d_vars:
         if dim_name in xdims:
@@ -183,9 +181,9 @@ def _copy_1d_dimension_variables(
                 f'dim_name: {dim_name} not found in projection dimensions'
             )
 
-        (_, t_var) = _copy_var_without_metadata(source_ds, target_ds, dim_name)
+        (_, t_var) = copy_var_without_metadata(source_ds, target_ds, dim_name)
 
-        bounds_var = _get_bounds_var(var_info, dim_name)
+        bounds_var = get_bounds_var(var_info, dim_name)
 
         if bounds_var:
             standard_metadata['bounds'] = bounds_var

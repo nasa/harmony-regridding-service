@@ -8,23 +8,23 @@ from netCDF4 import Dataset
 from numpy.testing import assert_array_equal
 
 from harmony_regridding_service.resample import (
-    _copy_resampled_bounds_variable,
-    _copy_resampled_dimension_variables,
-    _create_resampled_dimensions,
-    _get_rows_per_scan,
-    _needs_rotation,
-    _prepare_data_plane,
-    _resample_layer,
-    _resampled_dimension_pairs,
-    _resampled_dimension_variable_names,
-    _resampled_dimensions,
-    _resampler_kwargs,
-    _transfer_resampled_dimensions,
-    _unresampled_variables,
+    copy_resampled_bounds_variable,
+    copy_resampled_dimension_variables,
+    create_resampled_dimensions,
+    get_resampled_dimension_pairs,
+    get_resampled_dimensions,
+    get_rows_per_scan,
+    needs_rotation,
+    prepare_data_plane,
+    resample_layer,
+    resampled_dimension_variable_names,
+    resampler_kwargs,
+    transfer_resampled_dimensions,
+    unresampled_variables,
 )
 
 
-def test__resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
+def test_resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
     """Test resampler.compute with float input and explicit fill value."""
     var_info = var_info_fxn(test_MERRA2_ncfile)
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
@@ -33,9 +33,9 @@ def test__resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_n
     fill_value = np.float64(-9999.0)
 
     expected_source = source_plane.astype(np.float64)
-    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+    expected_rps = get_rows_per_scan(source_plane.shape[0])
 
-    _resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
+    resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
 
     call_args, call_kwargs = resampler_mock.compute.call_args
     actual_source = call_args[0]
@@ -48,7 +48,7 @@ def test__resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_n
     assert 'maximum_weight_mode' not in call_kwargs  # Default for float
 
 
-def test__resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
+def test_resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
     """Test resampler.compute with int input and explicit fill value."""
     var_info = var_info_fxn(test_MERRA2_ncfile)
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.int32)
@@ -57,9 +57,9 @@ def test__resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncf
     fill_value = np.int32(9999.0)
 
     expected_source = source_plane.astype(np.float64)
-    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+    expected_rps = get_rows_per_scan(source_plane.shape[0])
 
-    _resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
+    resample_layer(source_plane, resampler_mock, var_info, var_name, fill_value)
 
     call_args, call_kwargs = resampler_mock.compute.call_args
     actual_source = call_args[0]
@@ -72,7 +72,7 @@ def test__resample_layer_compute_int_explicit_fill(var_info_fxn, test_MERRA2_ncf
     assert call_kwargs['maximum_weight_mode'] is True
 
 
-def test__resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile):
+def test_resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile):
     """Test resampler.compute with float input and no explicit fill value."""
     var_info = var_info_fxn(test_MERRA2_ncfile)
     source_plane = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
@@ -81,9 +81,9 @@ def test__resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile)
     var_name = '/QI'
 
     expected_source = source_plane.astype(np.float64)
-    expected_rps = _get_rows_per_scan(source_plane.shape[0])
+    expected_rps = get_rows_per_scan(source_plane.shape[0])
 
-    _resample_layer(source_plane, resampler_mock, var_info, var_name, None)
+    resample_layer(source_plane, resampler_mock, var_info, var_name, None)
 
     call_args, call_kwargs = resampler_mock.compute.call_args
     actual_source = call_args[0]
@@ -98,31 +98,31 @@ def test__resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile)
     assert resampler_mock._get_default_fill.call_count == 1
 
 
-def test__resampler_kwargs_floating_data():
+def test_resampler_kwargs_floating_data():
     data = np.array([1.0, 2.0, 3.0, 4.0], dtype='float')
     expected_args = {'rows_per_scan': 2}
-    actual_args = _resampler_kwargs(data, 'float')
+    actual_args = resampler_kwargs(data, 'float')
     assert expected_args == actual_args
 
 
-def test__resampler_kwargs_all_rows_needed():
+def test_resampler_kwargs_all_rows_needed():
     data = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0], dtype='float')
     expected_args = {'rows_per_scan': 7}
-    actual_args = _resampler_kwargs(data, 'float')
+    actual_args = resampler_kwargs(data, 'float')
     assert expected_args == actual_args
 
 
-def test__resampler_kwargs_integer_data():
+def test_resampler_kwargs_integer_data():
     data = np.array([1, 2, 3], dtype='int16')
     expected_args = {
         'rows_per_scan': 3,
         'maximum_weight_mode': True,
     }
-    actual_args = _resampler_kwargs(data, 'int16')
+    actual_args = resampler_kwargs(data, 'int16')
     assert expected_args == actual_args
 
 
-def test__copy_resampled_bounds_variable(
+def test_copy_resampled_bounds_variable(
     test_file, test_area_fxn, test_IMERG_ncfile, var_info_fxn
 ):
     target_file = test_file
@@ -142,9 +142,9 @@ def test__copy_resampled_bounds_variable(
         Dataset(test_IMERG_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
 
-        var_copied = _copy_resampled_bounds_variable(
+        var_copied = copy_resampled_bounds_variable(
             source_ds, target_ds, bnds_var, target_area, var_info
         )
 
@@ -153,17 +153,17 @@ def test__copy_resampled_bounds_variable(
         assert_array_equal(expected_lat_bnds, validate['Grid']['lat_bnds'][:])
 
 
-def test__resampled_dimension_variable_names_root_level_dimensions(
+def test_resampled_dimension_variable_names_root_level_dimensions(
     test_1D_dimensions_ncfile, var_info_fxn
 ):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_resampled = {'/lon', '/lat'}
 
-    actual_resampled = _resampled_dimension_variable_names(var_info)
+    actual_resampled = resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
-def test__resampled_dimension_variable_names_grouped_dimensions(
+def test_resampled_dimension_variable_names_grouped_dimensions(
     test_IMERG_ncfile, var_info_fxn
 ):
     var_info = var_info_fxn(test_IMERG_ncfile)
@@ -174,19 +174,19 @@ def test__resampled_dimension_variable_names_grouped_dimensions(
         '/Grid/lat_bnds',
     }
 
-    actual_resampled = _resampled_dimension_variable_names(var_info)
+    actual_resampled = resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
-def test__multiple_resampled_dimension_variable_names(test_ATL14_ncfile, var_info_fxn):
+def test_multiple_resampled_dimension_variable_names(test_ATL14_ncfile, var_info_fxn):
     var_info = var_info_fxn(test_ATL14_ncfile)
     expected_resampled = {'/x', '/y', '/tile_stats/x', '/tile_stats/y'}
 
-    actual_resampled = _resampled_dimension_variable_names(var_info)
+    actual_resampled = resampled_dimension_variable_names(var_info)
     assert expected_resampled == actual_resampled
 
 
-def test__create_resampled_dimensions_root_dimensions(
+def test_create_resampled_dimensions_root_dimensions(
     var_info_fxn,
     test_1D_dimensions_ncfile,
     test_area_fxn,
@@ -199,7 +199,7 @@ def test__create_resampled_dimensions_root_dimensions(
     target_file = test_file
 
     with Dataset(target_file, mode='w') as target_ds:
-        _create_resampled_dimensions(
+        create_resampled_dimensions(
             [('/lat', '/lon')], target_ds, _generate_test_area, var_info
         )
 
@@ -208,7 +208,7 @@ def test__create_resampled_dimensions_root_dimensions(
         assert validate.dimensions['lon'].size == 36
 
 
-def test__create_resampled_dimensions_group_level_dimensions(
+def test_create_resampled_dimensions_group_level_dimensions(
     var_info_fxn,
     test_IMERG_ncfile,
     test_area_fxn,
@@ -218,7 +218,7 @@ def test__create_resampled_dimensions_group_level_dimensions(
     _generate_test_area = test_area_fxn()
     target_file = test_file
     with Dataset(target_file, mode='w') as target_ds:
-        _create_resampled_dimensions(
+        create_resampled_dimensions(
             [('/Grid/lon', '/Grid/lat')],
             target_ds,
             _generate_test_area,
@@ -230,32 +230,30 @@ def test__create_resampled_dimensions_group_level_dimensions(
         assert validate['Grid'].dimensions['lon'].size == 360
 
 
-def test__unresampled_variables_flat_ungrouped(var_info_fxn, test_1D_dimensions_ncfile):
+def test_unresampled_variables_flat_ungrouped(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_vars = {'/time', '/time_bnds'}
-    actual_vars = _unresampled_variables(var_info)
+    actual_vars = unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
-def test__unresampled_variables_IMERG_grouped(var_info_fxn, test_IMERG_ncfile):
+def test_unresampled_variables_IMERG_grouped(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
 
     expected_vars = {'/Grid/time', '/Grid/time_bnds'}
-    actual_vars = _unresampled_variables(var_info)
+    actual_vars = unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
-def test__unresampled_variables_MERRA2_includes_levels(
-    var_info_fxn, test_MERRA2_ncfile
-):
+def test_unresampled_variables_MERRA2_includes_levels(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
 
     expected_vars = {'/lev', '/time'}
-    actual_vars = _unresampled_variables(var_info)
+    actual_vars = unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
-def test__unresampled_variables_ATL14_lots_of_deep_group_vars(
+def test_unresampled_variables_ATL14_lots_of_deep_group_vars(
     var_info_fxn, test_ATL14_ncfile
 ):
     var_info = var_info_fxn(test_ATL14_ncfile)
@@ -268,34 +266,34 @@ def test__unresampled_variables_ATL14_lots_of_deep_group_vars(
         '/quality_assessment/qa_granule_fail_reason',
         '/quality_assessment/qa_granule_pass_fail',
     }
-    actual_vars = _unresampled_variables(var_info)
+    actual_vars = unresampled_variables(var_info)
     assert expected_vars == actual_vars
 
 
-def test__resampled_dimenension_pairs_1d_file(var_info_fxn, test_1D_dimensions_ncfile):
+def test_resampled_dimenension_pairs_1d_file(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_pairs = [('/lon', '/lat')]
-    actual_pairs = _resampled_dimension_pairs(var_info)
+    actual_pairs = get_resampled_dimension_pairs(var_info)
     assert expected_pairs == actual_pairs
 
 
-def test__resampled_dimenension_pairs_multiple_horizontal_pairs(
+def test_resampled_dimenension_pairs_multiple_horizontal_pairs(
     var_info_fxn, test_ATL14_ncfile
 ):
     var_info = var_info_fxn(test_ATL14_ncfile)
     expected_pairs = [('/y', '/x'), ('/tile_stats/y', '/tile_stats/x')]
-    actual_pairs = _resampled_dimension_pairs(var_info)
+    actual_pairs = get_resampled_dimension_pairs(var_info)
     assert set(expected_pairs) == set(actual_pairs)
 
 
-def test__transfer_resampled_dimensions(
+def test_transfer_resampled_dimensions(
     test_file, test_area_fxn, var_info_fxn, test_1D_dimensions_ncfile
 ):
     """Tests transfer of all dimensions.
 
     test transfer of dimensions from source to target including resizing
     for the target's area definition.  The internal functions of
-    _transfer_resampled_dimensions are tested further down in this file.
+    transfer_resampled_dimensions are tested further down in this file.
 
     """
     width = 36
@@ -307,7 +305,7 @@ def test__transfer_resampled_dimensions(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(
+        transfer_resampled_dimensions(
             source_ds, target_ds, _generate_test_area, var_info
         )
 
@@ -319,7 +317,7 @@ def test__transfer_resampled_dimensions(
         assert validate.dimensions['lat'].size == height
 
 
-def test__copy_resampled_dimension_variables(
+def test_copy_resampled_dimension_variables(
     test_file,
     test_area_fxn,
     test_MERRA2_ncfile,
@@ -336,9 +334,9 @@ def test__copy_resampled_dimension_variables(
         Dataset(test_MERRA2_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
 
-        vars_copied = _copy_resampled_dimension_variables(
+        vars_copied = copy_resampled_dimension_variables(
             source_ds, target_ds, target_area, var_info
         )
 
@@ -359,80 +357,78 @@ def test__copy_resampled_dimension_variables(
         (7, 7, 'prime number'),
     ],
 )
-def test__get_rows_per_scan(input_value, expected, description):
-    """Test _get_rows_per_scan with various input types."""
-    assert _get_rows_per_scan(input_value) == expected, f'Failed for {description}'
+def test_get_rows_per_scan(input_value, expected, description):
+    """Test get_rows_per_scan with various input types."""
+    assert get_rows_per_scan(input_value) == expected, f'Failed for {description}'
 
 
-def test__prepare_data_plane_floating_without_rotation(
-    var_info_fxn, test_MERRA2_ncfile
-):
+def test_prepare_data_plane_floating_without_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.float32)
     var_name = '/T'
     expected_data = np.copy(test_data)
-    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
+    actual_data = prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
 
 
-def test__prepare_data_plane_floating_with_rotation(var_info_fxn, test_IMERG_ncfile):
+def test_prepare_data_plane_floating_with_rotation(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.float16)
     var_name = '/Grid/HQprecipitation'
     expected_data = np.copy(test_data.T)
-    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
+    actual_data = prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
 
 
-def test__prepare_data_plane_int_without_rotation(var_info_fxn, test_MERRA2_ncfile):
+def test_prepare_data_plane_int_without_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.int8)
     var_name = '/T'
     expected_data = np.copy(test_data)
-    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
+    actual_data = prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
 
 
-def test__prepare_data_plane_int_with_rotation(var_info_fxn, test_IMERG_ncfile):
+def test_prepare_data_plane_int_with_rotation(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
     test_data = np.array(np.arange(12).reshape(4, 3), dtype=np.int64)
     test_data[0, 0] = -99999999
     var_name = '/Grid/HQprecipitation'
     expected_data = np.copy(test_data.T).astype(np.float64)
 
-    actual_data = _prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
+    actual_data = prepare_data_plane(test_data, var_info, var_name, cast_to=np.float64)
 
     assert np.float64 == actual_data.dtype
     np.testing.assert_equal(expected_data, actual_data)
 
 
-def test__resampled_dimensions_1D_file(var_info_fxn, test_1D_dimensions_ncfile):
+def test_resampled_dimensions_1D_file(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_dimensions = {'/lat', '/lon'}
-    actual_dimensions = _resampled_dimensions(var_info)
+    actual_dimensions = get_resampled_dimensions(var_info)
     assert expected_dimensions == actual_dimensions
 
 
-def test__resampled_dimensions_ATL14_multiple_grids(var_info_fxn, test_ATL14_ncfile):
+def test_resampled_dimensions_ATL14_multiple_grids(var_info_fxn, test_ATL14_ncfile):
     var_info = var_info_fxn(test_ATL14_ncfile)
 
     expected_dimensions = {'/x', '/y', '/tile_stats/x', '/tile_stats/y'}
-    actual_dimensions = _resampled_dimensions(var_info)
+    actual_dimensions = get_resampled_dimensions(var_info)
     assert expected_dimensions == actual_dimensions
 
 
-def test__needs_rotation_needs_rotation(var_info_fxn, test_1D_dimensions_ncfile):
+def test_needs_rotation_needs_rotation(var_info_fxn, test_1D_dimensions_ncfile):
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
-    assert _needs_rotation(var_info, '/data') is True
+    assert needs_rotation(var_info, '/data') is True
 
 
-def test__needs_rotation_no_rotation(var_info_fxn, test_MERRA2_ncfile):
+def test_needs_rotation_no_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
-    assert _needs_rotation(var_info, '/PHIS') is False
-    assert _needs_rotation(var_info, '/OMEGA') is False
+    assert needs_rotation(var_info, '/PHIS') is False
+    assert needs_rotation(var_info, '/OMEGA') is False

@@ -10,18 +10,18 @@ from varinfo import VarInfoFromNetCDF4
 from xarray import DataTree
 
 from harmony_regridding_service.dimensions import (
-    _horizontal_dims_for_variable,
+    horizontal_dims_for_variable,
 )
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidTargetCRS,
 )
 from harmony_regridding_service.utilities import (
-    _get_variable,
+    get_variable,
 )
 
 
-def _crs_from_source_data(dt: DataTree, variables: set) -> CRS:
+def crs_from_source_data(dt: DataTree, variables: set) -> CRS:
     """Create a CRS describing the grid in the source file.
 
     Look through the variables for metadata that points to a grid_mapping
@@ -56,7 +56,7 @@ def _crs_from_source_data(dt: DataTree, variables: set) -> CRS:
     raise InvalidSourceCRS('No grid_mapping metadata found.')
 
 
-def _crs_variable_name(
+def get_crs_variable_name(
     dim_pair: tuple[str, str], resampled_dim_pairs: list[tuple[str, str]]
 ) -> str:
     """Return a crs variable name for this dimension pair.
@@ -78,7 +78,7 @@ def _crs_variable_name(
     return crs_var_name
 
 
-def _is_geographic_crs(crs_string: str) -> bool:
+def is_geographic_crs(crs_string: str) -> bool:
     """Infer if CRS is geographic.
 
     Use pyproj to ascertain if the supplied Coordinate Reference System
@@ -93,7 +93,7 @@ def _is_geographic_crs(crs_string: str) -> bool:
     return is_geographic
 
 
-def _write_grid_mappings(
+def write_grid_mappings(
     target_ds: Dataset,
     resampled_dim_pairs: list[tuple[str, str]],
     target_area: AreaDefinition,
@@ -111,7 +111,7 @@ def _write_grid_mappings(
     crs_map = {}
 
     for dim_pair in resampled_dim_pairs:
-        crs_variable_name = _crs_variable_name(dim_pair, resampled_dim_pairs)
+        crs_variable_name = get_crs_variable_name(dim_pair, resampled_dim_pairs)
         var = PurePath(crs_variable_name)
         t_group = target_ds.createGroup(var.parent)
         t_var = t_group.createVariable(var.name, 'S1')
@@ -121,11 +121,11 @@ def _write_grid_mappings(
     return crs_map
 
 
-def _add_grid_mapping_metadata(
+def add_grid_mapping_metadata(
     target_ds: Dataset, variables: set[str], var_info: VarInfoFromNetCDF4, crs_map: dict
 ) -> None:
     """Link regridded variables to the correct crs variable."""
     for var_name in variables:
-        crs_variable_name = crs_map[_horizontal_dims_for_variable(var_info, var_name)]
-        var = _get_variable(target_ds, var_name)
+        crs_variable_name = crs_map[horizontal_dims_for_variable(var_info, var_name)]
+        var = get_variable(target_ds, var_name)
         var.setncattr('grid_mapping', crs_variable_name)

@@ -12,13 +12,13 @@ from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.crs import (
-    _crs_from_source_data,
+    crs_from_source_data,
 )
 from harmony_regridding_service.dimensions import (
-    _dims_are_lon_lat,
-    _dims_are_projected_x_y,
-    _get_column_dims,
-    _get_row_dims,
+    dims_are_lon_lat,
+    dims_are_projected_x_y,
+    get_column_dims,
+    get_row_dims,
 )
 from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
@@ -28,7 +28,7 @@ from harmony_regridding_service.exceptions import (
 logger = getLogger(__name__)
 
 
-def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
+def compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
@@ -44,8 +44,8 @@ def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
         message.format.scaleExtent.y.max,
     )
 
-    height = _grid_height(message)
-    width = _grid_width(message)
+    height = grid_height(message)
+    width = grid_width(message)
     projection = message.format.crs or 'EPSG:4326'
 
     return AreaDefinition(
@@ -59,27 +59,27 @@ def _compute_target_area(message: HarmonyMessage) -> AreaDefinition:
     )
 
 
-def _grid_height(message: HarmonyMessage) -> int:
+def grid_height(message: HarmonyMessage) -> int:
     """Compute grid height from Message.
 
     Compute the height of grid from the scaleExtents and scale_sizes.
     """
     if has_dimensions(message):
         return message.format.height
-    return _compute_num_elements(message, 'y')
+    return compute_num_elements(message, 'y')
 
 
-def _grid_width(message: HarmonyMessage) -> int:
+def grid_width(message: HarmonyMessage) -> int:
     """Compute grid height from Message.
 
     Compute the height of grid from the scaleExtents and scale_sizes.
     """
     if has_dimensions(message):
         return message.format.width
-    return _compute_num_elements(message, 'x')
+    return compute_num_elements(message, 'x')
 
 
-def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
+def compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
     """Compute the number of gridcells based on scaleExtents and scaleSize."""
     scale_extent = getattr(message.format.scaleExtent, dimension_name)
     scale_size = getattr(message.format.scaleSize, dimension_name)
@@ -88,19 +88,19 @@ def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
     return num_elements
 
 
-def _compute_source_swath(
+def compute_source_swath(
     grid_dimensions: tuple[str, str],
     filepath: str,
     var_info: VarInfoFromNetCDF4,
     variable_set: set,
 ) -> SwathDefinition:
     """Return a SwathDefinition for the input grid_dimensions."""
-    if _dims_are_lon_lat(grid_dimensions, var_info):
-        longitudes, latitudes = _compute_horizontal_source_grids(
+    if dims_are_lon_lat(grid_dimensions, var_info):
+        longitudes, latitudes = compute_horizontal_source_grids(
             grid_dimensions, filepath, var_info
         )
-    elif _dims_are_projected_x_y(grid_dimensions, var_info):
-        longitudes, latitudes = _compute_projected_horizontal_source_grids(
+    elif dims_are_projected_x_y(grid_dimensions, var_info):
+        longitudes, latitudes = compute_projected_horizontal_source_grids(
             grid_dimensions, filepath, var_info, variable_set
         )
     else:
@@ -111,7 +111,7 @@ def _compute_source_swath(
     return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
-def _compute_horizontal_source_grids(
+def compute_horizontal_source_grids(
     grid_dimensions: tuple[str, str], filepath: str, var_info: VarInfoFromNetCDF4
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return grids for longitude and latitude for the grid_dimension pair.
@@ -126,8 +126,8 @@ def _compute_horizontal_source_grids(
     We return the new longitude[column x row] and latitude[column x row] arrays.
 
     """
-    row_dim = _get_row_dims(grid_dimensions, var_info)[0]
-    column_dim = _get_column_dims(grid_dimensions, var_info)[0]
+    row_dim = get_row_dims(grid_dimensions, var_info)[0]
+    column_dim = get_column_dims(grid_dimensions, var_info)[0]
     logger.info(f'found row_dim: {row_dim}')
     logger.info(f'found column_dim: {column_dim}')
 
@@ -154,7 +154,7 @@ def _compute_horizontal_source_grids(
     return (longitudes, latitudes)
 
 
-def _compute_projected_horizontal_source_grids(
+def compute_projected_horizontal_source_grids(
     grid_dimensions: tuple[str, str],
     filepath: str,
     var_info: VarInfoFromNetCDF4,
@@ -166,14 +166,14 @@ def _compute_projected_horizontal_source_grids(
     in the source data and use those to generate 2D longitude and latitude arrays.
 
     """
-    xdim_name = _get_column_dims(grid_dimensions, var_info)[0]
-    ydim_name = _get_row_dims(grid_dimensions, var_info)[0]
+    xdim_name = get_column_dims(grid_dimensions, var_info)[0]
+    ydim_name = get_row_dims(grid_dimensions, var_info)[0]
     try:
         with xr.open_datatree(filepath) as dt:
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
-            area_extent = _compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            source_crs = _crs_from_source_data(dt, variables)
+            area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
+            source_crs = crs_from_source_data(dt, variables)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             source_area = create_area_def(
@@ -189,7 +189,7 @@ def _compute_projected_horizontal_source_grids(
         raise SourceDataError('cannot compute projected source grids') from e
 
 
-def _compute_area_extent_from_regular_x_y_coords(
+def compute_area_extent_from_regular_x_y_coords(
     xvalues: np.ndarray, yvalues: np.ndarray
 ) -> tuple[np.float64, np.float64, np.float64, np.float64]:
     """Return outer extent of regularly defined grid.
@@ -203,8 +203,8 @@ def _compute_area_extent_from_regular_x_y_coords(
           (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
 
     """
-    min_x, max_x = _compute_array_bounds(xvalues)
-    min_y, max_y = _compute_array_bounds(yvalues)
+    min_x, max_x = compute_array_bounds(xvalues)
+    min_y, max_y = compute_array_bounds(yvalues)
     return (
         np.min([min_x, max_x]),
         np.min([min_y, max_y]),
@@ -213,7 +213,7 @@ def _compute_area_extent_from_regular_x_y_coords(
     )
 
 
-def _compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
+def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
     """Returns external edges of array bounds.
 
     If values holds an array of regulary spaced cell centers, return the outer

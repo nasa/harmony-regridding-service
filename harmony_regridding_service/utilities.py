@@ -48,14 +48,14 @@ def get_file_mime_type(file_name: str) -> str | None:
     return mime_type[0]
 
 
-def _walk_groups(node: Dataset | Group) -> Group:
+def walk_groups(node: Dataset | Group) -> Group:
     """Traverse a netcdf file yielding each group."""
     yield node.groups.values()
     for value in node.groups.values():
-        yield from _walk_groups(value)
+        yield from walk_groups(value)
 
 
-def _transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
+def transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
     """Transfer over global and group metadata to target file."""
     global_metadata = {}
     for attr in source_ds.ncattrs():
@@ -63,7 +63,7 @@ def _transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
 
     target_ds.setncatts(global_metadata)
 
-    for groups in _walk_groups(source_ds):
+    for groups in walk_groups(source_ds):
         for group in groups:
             group_metadata = {}
             for attr in group.ncattrs():
@@ -72,12 +72,12 @@ def _transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
             t_group.setncatts(group_metadata)
 
 
-def _integer_like(test_type: np.dtype) -> bool:
+def integer_like(test_type: np.dtype) -> bool:
     """Return True if the datatype is integer like."""
     return np.issubdtype(np.dtype(test_type), np.integer)
 
 
-def _copy_var_with_attrs(
+def copy_var_with_attrs(
     source_ds: Dataset, target_ds: Dataset, variable_name: str
 ) -> tuple[Variable, Variable]:
     """Copy a source variable and metadata to target.
@@ -85,7 +85,7 @@ def _copy_var_with_attrs(
     Copy both the variable and metadata from a souce variable into a target,
     return both source and target variables.
     """
-    s_var, t_var = _copy_var_without_metadata(source_ds, target_ds, variable_name)
+    s_var, t_var = copy_var_without_metadata(source_ds, target_ds, variable_name)
 
     for att in s_var.ncattrs():
         if att != '_FillValue':
@@ -94,7 +94,7 @@ def _copy_var_with_attrs(
     return (s_var, t_var)
 
 
-def _copy_var_without_metadata(
+def copy_var_without_metadata(
     source_ds: Dataset, target_ds: Dataset, variable_name: str
 ) -> tuple[Variable, Variable]:
     """Clones a single variable and returns both source and target variables.
@@ -105,7 +105,7 @@ def _copy_var_without_metadata(
 
     """
     var = PurePath(variable_name)
-    s_var = _get_variable(source_ds, variable_name)
+    s_var = get_variable(source_ds, variable_name)
 
     # Create target variable
     t_group = target_ds.createGroup(var.parent)
@@ -119,7 +119,7 @@ def _copy_var_without_metadata(
     return (s_var, t_var)
 
 
-def _clone_variables(
+def clone_variables(
     source_ds: Dataset, target_ds: Dataset, variables: set[str]
 ) -> set[str]:
     """Clone variables from source to target.
@@ -128,7 +128,7 @@ def _clone_variables(
     target Dataset.
     """
     for variable_name in variables:
-        (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, variable_name)
+        (s_var, t_var) = copy_var_with_attrs(source_ds, target_ds, variable_name)
         try:
             t_var[:] = s_var[:]
         except IndexError as vlen_error:
@@ -142,7 +142,7 @@ def _clone_variables(
     return variables
 
 
-def _get_variable(dataset: Dataset, variable_name: str) -> Variable:
+def get_variable(dataset: Dataset, variable_name: str) -> Variable:
     """Return a variable from a fully qualified variable name.
 
     This will return an existing or create a new variable.
@@ -152,7 +152,8 @@ def _get_variable(dataset: Dataset, variable_name: str) -> Variable:
     return group[var.name]
 
 
-def _get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
+def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
+    """Return the bounds variable associated with the given dimension."""
     return next(
         (
             var_info.get_variable(f'{dim_name}_{ext}').name

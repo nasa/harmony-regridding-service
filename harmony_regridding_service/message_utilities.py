@@ -3,7 +3,7 @@
 from harmony_service_lib.message import Message
 from harmony_service_lib.message_utility import rgetattr
 
-from harmony_regridding_service.crs import _is_geographic_crs
+from harmony_regridding_service.crs import is_geographic_crs
 
 VALID_INTERPOLATION_METHODS = ('Elliptical Weighted Averaging',)
 
@@ -68,4 +68,4 @@ def has_valid_crs(message: Message) -> bool:
 
     """
     target_crs = rgetattr(message, 'format.crs')
-    return target_crs is None or _is_geographic_crs(target_crs)
+    return target_crs is None or is_geographic_crs(target_crs)

@@ -8,28 +8,28 @@ from netCDF4 import Dataset
 from pyproj import CRS
 
 from harmony_regridding_service.crs import (
-    _add_grid_mapping_metadata,
-    _crs_from_source_data,
-    _crs_variable_name,
-    _is_geographic_crs,
-    _write_grid_mappings,
+    add_grid_mapping_metadata,
+    crs_from_source_data,
+    get_crs_variable_name,
+    is_geographic_crs,
+    write_grid_mappings,
 )
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidTargetCRS,
 )
 from harmony_regridding_service.regridding_service import (
-    _resampled_dimension_pairs,
-    _transfer_metadata,
+    get_resampled_dimension_pairs,
+    transfer_metadata,
 )
 from harmony_regridding_service.resample import (
-    _transfer_resampled_dimensions,
+    transfer_resampled_dimensions,
 )
-from harmony_regridding_service.utilities import _get_variable
+from harmony_regridding_service.utilities import get_variable
 
 
-@patch('harmony_regridding_service.crs._get_variable')
-@patch('harmony_regridding_service.crs._horizontal_dims_for_variable')
+@patch('harmony_regridding_service.crs.get_variable')
+@patch('harmony_regridding_service.crs.horizontal_dims_for_variable')
 def test_add_grid_mapping_metadata_sets_attributes(
     mock_horizontal_dims_for_variable,
     mock_get_variable,
@@ -59,7 +59,7 @@ def test_add_grid_mapping_metadata_sets_attributes(
 
     mock_get_variable.side_effect = _get_variable_side_effect
 
-    _add_grid_mapping_metadata(mock_dataset, variables, mock_varinfo, crs_map)
+    add_grid_mapping_metadata(mock_dataset, variables, mock_varinfo, crs_map)
 
     mock_horizontal_dims_for_variable.assert_has_calls(
         [call(mock_varinfo, 'var1'), call(mock_varinfo, 'var2')], any_order=True
@@ -72,31 +72,31 @@ def test_add_grid_mapping_metadata_sets_attributes(
     mock_var2.setncattr.assert_called_once_with('grid_mapping', 'crs_var2')
 
 
-def test__crs_from_source_data_expected_case(smap_projected_netcdf_file):
+def test_crs_from_source_data_expected_case(smap_projected_netcdf_file):
     dt = xr.open_datatree(smap_projected_netcdf_file)
     expected_crs = CRS('epsg:6933')
-    crs = _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+    crs = crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
     assert crs.to_epsg() == expected_crs
 
 
-def test__crs_from_source_data_missing(smap_projected_netcdf_file):
+def test_crs_from_source_data_missing(smap_projected_netcdf_file):
     dt = xr.open_datatree(smap_projected_netcdf_file)
     dt['/Forecast_Data/sm_profile_forecast'].attrs.pop('grid_mapping')
     with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
-        _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
-def test__crs_from_source_data_bad(smap_projected_netcdf_file):
+def test_crs_from_source_data_bad(smap_projected_netcdf_file):
     dt = xr.open_datatree(smap_projected_netcdf_file)
     dt['EASE2_global_projection'].attrs['grid_mapping_name'] = 'nonsense projection'
     dt['/Forecast_Data/sm_profile_forecast'].attrs['grid_mapping']
     with pytest.raises(
         InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
     ):
-        _crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
-def test__crs_variable_name_multiple_grids_separate_groups():
+def test_crs_variable_name_multiple_grids_separate_groups():
     dim_pair = ('/Grid/lat', '/Grid/lon')
     dim_pairs = [
         ('/Grid/lat', '/Grid/lon'),
@@ -105,20 +105,20 @@ def test__crs_variable_name_multiple_grids_separate_groups():
     ]
 
     expected_crs_name = '/Grid/crs'
-    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = get_crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
-def test__crs_variable_name_single_grid():
+def test_crs_variable_name_single_grid():
     dim_pair = ('/lat', '/lon')
     dim_pairs = [('/lat', '/lon')]
     expected_crs_name = '/crs'
 
-    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = get_crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
-def test__crs_variable_name_multiple_grids_share_group():
+def test_crs_variable_name_multiple_grids_share_group():
     dim_pair = ('/global_grid_lat', '/global_grid_lon')
     dim_pairs = [
         ('/npolar_grid_lat', '/npolar_grid_lon'),
@@ -127,7 +127,7 @@ def test__crs_variable_name_multiple_grids_share_group():
     ]
 
     expected_crs_name = '/crs_global_grid_lat_global_grid_lon'
-    actual_crs_name = _crs_variable_name(dim_pair, dim_pairs)
+    actual_crs_name = get_crs_variable_name(dim_pair, dim_pairs)
     assert expected_crs_name == actual_crs_name
 
 
@@ -142,7 +142,7 @@ def test__crs_variable_name_multiple_grids_share_group():
     ],
 )
 def test_is_geographic_crs(message, expected, description):
-    """Test _is_geographic_crs.
+    """Test is_geographic_crs.
 
     Ensure function correctly determines if a supplied string resolves
     to a `pyproj.CRS` object with a geographic Coordinate Reference
@@ -150,17 +150,17 @@ def test_is_geographic_crs(message, expected, description):
     also be handled.
 
     """
-    assert _is_geographic_crs(message) == expected, f'Failed for {description}'
+    assert is_geographic_crs(message) == expected, f'Failed for {description}'
 
 
 def test_is_geographic_raises_exception():
-    """Test _is_geographic_crs when it throws an exception."""
+    """Test is_geographic_crs when it throws an exception."""
     crs_string = 'invalid CRS'
     with pytest.raises(InvalidTargetCRS, match=crs_string):
-        _is_geographic_crs(crs_string)
+        is_geographic_crs(crs_string)
 
 
-def test__write_grid_mappings(
+def test_write_grid_mappings(
     test_file,
     var_info_fxn,
     test_1D_dimensions_ncfile,
@@ -175,18 +175,18 @@ def test__write_grid_mappings(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_metadata(source_ds, target_ds)
-        _transfer_resampled_dimensions(
+        transfer_metadata(source_ds, target_ds)
+        transfer_resampled_dimensions(
             source_ds, target_ds, _generate_test_area, var_info
         )
 
-        actual_crs_map = _write_grid_mappings(
-            target_ds, _resampled_dimension_pairs(var_info), _generate_test_area
+        actual_crs_map = write_grid_mappings(
+            target_ds, get_resampled_dimension_pairs(var_info), _generate_test_area
         )
         assert expected_crs_map == actual_crs_map
 
     with Dataset(target_file, mode='r') as validate:
-        crs = _get_variable(validate, '/crs')
+        crs = get_variable(validate, '/crs')
         expected_crs_metadata = _generate_test_area.crs.to_cf()
 
         actual_crs_metadata = {attr: crs.getncattr(attr) for attr in crs.ncattrs()}

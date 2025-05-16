@@ -13,20 +13,20 @@ from harmony_regridding_service.exceptions import (
     SourceDataError,
 )
 from harmony_regridding_service.grid import (
-    _compute_area_extent_from_regular_x_y_coords,
-    _compute_array_bounds,
-    _compute_horizontal_source_grids,
-    _compute_num_elements,
-    _compute_projected_horizontal_source_grids,
-    _compute_source_swath,
-    _compute_target_area,
-    _grid_height,
-    _grid_width,
+    compute_area_extent_from_regular_x_y_coords,
+    compute_array_bounds,
+    compute_horizontal_source_grids,
+    compute_num_elements,
+    compute_projected_horizontal_source_grids,
+    compute_source_swath,
+    compute_target_area,
+    grid_height,
+    grid_width,
 )
 
 
 @patch('harmony_regridding_service.grid.AreaDefinition', wraps=AreaDefinition)
-def test__compute_target_area(mock_area):
+def test_compute_target_area(mock_area):
     """Ensure Area Definition correctly generated."""
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
     xmin = -180
@@ -50,7 +50,7 @@ def test__compute_target_area(mock_area):
     expected_height = 90
     expected_width = 360
 
-    actual_area = _compute_target_area(message)
+    actual_area = compute_target_area(message)
 
     assert actual_area.shape == (expected_height, expected_width)
     assert actual_area.area_extent == (xmin, ymin, xmax, ymax)
@@ -66,31 +66,31 @@ def test__compute_target_area(mock_area):
     )
 
 
-def test__grid_height_message_with_scale_size(test_message_with_scale_size):
+def test_grid_height_message_with_scale_size(test_message_with_scale_size):
     expected_grid_height = 50
-    actual_grid_height = _grid_height(test_message_with_scale_size)
+    actual_grid_height = grid_height(test_message_with_scale_size)
     assert expected_grid_height == actual_grid_height
 
 
-def test__grid_height_mesage_includes_height(test_message_with_height_width):
+def test_grid_height_mesage_includes_height(test_message_with_height_width):
     expected_grid_height = 80
-    actual_grid_height = _grid_height(test_message_with_height_width)
+    actual_grid_height = grid_height(test_message_with_height_width)
     assert expected_grid_height == actual_grid_height
 
 
-def test__grid_width_message_with_scale_size(test_message_with_scale_size):
+def test_grid_width_message_with_scale_size(test_message_with_scale_size):
     expected_grid_width = 100
-    actual_grid_width = _grid_width(test_message_with_scale_size)
+    actual_grid_width = grid_width(test_message_with_scale_size)
     assert expected_grid_width == actual_grid_width
 
 
-def test__grid_width_message_with_width(test_message_with_height_width):
+def test_grid_width_message_with_width(test_message_with_height_width):
     expected_grid_width = 40
-    actual_grid_width = _grid_width(test_message_with_height_width)
+    actual_grid_width = grid_width(test_message_with_height_width)
     assert expected_grid_width == actual_grid_width
 
 
-def test__compute_num_elements():
+def test_compute_num_elements():
     xmin = 0
     xmax = 1000
     ymin = 0
@@ -110,24 +110,24 @@ def test__compute_num_elements():
 
     expected_x_elements = 100
     expected_y_elements = 50
-    actual_x_elements = _compute_num_elements(message, 'x')
-    actual_y_elements = _compute_num_elements(message, 'y')
+    actual_x_elements = compute_num_elements(message, 'x')
+    actual_y_elements = compute_num_elements(message, 'y')
 
     assert expected_x_elements == actual_x_elements
     assert expected_y_elements == actual_y_elements
 
 
-@patch('harmony_regridding_service.grid._compute_projected_horizontal_source_grids')
-@patch('harmony_regridding_service.grid._compute_horizontal_source_grids')
-@patch('harmony_regridding_service.grid._dims_are_projected_x_y')
-@patch('harmony_regridding_service.grid._dims_are_lon_lat')
-def test__compute_source_swath_lon_lat(
+@patch('harmony_regridding_service.grid.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.grid.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.grid.dims_are_projected_x_y')
+@patch('harmony_regridding_service.grid.dims_are_lon_lat')
+def test_compute_source_swath_lon_lat(
     mock_dims_are_lon_lat,
     mock_dims_are_projected_x_y,
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test _compute_source_swath with longitude/latitude dimensions."""
+    """Test compute_source_swath with longitude/latitude dimensions."""
     mock_dims_are_lon_lat.return_value = True
     mock_dims_are_projected_x_y.return_value = False
 
@@ -142,7 +142,7 @@ def test__compute_source_swath_lon_lat(
     var_info = MagicMock()
     variable_set = {'variable'}
 
-    swath_def = _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
 
     mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
     mock_compute_horizontal_source_grids.assert_called_once_with(
@@ -157,17 +157,17 @@ def test__compute_source_swath_lon_lat(
     np.testing.assert_array_equal(swath_def.lats, mock_lats)
 
 
-@patch('harmony_regridding_service.grid._compute_projected_horizontal_source_grids')
-@patch('harmony_regridding_service.grid._compute_horizontal_source_grids')
-@patch('harmony_regridding_service.grid._dims_are_projected_x_y')
-@patch('harmony_regridding_service.grid._dims_are_lon_lat')
-def test__compute_source_swath_projected_xy(
+@patch('harmony_regridding_service.grid.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.grid.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.grid.dims_are_projected_x_y')
+@patch('harmony_regridding_service.grid.dims_are_lon_lat')
+def test_compute_source_swath_projected_xy(
     mock_dims_are_lon_lat,
     mock_dims_are_projected_x_y,
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test _compute_source_swath with projected x/y dimensions."""
+    """Test compute_source_swath with projected x/y dimensions."""
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = True
 
@@ -181,7 +181,7 @@ def test__compute_source_swath_projected_xy(
     var_info = MagicMock()
     variable_set = {'variable'}
 
-    swath_def = _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
 
     mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
 
@@ -197,12 +197,12 @@ def test__compute_source_swath_projected_xy(
     np.testing.assert_array_equal(swath_def.lats, mock_lats)
 
 
-@patch('harmony_regridding_service.grid._dims_are_projected_x_y')
-@patch('harmony_regridding_service.grid._dims_are_lon_lat')
-def test__compute_source_swath_invalid_dimensions(
+@patch('harmony_regridding_service.grid.dims_are_projected_x_y')
+@patch('harmony_regridding_service.grid.dims_are_lon_lat')
+def test_compute_source_swath_invalid_dimensions(
     mock_dims_are_lon_lat, mock_dims_are_projected_x_y
 ):
-    """Test _compute_source_swath with invalid dimensions."""
+    """Test compute_source_swath with invalid dimensions."""
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = False
 
@@ -214,14 +214,14 @@ def test__compute_source_swath_invalid_dimensions(
     with pytest.raises(
         SourceDataError, match='Cannot determine correct dimension type from source'
     ):
-        _compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
+        compute_source_swath(grid_dimensions, filepath, var_info, variable_set)
 
     mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
     mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
 @pytest.mark.parametrize('test_arg', [('/lon', '/lat'), ('/lat', '/lon')])
-def test__compute_horizontal_source_grids_expected_result(
+def test_compute_horizontal_source_grids_expected_result(
     test_arg, test_1D_dimensions_ncfile, var_info_fxn
 ):
     """Exercises the single function for computing horizontal grids."""
@@ -247,7 +247,7 @@ def test__compute_horizontal_source_grids_expected_result(
         ]
     )
 
-    longitudes, latitudes = _compute_horizontal_source_grids(
+    longitudes, latitudes = compute_horizontal_source_grids(
         test_arg, test_1D_dimensions_ncfile, var_info
     )
 
@@ -256,7 +256,7 @@ def test__compute_horizontal_source_grids_expected_result(
 
 
 @pytest.mark.parametrize('grid_dimensions', [('/y', '/x'), ('/x', '/y')])
-def test__compute_projected_horizontal_source_grids(
+def test_compute_projected_horizontal_source_grids(
     grid_dimensions, var_info_fxn, smap_projected_netcdf_file
 ):
     """Test source grid generation."""
@@ -283,7 +283,7 @@ def test__compute_projected_horizontal_source_grids(
         ]
     )
 
-    longitudes, latitudes = _compute_projected_horizontal_source_grids(
+    longitudes, latitudes = compute_projected_horizontal_source_grids(
         grid_dimensions,
         smap_projected_netcdf_file,
         var_info,
@@ -294,7 +294,7 @@ def test__compute_projected_horizontal_source_grids(
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
 
 
-def test__compute_horizontal_source_grids_2D_lat_lon_input(
+def test_compute_horizontal_source_grids_2D_lat_lon_input(
     test_2D_dimensions_ncfile, var_info_fxn
 ):
     var_info = var_info_fxn(test_2D_dimensions_ncfile)
@@ -304,7 +304,7 @@ def test__compute_horizontal_source_grids_2D_lat_lon_input(
         'Incorrect source data dimensions. rows:(6, 5), columns:(6, 5)'
     )
     with pytest.raises(InvalidSourceDimensions, match=expected_regex):
-        _compute_horizontal_source_grids(
+        compute_horizontal_source_grids(
             grid_dimensions, test_2D_dimensions_ncfile, var_info
         )
 
@@ -319,7 +319,7 @@ def test__compute_horizontal_source_grids_2D_lat_lon_input(
     ],
 )
 def test_compute_area_extent_from_regular_x_y_coords(x_values, y_values, expected):
-    actual = _compute_area_extent_from_regular_x_y_coords(x_values, y_values)
+    actual = compute_area_extent_from_regular_x_y_coords(x_values, y_values)
     assert actual == expected
 
 
@@ -333,9 +333,9 @@ def test_compute_area_extent_from_regular_x_y_coords(x_values, y_values, expecte
         ([2, 1, 0, -1, -2, -3], (2.5, -3.5)),
     ],
 )
-def test__compute_array_bounds(input_values, expected):
+def test_compute_array_bounds(input_values, expected):
     """Test expected cases."""
-    actual = _compute_array_bounds(input_values)
+    actual = compute_array_bounds(input_values)
     assert actual == expected
 
 
@@ -350,7 +350,7 @@ def test__compute_array_bounds(input_values, expected):
         ([1], SourceDataError, 'coordinates must have at least 2 values'),
     ],
 )
-def test__compute_array_bounds_failures(input_values, expected_error, expected_message):
+def test_compute_array_bounds_failures(input_values, expected_error, expected_message):
     """Test expected cases."""
     with pytest.raises(expected_error, match=expected_message):
-        _compute_array_bounds(input_values)
+        compute_array_bounds(input_values)

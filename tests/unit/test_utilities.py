@@ -12,18 +12,18 @@ from harmony_regridding_service.message_utilities import (
     has_valid_interpolation,
 )
 from harmony_regridding_service.resample import (
-    _transfer_resampled_dimensions,
+    transfer_resampled_dimensions,
 )
 from harmony_regridding_service.utilities import (
-    _clone_variables,
-    _copy_var_with_attrs,
-    _copy_var_without_metadata,
-    _get_bounds_var,
-    _get_variable,
-    _integer_like,
-    _transfer_metadata,
-    _walk_groups,
+    clone_variables,
+    copy_var_with_attrs,
+    copy_var_without_metadata,
+    get_bounds_var,
     get_file_mime_type,
+    get_variable,
+    integer_like,
+    transfer_metadata,
+    walk_groups,
 )
 
 
@@ -75,7 +75,7 @@ class TestUtilities(TestCase):
             self.assertFalse(has_valid_interpolation(test_message))
 
 
-def test__walk_groups(test_file):
+def test_walk_groups(test_file):
     """Demonstrate traversing all groups."""
     target_path = test_file
     groups = ['/a/nested/group', '/b/another/deeper/group2']
@@ -87,14 +87,14 @@ def test__walk_groups(test_file):
 
     actual_visited = set()
     with Dataset(target_path, mode='r') as validate:
-        for groups in _walk_groups(validate):
+        for groups in walk_groups(validate):
             for group in groups:
                 actual_visited.update([group.name])
 
     assert expected_visited == actual_visited
 
 
-def test__transfer_metadata(test_file, test_1D_dimensions_ncfile):
+def test_transfer_metadata(test_file, test_1D_dimensions_ncfile):
     """Tests to ensure root and group level metadata is transfered to target."""
     _generate_test_file = test_file
 
@@ -110,7 +110,7 @@ def test__transfer_metadata(test_file, test_1D_dimensions_ncfile):
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(_generate_test_file, mode='w') as target_ds,
     ):
-        _transfer_metadata(source_ds, target_ds)
+        transfer_metadata(source_ds, target_ds)
 
     with Dataset(_generate_test_file, mode='r') as validate:
         root_metadata = {attr: validate.getncattr(attr) for attr in validate.ncattrs()}
@@ -140,20 +140,20 @@ def test__transfer_metadata(test_file, test_1D_dimensions_ncfile):
         np.ulonglong,
     ],
 )
-def test__integer_like(int_type):
-    assert _integer_like(int_type) is True
+def test_integer_like(int_type):
+    assert integer_like(int_type) is True
 
 
 @pytest.mark.parametrize('float_type', [np.float16, np.float32, np.float64])
-def test__integer_like_false(float_type):
-    assert _integer_like(float_type) is False
+def test_integer_like_false(float_type):
+    assert integer_like(float_type) is False
 
 
-def test__integer_like_string():
-    assert _integer_like(str) is False
+def test_integer_like_string():
+    assert integer_like(str) is False
 
 
-def test__copy_var_with_attrs(
+def test_copy_var_with_attrs(
     test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
 ):
     target_file = test_file
@@ -164,8 +164,8 @@ def test__copy_var_with_attrs(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
-        _copy_var_with_attrs(source_ds, target_ds, '/data')
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        copy_var_with_attrs(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
         actual_metadata = {
@@ -175,7 +175,7 @@ def test__copy_var_with_attrs(
         assert actual_metadata == expected_metadata
 
 
-def test__copy_vars_without_metadata(
+def test_copy_vars_without_metadata(
     test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
 ):
     target_file = test_file
@@ -185,8 +185,8 @@ def test__copy_vars_without_metadata(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
-        _copy_var_without_metadata(source_ds, target_ds, '/data')
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        copy_var_without_metadata(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
         actual_metadata = {
@@ -196,7 +196,7 @@ def test__copy_vars_without_metadata(
         assert {} == actual_metadata
 
 
-def test__clone_variables(
+def test_clone_variables(
     test_file, var_info_fxn, test_area_fxn, test_1D_dimensions_ncfile
 ):
     target_file = test_file
@@ -211,11 +211,11 @@ def test__clone_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        _transfer_resampled_dimensions(
+        transfer_resampled_dimensions(
             source_ds, target_ds, _generate_test_area, var_info
         )
 
-        copied = _clone_variables(source_ds, target_ds, copy_vars)
+        copied = clone_variables(source_ds, target_ds, copy_vars)
 
         assert copy_vars == copied
 
@@ -224,20 +224,20 @@ def test__clone_variables(
             assert_array_equal(validate['time'], source_ds['time'])
 
 
-def test__get_variable(test_ATL14_ncfile):
+def test_get_variable(test_ATL14_ncfile):
     with Dataset(test_ATL14_ncfile, mode='r') as source_ds:
-        var_grouped = _get_variable(source_ds, '/tile_stats/RMS_data')
+        var_grouped = get_variable(source_ds, '/tile_stats/RMS_data')
         expected_grouped = source_ds['tile_stats'].variables['RMS_data']
         assert expected_grouped == var_grouped
 
-        var_flat = _get_variable(source_ds, '/ice_area')
+        var_flat = get_variable(source_ds, '/ice_area')
         expected_flat = source_ds.variables['ice_area']
         assert expected_flat == var_flat
 
 
-def test__get_bounds_var(var_info_fxn, test_IMERG_ncfile):
+def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
     var_info = var_info_fxn(test_IMERG_ncfile)
     expected_bounds = 'lon_bnds'
 
-    actual_bounds = _get_bounds_var(var_info, '/Grid/lon')
+    actual_bounds = get_bounds_var(var_info, '/Grid/lon')
     assert expected_bounds == actual_bounds
