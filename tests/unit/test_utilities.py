@@ -16,7 +16,6 @@ from harmony_regridding_service.utilities import (
     clone_variables,
     copy_var_with_attrs,
     copy_var_without_metadata,
-    get_bounds_var,
     get_file_mime_type,
     get_variable_from_dataset,
     transfer_metadata,
@@ -202,11 +201,3 @@ def test_get_variable_from_dataset(test_ATL14_ncfile):
         var_flat = get_variable_from_dataset(source_ds, '/ice_area')
         expected_flat = source_ds.variables['ice_area']
         assert expected_flat == var_flat
-
-
-def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
-    var_info = var_info_fxn(test_IMERG_ncfile)
-    expected_bounds = 'lon_bnds'
-
-    actual_bounds = get_bounds_var(var_info, '/Grid/lon')
-    assert expected_bounds == actual_bounds

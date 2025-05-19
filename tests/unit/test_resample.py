@@ -19,6 +19,7 @@ from harmony_regridding_service.resample import (
     create_dimension,
     create_resampled_dimensions,
     get_all_dimensions,
+    get_bounds_var,
     get_dimension,
     get_resampled_dimension_pairs,
     get_resampled_dimensions,
@@ -589,3 +590,11 @@ def test_integer_like_false(float_type):
 
 def test_integer_like_string():
     assert integer_like(str) is False
+
+
+def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
+    var_info = var_info_fxn(test_IMERG_ncfile)
+    expected_bounds = 'lon_bnds'
+
+    actual_bounds = get_bounds_var(var_info, '/Grid/lon')
+    assert expected_bounds == actual_bounds

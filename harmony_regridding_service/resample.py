@@ -26,7 +26,6 @@ from harmony_regridding_service.grid import compute_source_swath
 from harmony_regridding_service.utilities import (
     copy_var_with_attrs,
     copy_var_without_metadata,
-    get_bounds_var,
 )
 
 logger = getLogger(__name__)
@@ -512,3 +511,15 @@ def copy_1d_dimension_variables(
         t_var[:] = target_coords
 
     return one_d_vars
+
+
+def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
+    """Return the bounds variable associated with the given dimension."""
+    return next(
+        (
+            var_info.get_variable(f'{dim_name}_{ext}').name
+            for ext in ['bnds', 'bounds']
+            if var_info.get_variable(f'{dim_name}_{ext}') is not None
+        ),
+        None,
+    )

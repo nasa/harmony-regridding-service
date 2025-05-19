@@ -16,7 +16,6 @@ from netCDF4 import (
     Group,
     Variable,
 )
-from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.exceptions import SourceDataError
 
@@ -144,15 +143,3 @@ def get_variable_from_dataset(dataset: Dataset, variable_name: str) -> Variable:
     var = PurePath(variable_name)
     group = dataset.createGroup(var.parent)
     return group[var.name]
-
-
-def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
-    """Return the bounds variable associated with the given dimension."""
-    return next(
-        (
-            var_info.get_variable(f'{dim_name}_{ext}').name
-            for ext in ['bnds', 'bounds']
-            if var_info.get_variable(f'{dim_name}_{ext}') is not None
-        ),
-        None,
-    )
