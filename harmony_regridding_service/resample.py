@@ -22,11 +22,11 @@ from harmony_regridding_service.dimensions import (
 from harmony_regridding_service.exceptions import (
     RegridderException,
 )
-from harmony_regridding_service.grid import compute_source_swath
-from harmony_regridding_service.utilities import (
+from harmony_regridding_service.file_io import (
     copy_var_with_attrs,
     copy_var_without_metadata,
 )
+from harmony_regridding_service.grid import compute_source_swath
 
 logger = getLogger(__name__)
 

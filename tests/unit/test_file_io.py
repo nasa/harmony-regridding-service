@@ -6,13 +6,7 @@ from harmony_service_lib.message import Message
 from netCDF4 import Dataset
 from numpy.testing import assert_array_equal
 
-from harmony_regridding_service.message_utilities import (
-    has_valid_interpolation,
-)
-from harmony_regridding_service.resample import (
-    transfer_resampled_dimensions,
-)
-from harmony_regridding_service.utilities import (
+from harmony_regridding_service.file_io import (
     clone_variables,
     copy_var_with_attrs,
     copy_var_without_metadata,
@@ -20,6 +14,12 @@ from harmony_regridding_service.utilities import (
     get_variable_from_dataset,
     transfer_metadata,
     walk_groups,
+)
+from harmony_regridding_service.message_utilities import (
+    has_valid_interpolation,
+)
+from harmony_regridding_service.resample import (
+    transfer_resampled_dimensions,
 )
 
 

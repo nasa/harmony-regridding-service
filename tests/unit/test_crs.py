@@ -9,6 +9,7 @@ from harmony_regridding_service.crs import (
     get_crs_variable_name,
     write_grid_mappings,
 )
+from harmony_regridding_service.file_io import get_variable_from_dataset
 from harmony_regridding_service.regridding_service import (
     get_resampled_dimension_pairs,
     transfer_metadata,
@@ -16,7 +17,6 @@ from harmony_regridding_service.regridding_service import (
 from harmony_regridding_service.resample import (
     transfer_resampled_dimensions,
 )
-from harmony_regridding_service.utilities import get_variable_from_dataset
 
 
 @patch('harmony_regridding_service.crs.get_variable_from_dataset')

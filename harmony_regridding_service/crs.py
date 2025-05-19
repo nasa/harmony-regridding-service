@@ -9,7 +9,7 @@ from varinfo import VarInfoFromNetCDF4
 from harmony_regridding_service.dimensions import (
     horizontal_dims_for_variable,
 )
-from harmony_regridding_service.utilities import (
+from harmony_regridding_service.file_io import (
     get_variable_from_dataset,
 )
 

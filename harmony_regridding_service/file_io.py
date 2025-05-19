@@ -1,10 +1,4 @@
-"""Utility functions for use within the Harmony Regridding Service.
-
-This module contains lower-level functionality that can be abstracted into
-functions. Primarily this improves readability of the source code, and
-allows finer-grained unit testing of each smaller part of functionality.
-
-"""
+"""Module that handles source file copy and writing to target output."""
 
 from logging import getLogger
 from mimetypes import guess_type as guess_mime_type

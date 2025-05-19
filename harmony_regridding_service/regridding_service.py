@@ -13,6 +13,10 @@ from harmony_regridding_service.crs import (
     add_grid_mapping_metadata,
     write_grid_mappings,
 )
+from harmony_regridding_service.file_io import (
+    clone_variables,
+    transfer_metadata,
+)
 from harmony_regridding_service.grid import compute_target_area
 from harmony_regridding_service.resample import (
     cache_resamplers,
@@ -21,10 +25,6 @@ from harmony_regridding_service.resample import (
     resample_n_dimensional_variables,
     transfer_resampled_dimensions,
     unresampled_variables,
-)
-from harmony_regridding_service.utilities import (
-    clone_variables,
-    transfer_metadata,
 )
 
 logger = getLogger(__name__)
