@@ -16,10 +16,10 @@ from harmony_regridding_service.regridding_service import (
 from harmony_regridding_service.resample import (
     transfer_resampled_dimensions,
 )
-from harmony_regridding_service.utilities import get_variable
+from harmony_regridding_service.utilities import get_variable_from_dataset
 
 
-@patch('harmony_regridding_service.crs.get_variable')
+@patch('harmony_regridding_service.crs.get_variable_from_dataset')
 @patch('harmony_regridding_service.crs.horizontal_dims_for_variable')
 def test_add_grid_mapping_metadata_sets_attributes(
     mock_horizontal_dims_for_variable,
@@ -124,7 +124,7 @@ def test_write_grid_mappings(
         assert expected_crs_map == actual_crs_map
 
     with Dataset(target_file, mode='r') as validate:
-        crs = get_variable(validate, '/crs')
+        crs = get_variable_from_dataset(validate, '/crs')
         expected_crs_metadata = _generate_test_area.crs.to_cf()
 
         actual_crs_metadata = {attr: crs.getncattr(attr) for attr in crs.ncattrs()}

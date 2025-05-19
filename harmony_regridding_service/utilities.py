@@ -99,7 +99,7 @@ def copy_var_without_metadata(
 
     """
     var = PurePath(variable_name)
-    s_var = get_variable(source_ds, variable_name)
+    s_var = get_variable_from_dataset(source_ds, variable_name)
 
     # Create target variable
     t_group = target_ds.createGroup(var.parent)
@@ -136,7 +136,7 @@ def clone_variables(
     return variables
 
 
-def get_variable(dataset: Dataset, variable_name: str) -> Variable:
+def get_variable_from_dataset(dataset: Dataset, variable_name: str) -> Variable:
     """Return a variable from a fully qualified variable name.
 
     This will return an existing or create a new variable.

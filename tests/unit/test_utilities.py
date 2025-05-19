@@ -18,7 +18,7 @@ from harmony_regridding_service.utilities import (
     copy_var_without_metadata,
     get_bounds_var,
     get_file_mime_type,
-    get_variable,
+    get_variable_from_dataset,
     transfer_metadata,
     walk_groups,
 )
@@ -193,13 +193,13 @@ def test_clone_variables(
             assert_array_equal(validate['time'], source_ds['time'])
 
 
-def test_get_variable(test_ATL14_ncfile):
+def test_get_variable_from_dataset(test_ATL14_ncfile):
     with Dataset(test_ATL14_ncfile, mode='r') as source_ds:
-        var_grouped = get_variable(source_ds, '/tile_stats/RMS_data')
+        var_grouped = get_variable_from_dataset(source_ds, '/tile_stats/RMS_data')
         expected_grouped = source_ds['tile_stats'].variables['RMS_data']
         assert expected_grouped == var_grouped
 
-        var_flat = get_variable(source_ds, '/ice_area')
+        var_flat = get_variable_from_dataset(source_ds, '/ice_area')
         expected_flat = source_ds.variables['ice_area']
         assert expected_flat == var_flat
 
