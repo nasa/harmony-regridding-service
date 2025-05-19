@@ -11,7 +11,6 @@ from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
 from pathlib import PurePath
 
-import numpy as np
 from netCDF4 import (
     Dataset,
     Group,
@@ -70,11 +69,6 @@ def transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
                 group_metadata[attr] = group.getncattr(attr)
             t_group = target_ds.createGroup(group.path)
             t_group.setncatts(group_metadata)
-
-
-def integer_like(test_type: np.dtype) -> bool:
-    """Return True if the datatype is integer like."""
-    return np.issubdtype(np.dtype(test_type), np.integer)
 
 
 def copy_var_with_attrs(

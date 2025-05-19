@@ -4,16 +4,26 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-from netCDF4 import Dataset
+from netCDF4 import (
+    Dataset,
+    Dimension,
+)
 from numpy.testing import assert_array_equal
 
 from harmony_regridding_service.resample import (
+    copy_1d_dimension_variables,
+    copy_dimension,
+    copy_dimensions,
     copy_resampled_bounds_variable,
     copy_resampled_dimension_variables,
+    create_dimension,
     create_resampled_dimensions,
+    get_all_dimensions,
+    get_dimension,
     get_resampled_dimension_pairs,
     get_resampled_dimensions,
     get_rows_per_scan,
+    integer_like,
     needs_rotation,
     prepare_data_plane,
     resample_layer,
@@ -432,3 +442,150 @@ def test_needs_rotation_no_rotation(var_info_fxn, test_MERRA2_ncfile):
     var_info = var_info_fxn(test_MERRA2_ncfile)
     assert needs_rotation(var_info, '/PHIS') is False
     assert needs_rotation(var_info, '/OMEGA') is False
+
+
+def test_copy_1d_dimension_variables(
+    test_file, test_area_fxn, var_info_fxn, test_1D_dimensions_ncfile
+):
+    target_file = test_file
+    target_area = test_area_fxn()
+    var_info = var_info_fxn(test_1D_dimensions_ncfile)
+    dim_var_names = {'/lon', '/lat'}
+    expected_attributes = {'long_name', 'standard_name', 'units'}
+    vars_copied = []
+    with (
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+        Dataset(target_file, mode='w') as target_ds,
+    ):
+        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        vars_copied = copy_1d_dimension_variables(
+            source_ds, target_ds, dim_var_names, target_area, var_info
+        )
+
+    assert dim_var_names == vars_copied
+    with Dataset(target_file, mode='r') as validate:
+        assert_array_equal(validate['/lon'][:], target_area.projection_x_coords)
+        assert_array_equal(validate['/lat'][:], target_area.projection_y_coords)
+        assert expected_attributes == set(validate['/lat'].ncattrs())
+        with pytest.raises(AttributeError):
+            validate['/lat'].getncattr('non-standard-attribute')
+
+
+def test_create_dimension(test_file):
+    name = '/somedim'
+    size = 1000
+    with Dataset(test_file, mode='w') as target_ds:
+        dim = create_dimension(target_ds, name, size)
+        assert isinstance(dim, Dimension)
+        assert dim.size == size
+        assert dim.name == 'somedim'
+
+
+def test_create_nested_dimension(test_file):
+    name = '/some/deeply/nested/dimname'
+    size = 2000
+    with Dataset(test_file, mode='w') as target_ds:
+        dim = create_dimension(target_ds, name, size)
+        assert isinstance(dim, Dimension)
+        assert dim.size == size
+        assert dim.name == 'dimname'
+
+
+def test_all_dimensions(var_info_fxn, test_1D_dimensions_ncfile):
+    var_info = var_info_fxn(test_1D_dimensions_ncfile)
+    expected_dimensions = {'/time', '/lon', '/lat', '/bnds'}
+    actual_dimensions = get_all_dimensions(var_info)
+    assert expected_dimensions == actual_dimensions
+
+
+def test_copy_dimension(test_file, test_1D_dimensions_ncfile, longitudes):
+    with (
+        Dataset(test_file, mode='w') as target_ds,
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+    ):
+        time_dimension = copy_dimension('/time', source_ds, target_ds)
+        assert time_dimension.isunlimited() is True
+        assert time_dimension.size == 0
+
+        lon_dimension = copy_dimension('/lon', source_ds, target_ds)
+        assert lon_dimension.isunlimited() is False
+        assert lon_dimension.size == len(longitudes)
+
+
+def test_copy_dimensions(test_file, test_1D_dimensions_ncfile, latitudes, longitudes):
+    test_target = test_file
+    with (
+        Dataset(test_target, mode='w') as target_ds,
+        Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
+    ):
+        copy_dimensions({'/lat', '/lon', '/time', '/bnds'}, source_ds, target_ds)
+
+    with Dataset(test_target, mode='r') as validate:
+        assert validate.dimensions['time'].isunlimited() is True
+        assert validate.dimensions['time'].size == 0
+        assert validate.dimensions['lat'].size == len(latitudes)
+        assert validate.dimensions['lon'].size == len(longitudes)
+        assert validate.dimensions['bnds'].size == 2
+
+
+def test_copy_dimensions_with_groups(test_file, test_IMERG_ncfile):
+    with (
+        Dataset(test_file, mode='w') as target_ds,
+        Dataset(test_IMERG_ncfile, mode='r') as source_ds,
+    ):
+        copy_dimensions(
+            {'/Grid/latv', '/Grid/lonv', '/Grid/nv', '/Grid/time'},
+            source_ds,
+            target_ds,
+        )
+
+    with Dataset(test_file, mode='r') as validate:
+        assert validate['Grid'].dimensions['time'].isunlimited() is True
+        assert validate['Grid'].dimensions['time'].size == 0
+        assert validate['Grid'].dimensions['lonv'].size == 2
+        assert validate['Grid'].dimensions['latv'].size == 2
+        assert validate['Grid'].dimensions['nv'].size == 2
+
+
+def test_get_flat_dimension(test_1D_dimensions_ncfile, latitudes):
+    with Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds:
+        lat_dim = get_dimension(source_ds, '/lat')
+        assert isinstance(lat_dim, Dimension)
+        assert lat_dim.size == len(latitudes)
+        assert lat_dim.name == 'lat'
+
+
+def test_get_nested_dimension(test_IMERG_ncfile):
+    with Dataset(test_IMERG_ncfile, mode='r') as source_ds:
+        lat_dim = get_dimension(source_ds, '/Grid/lat')
+        assert isinstance(lat_dim, Dimension)
+        assert lat_dim.name == 'lat'
+        assert lat_dim.size == 1800
+
+
+@pytest.mark.parametrize(
+    'int_type',
+    [
+        np.byte,
+        np.ubyte,
+        np.short,
+        np.ushort,
+        np.intc,
+        np.uintc,
+        np.int_,
+        np.uint,
+        np.longlong,
+        np.ulonglong,
+    ],
+)
+def test_integer_like(int_type):
+    assert integer_like(int_type) is True
+
+
+@pytest.mark.parametrize('float_type', [np.float16, np.float32, np.float64])
+def test_integer_like_false(float_type):
+    assert integer_like(float_type) is False
+
+
+def test_integer_like_string():
+    assert integer_like(str) is False

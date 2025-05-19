@@ -2,8 +2,6 @@
 
 from unittest import TestCase
 
-import numpy as np
-import pytest
 from harmony_service_lib.message import Message
 from netCDF4 import Dataset
 from numpy.testing import assert_array_equal
@@ -21,7 +19,6 @@ from harmony_regridding_service.utilities import (
     get_bounds_var,
     get_file_mime_type,
     get_variable,
-    integer_like,
     transfer_metadata,
     walk_groups,
 )
@@ -123,34 +120,6 @@ def test_transfer_metadata(test_file, test_1D_dimensions_ncfile):
         assert expected_root_groups == root_groups
         assert expected_root_metadata == root_metadata
         assert expected_nested_metadata == nested_metadata
-
-
-@pytest.mark.parametrize(
-    'int_type',
-    [
-        np.byte,
-        np.ubyte,
-        np.short,
-        np.ushort,
-        np.intc,
-        np.uintc,
-        np.int_,
-        np.uint,
-        np.longlong,
-        np.ulonglong,
-    ],
-)
-def test_integer_like(int_type):
-    assert integer_like(int_type) is True
-
-
-@pytest.mark.parametrize('float_type', [np.float16, np.float32, np.float64])
-def test_integer_like_false(float_type):
-    assert integer_like(float_type) is False
-
-
-def test_integer_like_string():
-    assert integer_like(str) is False
 
 
 def test_copy_var_with_attrs(
