@@ -4,7 +4,10 @@ import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
 
 from harmony_regridding_service.exceptions import InvalidTargetCRS
-from harmony_regridding_service.message_utilities import has_valid_crs
+from harmony_regridding_service.message_utilities import (
+    has_valid_crs,
+    is_geographic_crs,
+)
 from harmony_regridding_service.regridding_cli import (
     get_harmony_message_from_params,
 )
@@ -112,3 +115,32 @@ def test_has_valid_crs_raises_exception():
     message = HarmonyMessage({'format': {'crs': crs_string}})
     with pytest.raises(InvalidTargetCRS, match=crs_string):
         has_valid_crs(message)
+
+
+@pytest.mark.parametrize(
+    'message, expected, description',
+    [
+        ('EPSG:4326', True, 'EPSG:4326 is geographic'),
+        ('+proj=longlat', True, '+proj=longlat is geographic'),
+        ('4326', True, '4326 is geographic'),
+        ('EPSG:6933', False, 'EPSG:6933 is non-geographic'),
+        ('+proj=cea', False, '+proj=cea is non-geographic'),
+    ],
+)
+def test_is_geographic_crs(message, expected, description):
+    """Test is_geographic_crs.
+
+    Ensure function correctly determines if a supplied string resolves
+    to a `pyproj.CRS` object with a geographic Coordinate Reference
+    System (CRS). Exceptions arising from invalid CRS strings should
+    also be handled.
+
+    """
+    assert is_geographic_crs(message) == expected, f'Failed for {description}'
+
+
+def test_is_geographic_raises_exception():
+    """Test is_geographic_crs when it throws an exception."""
+    crs_string = 'invalid CRS'
+    with pytest.raises(InvalidTargetCRS, match=crs_string):
+        is_geographic_crs(crs_string)

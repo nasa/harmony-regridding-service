@@ -14,7 +14,6 @@ from harmony_regridding_service.dimensions import (
 )
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
-    InvalidTargetCRS,
 )
 from harmony_regridding_service.utilities import (
     get_variable,
@@ -76,21 +75,6 @@ def get_crs_variable_name(
         crs_var_name += f'_{PurePath(dim_pair[0]).name}_{PurePath(dim_pair[1]).name}'
 
     return crs_var_name
-
-
-def is_geographic_crs(crs_string: str) -> bool:
-    """Infer if CRS is geographic.
-
-    Use pyproj to ascertain if the supplied Coordinate Reference System
-    (CRS) is geographic.
-    """
-    try:
-        crs = CRS(crs_string)
-        is_geographic = crs.is_geographic
-    except CRSError as exception:
-        raise InvalidTargetCRS(crs_string) from exception
-
-    return is_geographic
 
 
 def write_grid_mappings(
