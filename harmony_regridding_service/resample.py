@@ -376,7 +376,7 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
     the grid before resampling.
 
     """
-    needs_rotation = False
+    variable_needs_rotation = False
     var_dims = var_info.get_variable(variable).dimensions
     xloc = next(
         (
@@ -395,9 +395,9 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         None,
     )
     if yloc > xloc:
-        needs_rotation = True
+        variable_needs_rotation = True
 
-    return needs_rotation
+    return variable_needs_rotation
 
 
 def copy_dimensions(
