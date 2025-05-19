@@ -9,8 +9,6 @@ from harmony_regridding_service.dimensions import (
     copy_dimension,
     copy_dimensions,
     create_dimension,
-    dims_are_lon_lat,
-    dims_are_projected_x_y,
     get_all_dimensions,
     get_column_dims,
     get_dimension,
@@ -138,38 +136,6 @@ def test_create_nested_dimension(test_file):
         assert isinstance(dim, Dimension)
         assert dim.size == size
         assert dim.name == 'dimname'
-
-
-@pytest.mark.parametrize(
-    'file_fixture_name, dimensions, expected_result',
-    [
-        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), True),
-        ('smap_projected_netcdf_file', ('/y', '/x'), False),
-    ],
-)
-def test_dims_are_lon_lat(
-    var_info_fxn, request, file_fixture_name, dimensions, expected_result
-):
-    """Test if dimensions are lon/lat coordinates."""
-    file_fixture = request.getfixturevalue(file_fixture_name)
-    var_info = var_info_fxn(file_fixture)
-    assert dims_are_lon_lat(dimensions, var_info) is expected_result
-
-
-@pytest.mark.parametrize(
-    'file_fixture_name, dimensions, expected_result',
-    [
-        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), False),
-        ('smap_projected_netcdf_file', ('/y', '/x'), True),
-    ],
-)
-def test_dims_are_projected_x_y(
-    var_info_fxn, request, file_fixture_name, dimensions, expected_result
-):
-    """Test if dimensions are projected x/y coordinates."""
-    file_fixture = request.getfixturevalue(file_fixture_name)
-    var_info = var_info_fxn(file_fixture)
-    assert dims_are_projected_x_y(dimensions, var_info) is expected_result
 
 
 def test_all_dimensions(var_info_fxn, test_1D_dimensions_ncfile):

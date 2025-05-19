@@ -5,10 +5,13 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
+from pyproj import CRS
 from pyresample.geometry import AreaDefinition, SwathDefinition
 
 from harmony_regridding_service.exceptions import (
+    InvalidSourceCRS,
     InvalidSourceDimensions,
     SourceDataError,
 )
@@ -20,6 +23,9 @@ from harmony_regridding_service.grid import (
     compute_projected_horizontal_source_grids,
     compute_source_swath,
     compute_target_area,
+    crs_from_source_data,
+    dims_are_lon_lat,
+    dims_are_projected_x_y,
     grid_height,
     grid_width,
 )
@@ -354,3 +360,59 @@ def test_compute_array_bounds_failures(input_values, expected_error, expected_me
     """Test expected cases."""
     with pytest.raises(expected_error, match=expected_message):
         compute_array_bounds(input_values)
+
+
+def test_crs_from_source_data_expected_case(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    expected_crs = CRS('epsg:6933')
+    crs = crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+    assert crs.to_epsg() == expected_crs
+
+
+def test_crs_from_source_data_missing(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    dt['/Forecast_Data/sm_profile_forecast'].attrs.pop('grid_mapping')
+    with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
+        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
+def test_crs_from_source_data_bad(smap_projected_netcdf_file):
+    dt = xr.open_datatree(smap_projected_netcdf_file)
+    dt['EASE2_global_projection'].attrs['grid_mapping_name'] = 'nonsense projection'
+    dt['/Forecast_Data/sm_profile_forecast'].attrs['grid_mapping']
+    with pytest.raises(
+        InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
+    ):
+        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
+
+
+@pytest.mark.parametrize(
+    'file_fixture_name, dimensions, expected_result',
+    [
+        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), True),
+        ('smap_projected_netcdf_file', ('/y', '/x'), False),
+    ],
+)
+def test_dims_are_lon_lat(
+    var_info_fxn, request, file_fixture_name, dimensions, expected_result
+):
+    """Test if dimensions are lon/lat coordinates."""
+    file_fixture = request.getfixturevalue(file_fixture_name)
+    var_info = var_info_fxn(file_fixture)
+    assert dims_are_lon_lat(dimensions, var_info) is expected_result
+
+
+@pytest.mark.parametrize(
+    'file_fixture_name, dimensions, expected_result',
+    [
+        ('test_2D_dimensions_ncfile', ('/lon', '/lat'), False),
+        ('smap_projected_netcdf_file', ('/y', '/x'), True),
+    ],
+)
+def test_dims_are_projected_x_y(
+    var_info_fxn, request, file_fixture_name, dimensions, expected_result
+):
+    """Test if dimensions are projected x/y coordinates."""
+    file_fixture = request.getfixturevalue(file_fixture_name)
+    var_info = var_info_fxn(file_fixture)
+    assert dims_are_projected_x_y(dimensions, var_info) is expected_result

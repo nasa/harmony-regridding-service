@@ -2,19 +2,12 @@
 
 from unittest.mock import MagicMock, call, patch
 
-import pytest
-import xarray as xr
 from netCDF4 import Dataset
-from pyproj import CRS
 
 from harmony_regridding_service.crs import (
     add_grid_mapping_metadata,
-    crs_from_source_data,
     get_crs_variable_name,
     write_grid_mappings,
-)
-from harmony_regridding_service.exceptions import (
-    InvalidSourceCRS,
 )
 from harmony_regridding_service.regridding_service import (
     get_resampled_dimension_pairs,
@@ -68,30 +61,6 @@ def test_add_grid_mapping_metadata_sets_attributes(
     )
     mock_var1.setncattr.assert_called_once_with('grid_mapping', 'crs_var1')
     mock_var2.setncattr.assert_called_once_with('grid_mapping', 'crs_var2')
-
-
-def test_crs_from_source_data_expected_case(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    expected_crs = CRS('epsg:6933')
-    crs = crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
-    assert crs.to_epsg() == expected_crs
-
-
-def test_crs_from_source_data_missing(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    dt['/Forecast_Data/sm_profile_forecast'].attrs.pop('grid_mapping')
-    with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
-        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
-
-
-def test_crs_from_source_data_bad(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    dt['EASE2_global_projection'].attrs['grid_mapping_name'] = 'nonsense projection'
-    dt['/Forecast_Data/sm_profile_forecast'].attrs['grid_mapping']
-    with pytest.raises(
-        InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
-    ):
-        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
 def test_crs_variable_name_multiple_grids_separate_groups():

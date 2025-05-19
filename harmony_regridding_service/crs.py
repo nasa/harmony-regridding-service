@@ -3,56 +3,15 @@
 from pathlib import PurePath
 
 from netCDF4 import Dataset
-from pyproj import CRS
-from pyproj.exceptions import CRSError
 from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
-from xarray import DataTree
 
 from harmony_regridding_service.dimensions import (
     horizontal_dims_for_variable,
 )
-from harmony_regridding_service.exceptions import (
-    InvalidSourceCRS,
-)
 from harmony_regridding_service.utilities import (
     get_variable,
 )
-
-
-def crs_from_source_data(dt: DataTree, variables: set) -> CRS:
-    """Create a CRS describing the grid in the source file.
-
-    Look through the variables for metadata that points to a grid_mapping
-    and generate a CRS from that information.
-
-    The metadata is not always clear or easy to parse into a CRS. Take a
-    shortcut when possible.
-
-    if the grid_mapping has a known EASE2 grid name, use the EPSG code known
-    apriori.
-
-    Args:
-      dt: the source file as an opened DataTree
-
-      variables: set of variables all sharing the same 2-dimensional grid is
-                 traversed looking for a grid_mapping.
-
-    Returns:
-      CRS object
-
-    """
-    for varname in variables:
-        var = dt[varname]
-        if 'grid_mapping' in var.attrs:
-            try:
-                return CRS.from_cf(dt[var.attrs['grid_mapping']].attrs)
-            except CRSError as e:
-                raise InvalidSourceCRS(
-                    'Could not create a CRS from grid_mapping metadata'
-                ) from e
-
-    raise InvalidSourceCRS('No grid_mapping metadata found.')
 
 
 def get_crs_variable_name(

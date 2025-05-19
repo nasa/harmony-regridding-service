@@ -70,23 +70,6 @@ def is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     return is_y_dim
 
 
-def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) -> bool:
-    """Does the dimension pair represent longitudes/latitudes."""
-    return all(
-        var_info.get_variable(dim_name).is_geographic() for dim_name in dimensions
-    )
-
-
-def dims_are_projected_x_y(
-    dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4
-) -> bool:
-    """Does the dimension pair represent projected x/y values."""
-    return all(
-        var_info.get_variable(dim_name).is_projection_x_or_y()
-        for dim_name in dimensions
-    )
-
-
 def get_all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a list of all dimensions in the file."""
     dimensions = set()
