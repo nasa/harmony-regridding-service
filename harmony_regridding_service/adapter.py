@@ -26,12 +26,12 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetCRS,
     InvalidTargetGrid,
 )
-from harmony_regridding_service.regridding_service import regrid
-from harmony_regridding_service.utilities import (
-    get_file_mime_type,
+from harmony_regridding_service.file_io import get_file_mime_type
+from harmony_regridding_service.message_utilities import (
     has_valid_crs,
     has_valid_interpolation,
 )
+from harmony_regridding_service.regridding_service import regrid
 
 
 class RegriddingServiceAdapter(BaseHarmonyAdapter):

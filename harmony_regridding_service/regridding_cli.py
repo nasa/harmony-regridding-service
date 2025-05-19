@@ -1,10 +1,10 @@
-"""Module containing utility functionality for regridding."""
+"""Module for invoking the Harmony Regridding Service from command line."""
 
 from logging import Logger
 
-from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 
+from harmony_regridding_service.message_utilities import get_harmony_message_from_params
 from harmony_regridding_service.regridding_service import regrid
 
 
@@ -48,35 +48,3 @@ def regrid_cli_entry(
     harmony_message = get_harmony_message_from_params(params)
     source = HarmonySource(source)
     return regrid(harmony_message, source_filename, source, call_logger)
-
-
-def get_harmony_message_from_params(params: dict | None) -> HarmonyMessage:
-    """Constructs a harmony message from the input parms.
-
-    We have to create a harmony message to pass to the regrid function so that
-    both the CLI entry and service calls are identical.
-
-    """
-    if params is None:
-        params = {}
-    mime = params.get('mime', 'application/netcdf')
-    crs = params.get('crs', None)
-    srs = params.get('srs', None)
-    scale_extent = params.get('scale_extent', None)
-    scale_size = params.get('scale_size', None)
-    height = params.get('height', None)
-    width = params.get('width', None)
-
-    return HarmonyMessage(
-        {
-            'format': {
-                'mime': mime,
-                'crs': crs,
-                'srs': srs,
-                'scaleExtent': scale_extent,
-                'scaleSize': scale_size,
-                'height': height,
-                'width': width,
-            },
-        }
-    )
