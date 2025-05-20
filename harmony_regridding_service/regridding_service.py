@@ -136,6 +136,54 @@ def _add_grid_mapping_metadata(
         var.setncattr('grid_mapping', crs_variable_name)
 
 
+def _order_source_variable(
+    source: np.ndarray, var_info: VarInfoFromNetCDF4, var_name: str
+) -> np.ndarray:
+    """Return the input source array with CF-appropriate ordered dimensions.
+
+    For spatial regridding, we need to ensure that horizontal dimensions
+    (latitude and longitude or x and y) are the last two dimensions in the
+    array. This allows the regridding algorithm to properly operate on the
+    spatial coordinates.
+
+    Parameters:
+        source: Input array to be regridded
+        var_info: VarInfoFromNetCDF4 containing metadata about the file.
+        var_name: Name of the variable being processed
+
+    Returns:
+        Array with dimensions reordered if needed (horizontal dims last)
+
+    Raises:
+        RegridderException: If the variable has only one dimension
+
+    """
+    if len(source.shape) == 2:
+        return source
+
+    if len(source.shape) == 1:
+        raise RegridderException('Attempted to resample a 1-D Variable.')
+
+    horizontal_dims = _horizontal_dims_for_variable(var_info, var_name)
+    all_dims = var_info.get_variable(var_name).dimensions
+
+    if all_dims[-1] in horizontal_dims and all_dims[-2] in horizontal_dims:
+        # Already in correct order
+        return source
+
+    non_horizontal_dims = [dim for dim in all_dims if dim not in horizontal_dims]
+    print(f'non_horizontal_dims: {non_horizontal_dims}')
+
+    xdim = _get_column_dims(all_dims, var_info)[0]
+    ydim = _get_row_dims(all_dims, var_info)[0]
+
+    correct_dims = [*non_horizontal_dims, xdim, ydim]
+    positions = [all_dims.index(dim) for dim in correct_dims]
+
+    ordered_source = np.transpose(source, axes=positions)
+    return ordered_source
+
+
 def _resample_variable_data(
     s_var: np.ndarray,
     t_var: np.ndarray,
@@ -177,21 +225,30 @@ def _resample_n_dimensional_variables(
     processed = set()
 
     for var_name in variables:
-        processed.add(var_name)
         logger.debug(f'resampling {var_name}')
-        resampler = resampler_cache[_horizontal_dims_for_variable(var_info, var_name)]
+        try:
+            resampler = resampler_cache[
+                _horizontal_dims_for_variable(var_info, var_name)
+            ]
 
-        (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
+            (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
 
-        # We have to get the fill value off of the variable here because we
-        # only pass the numpy.ndarray into _resample_variable_data and we need
-        # to know the fill value for the actual resampler.compute call.
-        fill_value = getattr(t_var, '_FillValue', None)
+            # We have to get the fill value off of the variable here because we
+            # only pass the numpy.ndarray into _resample_variable_data and we need
+            # to know the fill value for the actual resampler.compute call.
+            fill_value = getattr(t_var, '_FillValue', None)
 
-        t_var[:] = _resample_variable_data(
-            s_var[:], t_var[:], resampler, var_info, var_name, fill_value
-        )
-        logger.debug(f'Processed: {var_name}')
+            source_variable = _order_source_variable(s_var[:], var_info, var_name)
+
+            t_var[:] = _resample_variable_data(
+                source_variable, t_var[:], resampler, var_info, var_name, fill_value
+            )
+
+            processed.add(var_name)
+            logger.debug(f'Processed: {var_name}')
+        except Exception as e:
+            logger.info(f'Failed to process: {var_name}')
+            logger.info(e)
 
     return processed
 
@@ -226,7 +283,8 @@ def _resample_layer(
         **_resampler_kwargs(prepped_source, source_plane.dtype),
     )
 
-    ## Convert the data back into the original datatype and transpose if necessary.
+    ## Convert the data back into the original datatype and transpose if
+    ## necessary.
     return _prepare_data_plane(
         target_data, var_info, var_name, cast_to=source_plane.dtype
     )
@@ -430,7 +488,8 @@ def _resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str
 
     This returns a list of the fully qualified variables that need to use the
     information from the target_area in order to compute the correct output
-    values.
+    values. This will be the values in _resampled_dimensions but also any
+    bounds variable associated with those dimension variables
 
     """
     dims_to_transfer = set()
@@ -678,8 +737,8 @@ def _all_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
 def _unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Variable names to be transfered from source to target without change.
 
-    returns a set of variables that do not have any dimension that is also in
-    the set of resampled_dimensions.
+    Returns a set of the variables that do not have any resampled dimension and
+    are safe to copy directly over to the target file.
 
     """
     vars_by_dim = var_info.group_variables_by_dimensions()
@@ -688,8 +747,8 @@ def _unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     return set.union(
         *[
             variable_set
-            for dimension_name, variable_set in vars_by_dim.items()
-            if not resampled_dims.intersection(set(dimension_name))
+            for dimension_name_tuple, variable_set in vars_by_dim.items()
+            if not resampled_dims.intersection(set(dimension_name_tuple))
         ]
     )
 
@@ -828,7 +887,7 @@ def _compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
 
 
 def _is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a horizontal dimension."""
+    """Test if dim is a column dimension."""
     try:
         dim_var = var_info.get_variable(dim)
         is_x_dim = dim_var.is_longitude() or dim_var.is_projection_x()
@@ -838,7 +897,7 @@ def _is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
 
 
 def _is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a projection Y dimension."""
+    """Test if dim is a row dimension."""
     is_y_dim = False
     try:
         dim_var = var_info.get_variable(dim)
