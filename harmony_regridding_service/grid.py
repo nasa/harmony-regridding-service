@@ -5,9 +5,13 @@ from logging import getLogger
 import numpy as np
 import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
-from harmony_service_lib.message_utility import has_dimensions
+from harmony_service_lib.message_utility import (
+    has_dimensions,
+    has_scale_extents,
+    has_scale_sizes,
+)
 from netCDF4 import Dataset
-from pyproj import CRS
+from pyproj import CRS, transformer
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition, SwathDefinition
@@ -26,24 +30,40 @@ from harmony_regridding_service.exceptions import (
 logger = getLogger(__name__)
 
 
-def compute_target_area(message: HarmonyMessage) -> AreaDefinition:
+def compute_target_area(
+    message: HarmonyMessage,
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> AreaDefinition:
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variables will be regridded to this target.
+    multi-dimensional variable will be regridded to this target.
+
+    Computed parameters:
+    ----------------------
+    Area extent: [tuple]
+        The two real-world projection coordinate pairs of the grid's upper
+        right and lower left points (in order):
+        - lower left x coordinate of the lower left pixel
+        - lower left y coordinate of the lower left pixel
+        - upper right x coordinate of the upper right pixel
+        - upper right y coordinate of the upper right pixel
+    Height: [int]
+        The number of grid rows.
+    Width: [int]
+        The number of grid columns.
+    Projection: [dict]
+        The target Coordinate Reference System (CRS) represented by a dictionary with an
+        EPSG code, proj4 string, or wkt key string.
 
     """
     # ScaleExtent is required and validated.
     logger.info('compute target_area')
-    area_extent = (
-        message.format.scaleExtent.x.min,
-        message.format.scaleExtent.y.min,
-        message.format.scaleExtent.x.max,
-        message.format.scaleExtent.y.max,
-    )
 
-    height = grid_height(message)
-    width = grid_width(message)
+    # Get the target grid parameters from either the Harmony Message or
+    # from input file if the grid parameters are not specified.
+    area_extent, height, width = get_target_grid_parameters(message, filepath, var_info)
     projection = message.format.crs or 'EPSG:4326'
 
     return AreaDefinition(
@@ -55,6 +75,182 @@ def compute_target_area(message: HarmonyMessage) -> AreaDefinition:
         height,
         area_extent,
     )
+
+
+def get_target_grid_parameters(
+    message: HarmonyMessage,
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> tuple[tuple, int, int, str]:
+    """Retrieve the target grid parameters.
+
+    If all the required parameters exist in the Harmony message,
+    they are simply extracted from the message. If all the parameters do not
+    exist, they are created.
+
+    """
+    if has_scale_extents(message) and (
+        has_scale_sizes(message) or has_dimensions(message)
+    ):
+        return get_grid_parameters_from_message(message)
+    return create_grid_parameters(filepath, var_info, message.format.crs or 'EPSG:4326')
+
+
+def create_grid_parameters(
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    crs: str,
+) -> tuple[tuple, int, int]:
+    """Create the target grid parameters using the source grid information."""
+    area_extent = get_source_area_extent(filepath, var_info, crs)
+    scale_extent = {
+        'x': {'min': area_extent[0], 'max': area_extent[2]},
+        'y': {'min': area_extent[1], 'max': area_extent[3]},
+    }
+
+    x_res, y_res = calculate_source_resolution(filepath, var_info)
+    scale_size = {
+        'x': x_res,
+        'y': y_res,
+    }
+
+    width = int(
+        round((scale_extent['x']['max'] - scale_extent['x']['min']) / scale_size['x'])
+    )
+    height = int(
+        round((scale_extent['y']['max'] - scale_extent['y']['min']) / scale_size['y'])
+    )
+
+    return area_extent, height, width
+
+
+def get_source_area_extent(
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    crs: str,
+) -> tuple[np.float64, np.float64, np.float64, np.float64]:
+    """Get the area extent from the input granule.
+
+    If the source data is projection-gridded, transform it to latitude
+    and longitude.
+
+    """
+    xvalues, yvalues = get_x_y_grid_values(filepath, var_info)
+    area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
+    dimensions = var_info.get_required_dimensions(var_info.get_all_variables())
+
+    if dims_are_projected_x_y(dimensions, var_info):
+        return transform_area_extent_to_geographic(filepath, var_info, area_extent, crs)
+
+    return area_extent
+
+
+def get_x_y_grid_values(
+    filepath: str, var_info: VarInfoFromNetCDF4
+) -> tuple[np.array, np.array]:
+    """Retrieve the x and y grid values.
+
+    Note/future work: This code currently assumes the input granule only
+    contains one grid, and thus only one set of dimension variables.
+    This is not always the case, for example ATL16 contains three grids:
+    global, north polar, and south polar. This will not return the
+    correct x and y values for each grid when a multi-grid collection
+    is requested.
+
+    """
+    try:
+        with xr.open_datatree(filepath) as dt:
+            dimensions = var_info.get_required_dimensions(var_info.get_all_variables())
+            xvalues = dt[get_column_dims(dimensions, var_info)[0]].data
+            yvalues = dt[get_row_dims(dimensions, var_info)[0]].data
+    except Exception as e:
+        logger.error(e)
+        raise SourceDataError('Cannot retrieve source grid.') from e
+
+    return xvalues, yvalues
+
+
+def transform_area_extent_to_geographic(
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    area_extent: tuple[np.float64, np.float64, np.float64, np.float64],
+    output_crs: str,
+) -> tuple[np.float64, np.float64, np.float64, np.float64]:
+    """Convert area extent to latitude and longitude.
+
+    Given an area extent (lower_left_x, lower_left_y, upper_right_x,
+    upper_right_y), transform the values to geographic.
+
+    """
+    try:
+        with xr.open_datatree(filepath) as dt:
+            input_crs = crs_from_source_data(dt, var_info.get_all_variables())
+    except Exception as e:
+        logger.error(e)
+        raise InvalidSourceCRS('Invalid source CRS') from e
+
+    transform_to_geo = transformer.Transformer.from_crs(
+        input_crs, output_crs, always_xy=True
+    )
+    longitude_extent, latitude_extent = transform_to_geo.transform(
+        area_extent[2], area_extent[3]
+    )  # xmax, ymax
+
+    longitude_max = abs(longitude_extent)
+    longitude_min = -longitude_max
+    latitude_max = abs(latitude_extent)
+    latitude_min = -latitude_max
+
+    return (longitude_min, latitude_min, longitude_max, latitude_max)
+
+
+def calculate_source_resolution(
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> tuple[np.float64, np.float64]:
+    """Calculate the resolution found in the input granule.
+
+    If the input file is projection-gridded (resolution is in meters),
+    then the resolution (i.e., scale size/cell spacing) is converted to
+    degrees latitude at true scale.
+
+    Meters to degrees conversion factor:
+    - Earth circumference at the equator: 40,075,000 meters
+    - Earth circumference / 360deg = 111,319.444444 meters/deg
+
+    """
+    METERS_PER_DEGREE = 111319.444444
+
+    dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
+
+    xvalues, yvalues = get_x_y_grid_values(filepath, var_info)
+    x_res = abs(xvalues[1] - xvalues[0])
+    y_res = abs(yvalues[1] - yvalues[0])
+
+    for dimensions, _ in dimension_vars_mapping.items():
+        if len(dimensions) == 2:
+            if dims_are_projected_x_y(dimensions, var_info):
+                x_res = x_res / METERS_PER_DEGREE
+                y_res = y_res / METERS_PER_DEGREE
+
+    return x_res, y_res
+
+
+def get_grid_parameters_from_message(
+    message: HarmonyMessage,
+) -> tuple[tuple, int, int]:
+    """Retrieve the target grid parameters specified in the Harmony request."""
+    area_extent = (
+        message.format.scaleExtent.x.min,
+        message.format.scaleExtent.y.min,
+        message.format.scaleExtent.x.max,
+        message.format.scaleExtent.y.max,
+    )
+
+    height = grid_height(message)
+    width = grid_width(message)
+
+    return area_extent, height, width
 
 
 def grid_height(message: HarmonyMessage) -> int:
