@@ -458,6 +458,23 @@ def test__resample_layer_compute_float_no_fill(var_info_fxn, test_MERRA2_ncfile)
     assert resampler_mock._get_default_fill.call_count == 1
 
 
+def test__order_source_variable_2d_is_unchanged():
+    """A 2D var is unchanged."""
+    source = np.random.rand(30, 30)
+    expected = np.copy(source)
+    actual = _order_source_variable(source, Any, Any)
+    np.testing.assert_equal(expected, actual)
+
+
+def test__order_source_variable_1d_input_errors():
+    """A 1D var raises Exception."""
+    source = np.random.rand(50)
+    with pytest.raises(
+        RegridderException, match='Attempted to resample a 1-D Variable'
+    ):
+        _order_source_variable(source, Any, 'temperature')
+
+
 @pytest.fixture()
 def sample_3d_variable():
     return np.random.randint(0, 10, (5, 7, 3))
@@ -518,7 +535,7 @@ def test__order_source_variable_3d_incorrect_row_col_any_order_is_ordered(
     variable_mock = MagicMock()
     variable_mock.dimensions = ['/y', '/x', '/lc_type']
 
-    # indexs we expect to be  ['/lc_type', '/x', '/y'] (index: [2, 1, 0])
+    # indexes we expect to be  ['/lc_type', '/x', '/y'] (index: [2, 1, 0])
     expected = np.transpose(sample_data, axes=[2, 1, 0])
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
@@ -545,7 +562,7 @@ def test__order_source_variable_3d_incorrect_col_row_any_order_is_ordered(
     # '/x' and '/y' in different locations this time:
     variable_mock.dimensions = ['/x', '/y', '/lc_type']
 
-    # indexs we expect to be  ['/lc_type', '/x', '/y'] (index: [2, 0, 1])
+    # indexes we expect to be  ['/lc_type', '/x', '/y'] (index: [2, 0, 1])
     expected = np.transpose(sample_data, axes=[2, 0, 1])
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
@@ -559,21 +576,31 @@ def test__order_source_variable_3d_incorrect_col_row_any_order_is_ordered(
     np.testing.assert_array_equal(actual, expected)
 
 
-def test__order_source_variable_2d_is_unchanged():
-    """A 2D var is unchanged."""
-    source = np.random.rand(30, 30)
-    expected = np.copy(source)
-    actual = _order_source_variable(source, Any, Any)
-    np.testing.assert_equal(expected, actual)
+@patch('harmony_regridding_service.regridding_service._get_row_dims')
+@patch('harmony_regridding_service.regridding_service._get_column_dims')
+@patch('harmony_regridding_service.regridding_service._horizontal_dims_for_variable')
+def test__order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
+    horizonal_dims_mock, column_dims_mock, row_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
+    sample_data = np.random.randint(0, 10, (11, 12, 5, 7, 3))
+    variable_mock = MagicMock()
 
+    variable_mock.dimensions = ['/v', '/w', '/x', '/y', '/lc_type']
+    # indexes we expect to be  ['/v', '/w', '/lc_type', '/x', '/y']
+    # (index: [0, 1, 4, 2, 3])
 
-def test__order_source_variable_1d_input_errors():
-    """A 1D var raises Exception."""
-    source = np.random.rand(50)
-    with pytest.raises(
-        RegridderException, match='Attempted to resample a 1-D Variable'
-    ):
-        _order_source_variable(source, Any, 'temperature')
+    expected = np.transpose(sample_data, axes=[0, 1, 4, 2, 3])
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/x', '/y')
+
+    column_dims_mock.return_value = ['/x']
+    row_dims_mock.return_value = ['/y']
+
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, expected)
 
 
 def test__prepare_data_plane_floating_without_rotation(
