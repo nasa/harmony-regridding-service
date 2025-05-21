@@ -197,17 +197,17 @@ def copy_resampled_bounds_variable(
 def order_source_variable(
     source: np.ndarray, var_info: VarInfoFromNetCDF4, var_name: str
 ) -> np.ndarray:
-    """Return the input source array with CF-appropriate ordered dimensions.
+    """Return the input source array with preferred ordered dimensions.
 
     For spatial regridding, we need to ensure that horizontal dimensions
     (latitude and longitude or x and y) are the last two dimensions in the
     array. This allows the regridding algorithm to properly operate on the
-    spatial coordinates.
+    spatial coordinates for n-dimensional variables.
 
     Parameters:
-        source: Input array to be regridded
+        source: 2D array to be regridded
         var_info: VarInfoFromNetCDF4 containing metadata about the file.
-        var_name: Name of the variable being processed
+        var_name: name of the variable being processed
 
     Returns:
         Array with dimensions reordered if needed (horizontal dims last)
@@ -591,18 +591,24 @@ def get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name
     )
 
     if full_path_dims != existing_dims:
-        # return new ordered dims if they've changed.
+        # return the newly ordered dims only if they changed.
         return tuple(PurePath(dim).name for dim in full_path_dims)
+
     return None
 
 
 def get_fully_qualified_preferred_ordered_dimensions(
     var_info: VarInfoFromNetCDF4, var_name: str
 ) -> list | None:
-    """Return the final order of the dimensions for the variable.
+    """Return the preferred order of the dimensions for the variable.
 
-    This is mostly CF compliant ordering, but if the last two are column/row or
-    row/column we don't re-order
+    This will take a variable's list of dimensions and shuffle them so that the
+    horizontal dimensions shift to the end of the dimension list.
+
+    ['/y', '/height', '/x', '/season'] -> ['/height', '/season','/y', '/x']
+
+    This function is used when creating a variable, and returns None when the
+    order does not change.
 
     """
     all_dims = var_info.get_variable(var_name).dimensions
