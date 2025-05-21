@@ -5,6 +5,7 @@ from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
 from pathlib import PurePath
 
+import numpy as np
 from netCDF4 import (
     Dataset,
     Group,
@@ -109,13 +110,15 @@ def copy_var_without_metadata(
     # Create target variable
     t_group = target_ds.createGroup(var.parent)
     fill_value = getattr(s_var, '_FillValue', None)
+
+    compress = {'zlib': True, 'complevel': 6} if is_compressible(s_var.dtype) else {}
+
     t_var = t_group.createVariable(
         var.name,
         s_var.dtype,
         override_dimensions or s_var.dimensions,
         fill_value=fill_value,
-        zlib=True,
-        complevel=6,
+        **compress,
     )
     s_var.set_auto_maskandscale(False)
     t_var.set_auto_maskandscale(False)
@@ -154,3 +157,8 @@ def get_variable_from_dataset(dataset: Dataset, variable_name: str) -> Variable:
     var = PurePath(variable_name)
     group = dataset.createGroup(var.parent)
     return group[var.name]
+
+
+def is_compressible(dtype: np.dtype) -> bool:
+    """Returns false if the variable has a non-compressible type."""
+    return not (np.issubdtype(dtype, np.str_) or np.issubdtype(dtype, np.object_))
