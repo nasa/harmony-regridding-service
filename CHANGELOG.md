@@ -4,6 +4,17 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.2.0] - 2025-05-20
+
+## Added
+
+- Adds support for resampling variables with without the horizontal grid
+  dimensions varying fastest.  Specifically SMAP L3 `landcover_class` and
+  `landcover_class_fraction` have dimension order `('/y', '/x', '/lc_type')`,
+  we reorder the dimesions to put the horizontal dims last to resample
+  properly. We leave this order in the output file.
+
+- Adds support for output file compression.
 
 ## [v1.1.0] - 2025-05-05
 

@@ -136,6 +136,49 @@ def _add_grid_mapping_metadata(
         var.setncattr('grid_mapping', crs_variable_name)
 
 
+def _get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name: str):
+    """Return the base names of the full dimensions.
+
+    Used to create a target variable.
+    """
+    existing_dims = var_info.get_variable(var_name).dimensions
+
+    full_path_dims = _get_fully_qualified_preferred_ordered_dimensions(
+        var_info, var_name
+    )
+
+    if full_path_dims != existing_dims:
+        # return new ordered dims if they've changed.
+        return tuple(PurePath(dim).name for dim in full_path_dims)
+    return None
+
+
+def _get_fully_qualified_preferred_ordered_dimensions(
+    var_info: VarInfoFromNetCDF4, var_name: str
+) -> list | None:
+    """Return the final order of the dimensions for the variable.
+
+    This is mostly CF compliant ordering, but if the last two are column/row or
+    row/column we don't re-order
+
+    """
+    all_dims = var_info.get_variable(var_name).dimensions
+
+    if len(all_dims) <= 2:
+        return all_dims
+
+    horizontal_dims = _horizontal_dims_for_variable(var_info, var_name)
+
+    if all_dims[-1] in horizontal_dims and all_dims[-2] in horizontal_dims:
+        # Already in correct order
+        return all_dims
+
+    non_horizontal_dims = [dim for dim in all_dims if dim not in horizontal_dims]
+    print(f'non_horizontal_dims: {non_horizontal_dims}')
+
+    return [*non_horizontal_dims, *horizontal_dims]
+
+
 def _order_source_variable(
     source: np.ndarray, var_info: VarInfoFromNetCDF4, var_name: str
 ) -> np.ndarray:
@@ -164,20 +207,12 @@ def _order_source_variable(
     if len(source.shape) == 1:
         raise RegridderException('Attempted to resample a 1-D Variable.')
 
-    horizontal_dims = _horizontal_dims_for_variable(var_info, var_name)
-    all_dims = var_info.get_variable(var_name).dimensions
+    correct_dims = _get_fully_qualified_preferred_ordered_dimensions(var_info, var_name)
 
-    if all_dims[-1] in horizontal_dims and all_dims[-2] in horizontal_dims:
-        # Already in correct order
+    if correct_dims == var_info.get_variable(var_name).dimensions:
         return source
 
-    non_horizontal_dims = [dim for dim in all_dims if dim not in horizontal_dims]
-    print(f'non_horizontal_dims: {non_horizontal_dims}')
-
-    xdim = _get_column_dims(all_dims, var_info)[0]
-    ydim = _get_row_dims(all_dims, var_info)[0]
-
-    correct_dims = [*non_horizontal_dims, xdim, ydim]
+    all_dims = var_info.get_variable(var_name).dimensions
     positions = [all_dims.index(dim) for dim in correct_dims]
 
     ordered_source = np.transpose(source, axes=positions)
@@ -231,7 +266,13 @@ def _resample_n_dimensional_variables(
                 _horizontal_dims_for_variable(var_info, var_name)
             ]
 
-            (s_var, t_var) = _copy_var_with_attrs(source_ds, target_ds, var_name)
+            target_dimensions = _get_preferred_ordered_dimension_names(
+                var_info, var_name
+            )
+
+            (s_var, t_var) = _copy_var_with_attrs(
+                source_ds, target_ds, var_name, override_dimensions=target_dimensions
+            )
 
             # We have to get the fill value off of the variable here because we
             # only pass the numpy.ndarray into _resample_variable_data and we need
@@ -341,7 +382,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
     """
     needs_rotation = False
     var_dims = var_info.get_variable(variable).dimensions
-    xloc = next(
+    column_loc = next(
         (
             index
             for index, dimension in enumerate(var_dims)
@@ -349,7 +390,7 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         ),
         None,
     )
-    yloc = next(
+    row_loc = next(
         (
             index
             for index, dimension in enumerate(var_dims)
@@ -357,7 +398,8 @@ def _needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         ),
         None,
     )
-    if yloc > xloc:
+    if row_loc > column_loc:
+        logger.info(f'THIS THING NEEDS ROTATION! {variable}')
         needs_rotation = True
 
     return needs_rotation
@@ -598,14 +640,19 @@ def _clone_variables(
 
 
 def _copy_var_with_attrs(
-    source_ds: Dataset, target_ds: Dataset, variable_name: str
+    source_ds: Dataset,
+    target_ds: Dataset,
+    variable_name: str,
+    override_dimensions: tuple | None = None,
 ) -> (Variable, Variable):
     """Copy a source variable and metadata to target.
 
     Copy both the variable and metadata from a souce variable into a target,
     return both source and target variables.
     """
-    s_var, t_var = _copy_var_without_metadata(source_ds, target_ds, variable_name)
+    s_var, t_var = _copy_var_without_metadata(
+        source_ds, target_ds, variable_name, override_dimensions=override_dimensions
+    )
 
     for att in s_var.ncattrs():
         if att != '_FillValue':
@@ -615,13 +662,20 @@ def _copy_var_with_attrs(
 
 
 def _copy_var_without_metadata(
-    source_ds: Dataset, target_ds: Dataset, variable_name: str
+    source_ds: Dataset,
+    target_ds: Dataset,
+    variable_name: str,
+    override_dimensions: tuple | None = None,
 ) -> (Variable, Variable):
     """Clones a single variable and returns both source and target variables.
 
     This function uses the netCDF4 createGroup('/[optionalgroup/andsubgroup]')
     call This will return an existing group, or create one that does not
     already exists. So this is not clobbering the source data.
+
+    override_dimensions is an optional input to allow you to reorder the
+    target's dimensions. If provided it should be a tuple of the targets
+    dimension names in cf-preferred order.
 
     """
     var = PurePath(variable_name)
@@ -633,7 +687,7 @@ def _copy_var_without_metadata(
     t_var = t_group.createVariable(
         var.name,
         s_var.dtype,
-        s_var.dimensions,
+        override_dimensions or s_var.dimensions,
         fill_value=fill_value,
         zlib=True,
         complevel=6,
@@ -658,6 +712,7 @@ def _create_dimension(dataset: Dataset, dimension_name: str, size: int) -> Dimen
     """Create a fully qualified dimension on the dataset."""
     dim = PurePath(dimension_name)
     group = dataset.createGroup(dim.parent)
+    logger.debug(f'creating dimension: dim({dim}): dim.name:({dim.name})')
     return group.createDimension(dim.name, size)
 
 
@@ -824,7 +879,6 @@ def _get_rows_per_scan(total_rows: int) -> int:
         return 1
     for row_number in range(2, int(total_rows**0.5) + 1):
         if total_rows % row_number == 0:
-            logger.info(f'rows_per_scan = {row_number}')
             return row_number
 
     logger.info(f'returning all rows for rows_per_scan = {total_rows}')
