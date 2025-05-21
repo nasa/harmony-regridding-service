@@ -623,6 +623,5 @@ def get_fully_qualified_preferred_ordered_dimensions(
         return all_dims
 
     non_horizontal_dims = [dim for dim in all_dims if dim not in horizontal_dims]
-    print(f'non_horizontal_dims: {non_horizontal_dims}')
 
     return [*non_horizontal_dims, *horizontal_dims]

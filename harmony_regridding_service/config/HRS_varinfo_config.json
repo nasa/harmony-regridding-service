@@ -33,7 +33,7 @@
         "Mission": "SMAP"
       },
       "VariablePattern": [
-	".*/freeze_thaw_time_utc.*"
+	"/.*time_utc.*"
       ]
     }
   ],
