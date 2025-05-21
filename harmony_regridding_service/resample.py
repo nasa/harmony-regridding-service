@@ -222,7 +222,7 @@ def _order_source_variable(
     if len(source.shape) == 1:
         raise RegridderException('Attempted to resample a 1-D Variable.')
 
-    correct_dims = _get_fully_qualified_preferred_ordered_dimensions(var_info, var_name)
+    correct_dims = get_fully_qualified_preferred_ordered_dimensions(var_info, var_name)
 
     if correct_dims == var_info.get_variable(var_name).dimensions:
         return source
@@ -586,7 +586,7 @@ def _get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_nam
     """
     existing_dims = var_info.get_variable(var_name).dimensions
 
-    full_path_dims = _get_fully_qualified_preferred_ordered_dimensions(
+    full_path_dims = get_fully_qualified_preferred_ordered_dimensions(
         var_info, var_name
     )
 
@@ -596,7 +596,7 @@ def _get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_nam
     return None
 
 
-def _get_fully_qualified_preferred_ordered_dimensions(
+def get_fully_qualified_preferred_ordered_dimensions(
     var_info: VarInfoFromNetCDF4, var_name: str
 ) -> list | None:
     """Return the final order of the dimensions for the variable.

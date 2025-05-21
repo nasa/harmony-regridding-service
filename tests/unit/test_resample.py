@@ -13,7 +13,6 @@ from numpy.testing import assert_array_equal
 
 from harmony_regridding_service.exceptions import RegridderException
 from harmony_regridding_service.resample import (
-    _get_fully_qualified_preferred_ordered_dimensions,
     _get_preferred_ordered_dimension_names,
     _order_source_variable,
     copy_1d_dimension_variables,
@@ -26,6 +25,7 @@ from harmony_regridding_service.resample import (
     get_all_dimensions,
     get_bounds_var,
     get_dimension,
+    get_fully_qualified_preferred_ordered_dimensions,
     get_resampled_dimension_pairs,
     get_resampled_dimensions,
     get_rows_per_scan,
@@ -606,7 +606,7 @@ def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims_mock):
+def test_get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims_mock):
     variable_mock = MagicMock()
     variable_mock.dimensions = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
@@ -617,13 +617,13 @@ def test__get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dim
 
     expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
-    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
     assert expected == actual
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
+def test_get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
     horizonal_dims_mock,
 ):
     variable_mock = MagicMock()
@@ -636,13 +636,13 @@ def test__get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
 
     expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
-    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
     assert expected == actual
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__get_fully_qualified_preferred_ordered_dimensions_has_only_two(
+def test_get_fully_qualified_preferred_ordered_dimensions_has_only_two(
     horizonal_dims_mock,
 ):
     """Contrived example to show that two input dimensions returns them unchanged."""
@@ -656,13 +656,13 @@ def test__get_fully_qualified_preferred_ordered_dimensions_has_only_two(
 
     expected = ['/Group1/y', '/Group1/lc_type']
 
-    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
     assert expected == actual
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__get_fully_qualified_preferred_ordered_dimensions_has_only_one(
+def test_get_fully_qualified_preferred_ordered_dimensions_has_only_one(
     horizonal_dims_mock,
 ):
     variable_mock = MagicMock()
@@ -675,13 +675,13 @@ def test__get_fully_qualified_preferred_ordered_dimensions_has_only_one(
 
     expected = ['/Group1/y']
 
-    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
     assert expected == actual
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_order(
+def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_order(
     horizonal_dims_mock,
 ):
     """Contrived to show the horizontal dims retain their order."""
@@ -707,13 +707,13 @@ def test__get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_ord
         '/Group1/x',
     ]
 
-    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
     assert expected == actual
 
 
 @patch(
-    'harmony_regridding_service.resample._get_fully_qualified_preferred_ordered_dimensions'
+    'harmony_regridding_service.resample.get_fully_qualified_preferred_ordered_dimensions'
 )
 def test__get_preferred_ordered_dimension_names_matching_values(preferred_names_mock):
     """Show when fully qualified is the same as varinfo, None is returned."""
@@ -736,7 +736,7 @@ def test__get_preferred_ordered_dimension_names_matching_values(preferred_names_
 
 
 @patch(
-    'harmony_regridding_service.resample._get_fully_qualified_preferred_ordered_dimensions'
+    'harmony_regridding_service.resample.get_fully_qualified_preferred_ordered_dimensions'
 )
 def test__get_preferred_ordered_dimension_names_changed_values(preferred_names_mock):
     """Show when changed just the base name of preferred returned."""
