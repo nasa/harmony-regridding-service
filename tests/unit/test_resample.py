@@ -13,7 +13,6 @@ from numpy.testing import assert_array_equal
 
 from harmony_regridding_service.exceptions import RegridderException
 from harmony_regridding_service.resample import (
-    _get_preferred_ordered_dimension_names,
     _order_source_variable,
     copy_1d_dimension_variables,
     copy_dimension,
@@ -26,6 +25,7 @@ from harmony_regridding_service.resample import (
     get_bounds_var,
     get_dimension,
     get_fully_qualified_preferred_ordered_dimensions,
+    get_preferred_ordered_dimension_names,
     get_resampled_dimension_pairs,
     get_resampled_dimensions,
     get_rows_per_scan,
@@ -715,7 +715,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_orde
 @patch(
     'harmony_regridding_service.resample.get_fully_qualified_preferred_ordered_dimensions'
 )
-def test__get_preferred_ordered_dimension_names_matching_values(preferred_names_mock):
+def test_get_preferred_ordered_dimension_names_matching_values(preferred_names_mock):
     """Show when fully qualified is the same as varinfo, None is returned."""
     dims = [
         '/Group1/z',
@@ -732,13 +732,13 @@ def test__get_preferred_ordered_dimension_names_matching_values(preferred_names_
     var_info.get_variable.return_value = variable_mock
 
     preferred_names_mock.return_value = dims
-    assert _get_preferred_ordered_dimension_names(var_info, Any) is None
+    assert get_preferred_ordered_dimension_names(var_info, Any) is None
 
 
 @patch(
     'harmony_regridding_service.resample.get_fully_qualified_preferred_ordered_dimensions'
 )
-def test__get_preferred_ordered_dimension_names_changed_values(preferred_names_mock):
+def test_get_preferred_ordered_dimension_names_changed_values(preferred_names_mock):
     """Show when changed just the base name of preferred returned."""
     dims = [
         '/Group1/z',
@@ -765,7 +765,7 @@ def test__get_preferred_ordered_dimension_names_changed_values(preferred_names_m
     var_info.get_variable.return_value = variable_mock
 
     preferred_names_mock.return_value = preferred_dims
-    assert _get_preferred_ordered_dimension_names(var_info, Any) == expected_names
+    assert get_preferred_ordered_dimension_names(var_info, Any) == expected_names
 
 
 def test__order_source_variable_2d_is_unchanged():

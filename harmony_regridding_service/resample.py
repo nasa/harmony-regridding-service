@@ -78,7 +78,7 @@ def resample_n_dimensional_variables(
                 horizontal_dims_for_variable(var_info, var_name)
             ]
 
-            target_dimensions = _get_preferred_ordered_dimension_names(
+            target_dimensions = get_preferred_ordered_dimension_names(
                 var_info, var_name
             )
 
@@ -579,7 +579,7 @@ def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
     )
 
 
-def _get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name: str):
+def get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name: str):
     """Return the base names of the full dimensions.
 
     Used to create a target variable.
