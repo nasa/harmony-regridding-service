@@ -111,14 +111,16 @@ def copy_var_without_metadata(
     t_group = target_ds.createGroup(var.parent)
     fill_value = getattr(s_var, '_FillValue', None)
 
-    compress = {'zlib': True, 'complevel': 6} if is_compressible(s_var.dtype) else {}
+    compress_opts = (
+        {'zlib': True, 'complevel': 6} if is_compressible(s_var.dtype) else {}
+    )
 
     t_var = t_group.createVariable(
         var.name,
         s_var.dtype,
         override_dimensions or s_var.dimensions,
         fill_value=fill_value,
-        **compress,
+        **compress_opts,
     )
     s_var.set_auto_maskandscale(False)
     t_var.set_auto_maskandscale(False)
