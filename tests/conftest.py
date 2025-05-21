@@ -170,14 +170,14 @@ def var_info_fxn():
     NetCDF filename.
     """
 
-    def _var_info(nc_file: str | Path, short_name: str | None = None):
+    def var_info(nc_file: str | Path, short_name: str | None = None):
         return VarInfoFromNetCDF4(
             str(nc_file),
             config_file=HRS_VARINFO_CONFIG_FILENAME,
             short_name=short_name,
         )
 
-    return _var_info
+    return var_info
 
 
 @pytest.fixture
@@ -194,7 +194,7 @@ def test_area_fxn():
         An AreaDefinition function that can be called with overriden values.
     """
 
-    def _test_area(width=360, height=180, area_extent=(-180, -90, 180, 90)):
+    def test_area(width=360, height=180, area_extent=(-180, -90, 180, 90)):
         return AreaDefinition(
             'test_id',
             'test area definition',
@@ -205,7 +205,7 @@ def test_area_fxn():
             area_extent,
         )
 
-    return _test_area
+    return test_area
 
 
 @pytest.fixture

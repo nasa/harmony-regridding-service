@@ -99,7 +99,7 @@ def copy_var_without_metadata(
     already exists. So this is not clobbering the source data.
 
     override_dimensions is an optional input to allow you to reorder the
-    target's dimensions. If provided it should be a tuple of the targets
+    target's dimensions. If provided it should be a tuple of the target's
     dimension names in cf-preferred order.
 
     """
