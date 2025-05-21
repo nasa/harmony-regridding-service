@@ -91,7 +91,7 @@ def resample_n_dimensional_variables(
             # to know the fill value for the actual resampler.compute call.
             fill_value = getattr(t_var, '_FillValue', None)
 
-            source_variable = _order_source_variable(s_var[:], var_info, var_name)
+            source_variable = order_source_variable(s_var[:], var_info, var_name)
 
             t_var[:] = resample_variable_data(
                 source_variable, t_var[:], resampler, var_info, var_name, fill_value
@@ -194,7 +194,7 @@ def copy_resampled_bounds_variable(
     return {bounds_var}
 
 
-def _order_source_variable(
+def order_source_variable(
     source: np.ndarray, var_info: VarInfoFromNetCDF4, var_name: str
 ) -> np.ndarray:
     """Return the input source array with CF-appropriate ordered dimensions.

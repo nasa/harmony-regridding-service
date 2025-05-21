@@ -13,7 +13,6 @@ from numpy.testing import assert_array_equal
 
 from harmony_regridding_service.exceptions import RegridderException
 from harmony_regridding_service.resample import (
-    _order_source_variable,
     copy_1d_dimension_variables,
     copy_dimension,
     copy_dimensions,
@@ -31,6 +30,7 @@ from harmony_regridding_service.resample import (
     get_rows_per_scan,
     integer_like,
     needs_rotation,
+    order_source_variable,
     prepare_data_plane,
     resample_layer,
     resampled_dimension_variable_names,
@@ -768,21 +768,21 @@ def test_get_preferred_ordered_dimension_names_changed_values(preferred_names_mo
     assert get_preferred_ordered_dimension_names(var_info, Any) == expected_names
 
 
-def test__order_source_variable_2d_is_unchanged():
+def test_order_source_variable_2d_is_unchanged():
     """A 2D var is unchanged."""
     source = np.random.rand(30, 30)
     expected = np.copy(source)
-    actual = _order_source_variable(source, Any, Any)
+    actual = order_source_variable(source, Any, Any)
     np.testing.assert_equal(expected, actual)
 
 
-def test__order_source_variable_1d_input_errors():
+def test_order_source_variable_1d_input_errors():
     """A 1D var raises Exception."""
     source = np.random.rand(50)
     with pytest.raises(
         RegridderException, match='Attempted to resample a 1-D Variable'
     ):
-        _order_source_variable(source, Any, 'temperature')
+        order_source_variable(source, Any, 'temperature')
 
 
 @pytest.fixture()
@@ -791,7 +791,7 @@ def sample_3d_variable():
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__order_source_variable_3d_col_row_ending_is_unchanged(
+def test_order_source_variable_3d_col_row_ending_is_unchanged(
     horizonal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with  either (a, col, row)."""
@@ -806,12 +806,12 @@ def test__order_source_variable_3d_col_row_ending_is_unchanged(
 
     horizonal_dims_mock.return_value = ('/x', '/y')
 
-    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, sample_data)
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__order_source_variable_3d_row_col_ending_is_unchanged(
+def test_order_source_variable_3d_row_col_ending_is_unchanged(
     horizonal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with (a, ROW, COL) is unchanged."""
@@ -823,12 +823,12 @@ def test__order_source_variable_3d_row_col_ending_is_unchanged(
 
     horizonal_dims_mock.return_value = ('/x', '/y')
 
-    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, sample_data)
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__order_source_variable_3d_incorrect_final_dimension_is_ordered(
+def test_order_source_variable_3d_incorrect_final_dimension_is_ordered(
     horizonal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
@@ -846,12 +846,12 @@ def test__order_source_variable_3d_incorrect_final_dimension_is_ordered(
 
     horizonal_dims_mock.return_value = ('/y', '/x')
 
-    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
+def test_order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
     horizonal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
@@ -867,12 +867,12 @@ def test__order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
     var_info.get_variable.return_value = variable_mock
 
     horizonal_dims_mock.return_value = ('/x', '/y')
-    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test__order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
+def test_order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
     horizonal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
@@ -889,5 +889,5 @@ def test__order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
 
     horizonal_dims_mock.return_value = ('/x', '/y')
 
-    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)
