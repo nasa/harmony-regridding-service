@@ -72,21 +72,35 @@ def resample_n_dimensional_variables(
     processed = set()
 
     for var_name in variables:
-        processed.add(var_name)
         logger.debug(f'resampling {var_name}')
-        resampler = resampler_cache[horizontal_dims_for_variable(var_info, var_name)]
+        try:
+            resampler = resampler_cache[
+                horizontal_dims_for_variable(var_info, var_name)
+            ]
 
-        (s_var, t_var) = copy_var_with_attrs(source_ds, target_ds, var_name)
+            target_dimensions = _get_preferred_ordered_dimension_names(
+                var_info, var_name
+            )
 
-        # We have to get the fill value off of the variable here because we
-        # only pass the numpy.ndarray into resample_variable_data and we need
-        # to know the fill value for the actual resampler.compute call.
-        fill_value = getattr(t_var, '_FillValue', None)
+            (s_var, t_var) = copy_var_with_attrs(
+                source_ds, target_ds, var_name, override_dimensions=target_dimensions
+            )
 
-        t_var[:] = resample_variable_data(
-            s_var[:], t_var[:], resampler, var_info, var_name, fill_value
-        )
-        logger.debug(f'Processed: {var_name}')
+            # We have to get the fill value off of the variable here because we
+            # only pass the numpy.ndarray into _resample_variable_data and we need
+            # to know the fill value for the actual resampler.compute call.
+            fill_value = getattr(t_var, '_FillValue', None)
+
+            source_variable = _order_source_variable(s_var[:], var_info, var_name)
+
+            t_var[:] = resample_variable_data(
+                source_variable, t_var[:], resampler, var_info, var_name, fill_value
+            )
+            processed.add(var_name)
+            logger.debug(f'Processed: {var_name}')
+        except Exception as e:
+            logger.info(f'Failed to process: {var_name}')
+            logger.info(e)
 
     return processed
 
@@ -180,6 +194,46 @@ def copy_resampled_bounds_variable(
     return {bounds_var}
 
 
+def _order_source_variable(
+    source: np.ndarray, var_info: VarInfoFromNetCDF4, var_name: str
+) -> np.ndarray:
+    """Return the input source array with CF-appropriate ordered dimensions.
+
+    For spatial regridding, we need to ensure that horizontal dimensions
+    (latitude and longitude or x and y) are the last two dimensions in the
+    array. This allows the regridding algorithm to properly operate on the
+    spatial coordinates.
+
+    Parameters:
+        source: Input array to be regridded
+        var_info: VarInfoFromNetCDF4 containing metadata about the file.
+        var_name: Name of the variable being processed
+
+    Returns:
+        Array with dimensions reordered if needed (horizontal dims last)
+
+    Raises:
+        RegridderException: If the variable has only one dimension
+
+    """
+    if len(source.shape) == 2:
+        return source
+
+    if len(source.shape) == 1:
+        raise RegridderException('Attempted to resample a 1-D Variable.')
+
+    correct_dims = _get_fully_qualified_preferred_ordered_dimensions(var_info, var_name)
+
+    if correct_dims == var_info.get_variable(var_name).dimensions:
+        return source
+
+    all_dims = var_info.get_variable(var_name).dimensions
+    positions = [all_dims.index(dim) for dim in correct_dims]
+
+    ordered_source = np.transpose(source, axes=positions)
+    return ordered_source
+
+
 def resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return the list of dimension variables to resample to target grid.
 
@@ -216,8 +270,8 @@ def create_resampled_dimensions(
 def unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Variable names to be transfered from source to target without change.
 
-    returns a set of variables that do not have any dimension that is also in
-    the set of resampled_dimensions.
+    Returns a set of the variables that do not have any resampled dimension and
+    are safe to copy directly over to the target file.
 
     """
     vars_by_dim = var_info.group_variables_by_dimensions()
@@ -226,8 +280,8 @@ def unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     return set.union(
         *[
             variable_set
-            for dimension_name, variable_set in vars_by_dim.items()
-            if not resampled_dims.intersection(set(dimension_name))
+            for dimension_name_tuple, variable_set in vars_by_dim.items()
+            if not resampled_dims.intersection(set(dimension_name_tuple))
         ]
     )
 
@@ -339,7 +393,6 @@ def get_rows_per_scan(total_rows: int) -> int:
         return 1
     for row_number in range(2, int(total_rows**0.5) + 1):
         if total_rows % row_number == 0:
-            logger.info(f'rows_per_scan = {row_number}')
             return row_number
 
     logger.info(f'returning all rows for rows_per_scan = {total_rows}')
@@ -377,7 +430,7 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
     """
     variable_needs_rotation = False
     var_dims = var_info.get_variable(variable).dimensions
-    xloc = next(
+    column_loc = next(
         (
             index
             for index, dimension in enumerate(var_dims)
@@ -385,7 +438,7 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         ),
         None,
     )
-    yloc = next(
+    row_loc = next(
         (
             index
             for index, dimension in enumerate(var_dims)
@@ -393,7 +446,8 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         ),
         None,
     )
-    if yloc > xloc:
+    if row_loc > column_loc:
+        logger.info(f'THIS THING NEEDS ROTATION! {variable}')
         variable_needs_rotation = True
 
     return variable_needs_rotation
@@ -523,3 +577,46 @@ def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
         ),
         None,
     )
+
+
+def _get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name: str):
+    """Return the base names of the full dimensions.
+
+    Used to create a target variable.
+    """
+    existing_dims = var_info.get_variable(var_name).dimensions
+
+    full_path_dims = _get_fully_qualified_preferred_ordered_dimensions(
+        var_info, var_name
+    )
+
+    if full_path_dims != existing_dims:
+        # return new ordered dims if they've changed.
+        return tuple(PurePath(dim).name for dim in full_path_dims)
+    return None
+
+
+def _get_fully_qualified_preferred_ordered_dimensions(
+    var_info: VarInfoFromNetCDF4, var_name: str
+) -> list | None:
+    """Return the final order of the dimensions for the variable.
+
+    This is mostly CF compliant ordering, but if the last two are column/row or
+    row/column we don't re-order
+
+    """
+    all_dims = var_info.get_variable(var_name).dimensions
+
+    if len(all_dims) <= 2:
+        return all_dims
+
+    horizontal_dims = horizontal_dims_for_variable(var_info, var_name)
+
+    if all_dims[-1] in horizontal_dims and all_dims[-2] in horizontal_dims:
+        # Already in correct order
+        return all_dims
+
+    non_horizontal_dims = [dim for dim in all_dims if dim not in horizontal_dims]
+    print(f'non_horizontal_dims: {non_horizontal_dims}')
+
+    return [*non_horizontal_dims, *horizontal_dims]

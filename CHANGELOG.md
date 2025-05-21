@@ -4,10 +4,21 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.2.0] - 2025-05-21
+
+### Added
+
+- Adds support for resampling variables with without the horizontal grid
+  dimensions varying fastest.  Specifically SMAP L3 `landcover_class` and
+  `landcover_class_fraction` have dimension order `('/y', '/x', '/lc_type')`,
+  we reorder the dimesions to put the horizontal dims last to resample
+  properly. We leave this order in the output file.
+
+- Adds support for output file compression.
 
 ## [v1.1.1] - 2025-05-13
 
-## Changed
+### Changed
 
 - Internal changes.
   + Refactors `regridding_service.py` by separating functions into new
@@ -93,6 +104,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.2.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.2.0
 [v1.1.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.1.0
 [v1.0.6]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.6
 [v1.0.5]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.0.5

@@ -65,14 +65,19 @@ def transfer_metadata(source_ds: Dataset, target_ds: Dataset) -> None:
 
 
 def copy_var_with_attrs(
-    source_ds: Dataset, target_ds: Dataset, variable_name: str
+    source_ds: Dataset,
+    target_ds: Dataset,
+    variable_name: str,
+    override_dimensions: tuple | None = None,
 ) -> tuple[Variable, Variable]:
     """Copy a source variable and metadata to target.
 
     Copy both the variable and metadata from a souce variable into a target,
     return both source and target variables.
     """
-    s_var, t_var = copy_var_without_metadata(source_ds, target_ds, variable_name)
+    s_var, t_var = copy_var_without_metadata(
+        source_ds, target_ds, variable_name, override_dimensions=override_dimensions
+    )
 
     for att in s_var.ncattrs():
         if att != '_FillValue':
@@ -82,13 +87,20 @@ def copy_var_with_attrs(
 
 
 def copy_var_without_metadata(
-    source_ds: Dataset, target_ds: Dataset, variable_name: str
+    source_ds: Dataset,
+    target_ds: Dataset,
+    variable_name: str,
+    override_dimensions: tuple | None = None,
 ) -> tuple[Variable, Variable]:
     """Clones a single variable and returns both source and target variables.
 
     This function uses the netCDF4 createGroup('/[optionalgroup/andsubgroup]')
     call This will return an existing group, or create one that does not
     already exists. So this is not clobbering the source data.
+
+    override_dimensions is an optional input to allow you to reorder the
+    target's dimensions. If provided it should be a tuple of the targets
+    dimension names in cf-preferred order.
 
     """
     var = PurePath(variable_name)
@@ -98,7 +110,12 @@ def copy_var_without_metadata(
     t_group = target_ds.createGroup(var.parent)
     fill_value = getattr(s_var, '_FillValue', None)
     t_var = t_group.createVariable(
-        var.name, s_var.dtype, s_var.dimensions, fill_value=fill_value
+        var.name,
+        s_var.dtype,
+        override_dimensions or s_var.dimensions,
+        fill_value=fill_value,
+        zlib=True,
+        complevel=6,
     )
     s_var.set_auto_maskandscale(False)
     t_var.set_auto_maskandscale(False)

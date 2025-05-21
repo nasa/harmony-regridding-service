@@ -1,6 +1,7 @@
 """Tests the resample module."""
 
-from unittest.mock import MagicMock
+from typing import Any
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -10,7 +11,11 @@ from netCDF4 import (
 )
 from numpy.testing import assert_array_equal
 
+from harmony_regridding_service.exceptions import RegridderException
 from harmony_regridding_service.resample import (
+    _get_fully_qualified_preferred_ordered_dimensions,
+    _get_preferred_ordered_dimension_names,
+    _order_source_variable,
     copy_1d_dimension_variables,
     copy_dimension,
     copy_dimensions,
@@ -598,3 +603,291 @@ def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
 
     actual_bounds = get_bounds_var(var_info, '/Grid/lon')
     assert expected_bounds == actual_bounds
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims_mock):
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+
+    expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
+
+    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
+    horizonal_dims_mock,
+):
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/x', '/Group1/y', '/Group1/lc_type']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+
+    expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
+
+    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__get_fully_qualified_preferred_ordered_dimensions_has_only_two(
+    horizonal_dims_mock,
+):
+    """Contrived example to show that two input dimensions returns them unchanged."""
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/y', '/Group1/lc_type']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = '/Group1/y'
+
+    expected = ['/Group1/y', '/Group1/lc_type']
+
+    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__get_fully_qualified_preferred_ordered_dimensions_has_only_one(
+    horizonal_dims_mock,
+):
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/y']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/y',)
+
+    expected = ['/Group1/y']
+
+    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_order(
+    horizonal_dims_mock,
+):
+    """Contrived to show the horizontal dims retain their order."""
+    variable_mock = MagicMock()
+    variable_mock.dimensions = [
+        '/Group1/z',
+        '/Group1/y',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/u',
+    ]
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/y', '/Group1/x')
+
+    expected = [
+        '/Group1/z',
+        '/Group1/w',
+        '/Group1/u',
+        '/Group1/y',
+        '/Group1/x',
+    ]
+
+    actual = _get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch(
+    'harmony_regridding_service.resample._get_fully_qualified_preferred_ordered_dimensions'
+)
+def test__get_preferred_ordered_dimension_names_matching_values(preferred_names_mock):
+    """Show when fully qualified is the same as varinfo, None is returned."""
+    dims = [
+        '/Group1/z',
+        '/Group1/y',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/u',
+    ]
+
+    variable_mock = MagicMock()
+    variable_mock.dimensions = dims
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    preferred_names_mock.return_value = dims
+    assert _get_preferred_ordered_dimension_names(var_info, Any) is None
+
+
+@patch(
+    'harmony_regridding_service.resample._get_fully_qualified_preferred_ordered_dimensions'
+)
+def test__get_preferred_ordered_dimension_names_changed_values(preferred_names_mock):
+    """Show when changed just the base name of preferred returned."""
+    dims = [
+        '/Group1/z',
+        '/Group1/y',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/u',
+    ]
+
+    preferred_dims = [
+        '/Group1/u',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/y',
+        '/Group1/z',
+    ]
+
+    expected_names = ('u', 'w', 'x', 'y', 'z')
+
+    variable_mock = MagicMock()
+    variable_mock.dimensions = dims
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    preferred_names_mock.return_value = preferred_dims
+    assert _get_preferred_ordered_dimension_names(var_info, Any) == expected_names
+
+
+def test__order_source_variable_2d_is_unchanged():
+    """A 2D var is unchanged."""
+    source = np.random.rand(30, 30)
+    expected = np.copy(source)
+    actual = _order_source_variable(source, Any, Any)
+    np.testing.assert_equal(expected, actual)
+
+
+def test__order_source_variable_1d_input_errors():
+    """A 1D var raises Exception."""
+    source = np.random.rand(50)
+    with pytest.raises(
+        RegridderException, match='Attempted to resample a 1-D Variable'
+    ):
+        _order_source_variable(source, Any, 'temperature')
+
+
+@pytest.fixture()
+def sample_3d_variable():
+    return np.random.randint(0, 10, (5, 7, 3))
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__order_source_variable_3d_col_row_ending_is_unchanged(
+    horizonal_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with  either (a, col, row)."""
+    sample_data = np.copy(sample_3d_variable)
+
+    # set up the variable's dimensions
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/lc_type', '/x', '/y']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/x', '/y')
+
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, sample_data)
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__order_source_variable_3d_row_col_ending_is_unchanged(
+    horizonal_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with (a, ROW, COL) is unchanged."""
+    sample_data = np.copy(sample_3d_variable)
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/lc_type', '/y', '/x']
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/x', '/y')
+
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, sample_data)
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__order_source_variable_3d_incorrect_final_dimension_is_ordered(
+    horizonal_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
+    sample_data = np.copy(sample_3d_variable)
+
+    # Set the order of the variable's dimensions
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/y', '/x', '/lc_type']
+
+    # indexes we expect to be  ['/lc_type', '/y', '/x'] (index: [2, 0, 1])
+    expected = np.transpose(sample_data, axes=[2, 0, 1])
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/y', '/x')
+
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, expected)
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
+    horizonal_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
+    sample_data = np.copy(sample_3d_variable)
+    variable_mock = MagicMock()
+
+    # '/x' and '/y' in different locations this time:
+    variable_mock.dimensions = ['/x', '/y', '/lc_type']
+
+    # indexes we expect to be  ['/lc_type', '/x', '/y'] (index: [2, 0, 1])
+    expected = np.transpose(sample_data, axes=[2, 0, 1])
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/x', '/y')
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, expected)
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test__order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
+    horizonal_dims_mock, sample_3d_variable
+):
+    """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
+    sample_data = np.random.randint(0, 10, (11, 12, 5, 7, 3))
+    variable_mock = MagicMock()
+
+    variable_mock.dimensions = ['/v', '/w', '/x', '/y', '/lc_type']
+    # indexes we expect to be  ['/v', '/w', '/lc_type', '/x', '/y']
+    # (index: [0, 1, 4, 2, 3])
+
+    expected = np.transpose(sample_data, axes=[0, 1, 4, 2, 3])
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/x', '/y')
+
+    actual = _order_source_variable(sample_data, var_info, 'var_name')
+    np.testing.assert_array_equal(actual, expected)
