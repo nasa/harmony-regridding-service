@@ -98,9 +98,13 @@ def resample_n_dimensional_variables(
             )
             processed.add(var_name)
             logger.debug(f'Processed: {var_name}')
-        except Exception as e:
+        except ValueError as ve:
             logger.info(f'Failed to process: {var_name}')
-            logger.info(e)
+            logger.info(ve)
+        except Exception as e:
+            logger.error(f'Failed to process: {var_name}')
+            logger.error(e)
+            raise RegridderException(f'Failed to process: {var_name}') from e
 
     return processed
 
