@@ -1,5 +1,6 @@
 """Tests the resample module."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -604,68 +605,111 @@ def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
     assert expected_bounds == actual_bounds
 
 
-@pytest.mark.parametrize(
-    'mock_var_return,mock_hor_dims_return,expected,description',
-    [
-        (
-            ['/Group1/lc_type', '/Group1/x', '/Group1/y'],  # variable dimensions
-            ('/Group1/x', '/Group1/y'),  # horizonal_dims_for_variable
-            ['/Group1/lc_type', '/Group1/x', '/Group1/y'],  # expected
-            'Correct order input is unchanged on output',
-        ),
-        (
-            ['/Group1/x', '/Group1/y', '/Group1/lc_type'],
-            ('/Group1/x', '/Group1/y'),
-            ['/Group1/lc_type', '/Group1/x', '/Group1/y'],
-            'lc_type last need reordering',
-        ),
-        (
-            ['/Group1/y', '/Group1/lc_type'],
-            ('/Group1/y',),
-            ['/Group1/y', '/Group1/lc_type'],
-            'contrived, any two dimesions are returned unchanged',
-        ),
-        (
-            ['/Group1/y'],
-            ('/Group1/y',),
-            ['/Group1/y'],
-            'a single dimension is just returned',
-        ),
-        (
-            [
-                '/Group1/z',
-                '/Group1/y',
-                '/Group1/w',
-                '/Group1/x',
-                '/Group1/u',
-            ],
-            ('/Group1/y', '/Group1/x'),
-            [
-                '/Group1/z',
-                '/Group1/w',
-                '/Group1/u',
-                '/Group1/y',
-                '/Group1/x',
-            ],
-            'multiple dimensions preserve horziontal order (y, x) last',
-        ),
-    ],
-)
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test_get_fully_qualified_preferred_ordered_dimensions(
-    horizonal_dims_mock, mock_var_return, mock_hor_dims_return, expected, description
-):
+def test_get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims_mock):
     variable_mock = MagicMock()
-    variable_mock.dimensions = mock_var_return
+    variable_mock.dimensions = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = mock_hor_dims_return
+    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+
+    expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
     actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
 
-    assert expected == actual, f'Failed: {description}'
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test_get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
+    horizonal_dims_mock,
+):
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/x', '/Group1/y', '/Group1/lc_type']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+
+    expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
+
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test_get_fully_qualified_preferred_ordered_dimensions_has_only_two(
+    horizonal_dims_mock,
+):
+    """Contrived example to show that two input dimensions returns them unchanged."""
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/y', '/Group1/lc_type']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = '/Group1/y'
+
+    expected = ['/Group1/y', '/Group1/lc_type']
+
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test_get_fully_qualified_preferred_ordered_dimensions_has_only_one(
+    horizonal_dims_mock,
+):
+    variable_mock = MagicMock()
+    variable_mock.dimensions = ['/Group1/y']
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/y',)
+
+    expected = ['/Group1/y']
+
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
+
+
+@patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
+def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_order(
+    horizonal_dims_mock,
+):
+    """Contrived to show the horizontal dims retain their order."""
+    variable_mock = MagicMock()
+    variable_mock.dimensions = [
+        '/Group1/z',
+        '/Group1/y',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/u',
+    ]
+
+    var_info = MagicMock()
+    var_info.get_variable.return_value = variable_mock
+
+    horizonal_dims_mock.return_value = ('/Group1/y', '/Group1/x')
+
+    expected = [
+        '/Group1/z',
+        '/Group1/w',
+        '/Group1/u',
+        '/Group1/y',
+        '/Group1/x',
+    ]
+
+    actual = get_fully_qualified_preferred_ordered_dimensions(var_info, 'Any')
+
+    assert expected == actual
 
 
 @patch(
@@ -674,11 +718,11 @@ def test_get_fully_qualified_preferred_ordered_dimensions(
 def test_get_preferred_ordered_dimension_names_matching_values(preferred_names_mock):
     """Show when fully qualified is the same as varinfo, None is returned."""
     dims = [
-        '/Group1/u',
-        '/Group1/w',
         '/Group1/z',
-        '/Group1/x',
         '/Group1/y',
+        '/Group1/w',
+        '/Group1/x',
+        '/Group1/u',
     ]
 
     variable_mock = MagicMock()
@@ -688,7 +732,7 @@ def test_get_preferred_ordered_dimension_names_matching_values(preferred_names_m
     var_info.get_variable.return_value = variable_mock
 
     preferred_names_mock.return_value = dims
-    assert get_preferred_ordered_dimension_names(var_info, 'Any') is None
+    assert get_preferred_ordered_dimension_names(var_info, Any) is None
 
 
 @patch(
@@ -721,14 +765,14 @@ def test_get_preferred_ordered_dimension_names_changed_values(preferred_names_mo
     var_info.get_variable.return_value = variable_mock
 
     preferred_names_mock.return_value = preferred_dims
-    assert get_preferred_ordered_dimension_names(var_info, 'Any') == expected_names
+    assert get_preferred_ordered_dimension_names(var_info, Any) == expected_names
 
 
 def test_order_source_variable_2d_is_unchanged():
     """A 2D var is unchanged."""
     source = np.random.rand(30, 30)
     expected = np.copy(source)
-    actual = order_source_variable(source, 'Any', 'Any')
+    actual = order_source_variable(source, Any, Any)
     np.testing.assert_equal(expected, actual)
 
 
@@ -738,7 +782,7 @@ def test_order_source_variable_1d_input_errors():
     with pytest.raises(
         RegridderException, match='Attempted to resample a 1-D Variable'
     ):
-        order_source_variable(source, 'Any', 'temperature')
+        order_source_variable(source, Any, 'temperature')
 
 
 @pytest.fixture()
