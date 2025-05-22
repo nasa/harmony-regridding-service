@@ -167,7 +167,13 @@ def compute_projected_horizontal_source_grids(
     xdim_name = get_column_dims(grid_dimensions, var_info)[0]
     ydim_name = get_row_dims(grid_dimensions, var_info)[0]
     try:
-        with xr.open_datatree(filepath) as dt:
+        with xr.open_datatree(
+            filepath,
+            decode_cf=False,
+            decode_coords=False,
+            decode_timedelta=False,
+            decode_times=False,
+        ) as dt:
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
