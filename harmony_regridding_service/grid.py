@@ -81,7 +81,7 @@ def get_target_grid_parameters(
     message: HarmonyMessage,
     filepath: str,
     var_info: VarInfoFromNetCDF4,
-) -> tuple[tuple, int, int, str]:
+) -> tuple[tuple, int, int]:
     """Retrieve the target grid parameters.
 
     If all the required parameters exist in the Harmony message,
@@ -139,8 +139,9 @@ def get_source_area_extent(
     area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
     dimensions = var_info.get_required_dimensions(var_info.get_all_variables())
 
+    # Transform area extent to geographic if it's not already.
     if dims_are_projected_x_y(dimensions, var_info):
-        return transform_area_extent_to_geographic(filepath, var_info, area_extent, crs)
+        return transform_area_extent_to_crs(filepath, var_info, area_extent, crs)
 
     return area_extent
 
@@ -170,38 +171,34 @@ def get_x_y_grid_values(
     return xvalues, yvalues
 
 
-def transform_area_extent_to_geographic(
+def transform_area_extent_to_crs(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
     area_extent: tuple[np.float64, np.float64, np.float64, np.float64],
     output_crs: str,
 ) -> tuple[np.float64, np.float64, np.float64, np.float64]:
-    """Convert area extent to latitude and longitude.
+    """Convert area extent to the specified CRS.
 
     Given an area extent (lower_left_x, lower_left_y, upper_right_x,
-    upper_right_y), transform the values to geographic.
+    upper_right_y), transform the values.
 
     """
-    try:
-        with xr.open_datatree(filepath) as dt:
-            input_crs = crs_from_source_data(dt, var_info.get_all_variables())
-    except Exception as e:
-        logger.error(e)
-        raise InvalidSourceCRS('Invalid source CRS') from e
+    with xr.open_datatree(filepath) as dt:
+        input_crs = crs_from_source_data(dt, var_info.get_all_variables())
 
-    transform_to_geo = transformer.Transformer.from_crs(
+    transform_to_crs = transformer.Transformer.from_crs(
         input_crs, output_crs, always_xy=True
     )
-    longitude_extent, latitude_extent = transform_to_geo.transform(
+    x_extent, y_extent = transform_to_crs.transform(
         area_extent[2], area_extent[3]
     )  # xmax, ymax
 
-    longitude_max = abs(longitude_extent)
-    longitude_min = -longitude_max
-    latitude_max = abs(latitude_extent)
-    latitude_min = -latitude_max
+    x_max = abs(x_extent)
+    x_min = -x_max
+    y_max = abs(y_extent)
+    y_min = -y_max
 
-    return (longitude_min, latitude_min, longitude_max, latitude_max)
+    return (x_min, y_min, x_max, y_max)
 
 
 def calculate_source_resolution(
