@@ -4,6 +4,13 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.2.1] - 2025-05-22
+
+## Changed
+
+- Adds functionality that allows the regridder to implicitly determine grid
+parameters when the user does not provide the scale extent or resolution,
+based on the source grid parameters.
 
 ## [v1.1.1] - 2025-05-13
 
