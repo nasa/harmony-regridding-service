@@ -583,7 +583,9 @@ def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:
     )
 
 
-def get_preferred_ordered_dimension_names(var_info: VarInfoFromNetCDF4, var_name: str):
+def get_preferred_ordered_dimension_names(
+    var_info: VarInfoFromNetCDF4, var_name: str
+) -> tuple[str]:
     """Return the base names of the full dimensions.
 
     Used to create a target variable.
