@@ -614,6 +614,13 @@ def get_fully_qualified_preferred_ordered_dimensions(
     This function is used when creating a variable, and returns None when the
     order does not change.
 
+    This is a step towards CF Conventions but does *not* re-order the
+    horizontal dimenions. If the input dims are ['/x', '/'y] they remain that
+    in the output this may be changed in the future with DAS-2374.
+
+    This also makes no attempt order time or vertical dimensions per CF
+    Conventions.
+
     """
     all_dims = var_info.get_variable(var_name).dimensions
 
