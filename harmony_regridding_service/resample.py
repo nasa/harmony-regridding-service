@@ -451,7 +451,7 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         None,
     )
     if row_loc > column_loc:
-        logger.info(f'THIS THING NEEDS ROTATION! {variable}')
+        logger.info(f'Incorrect dimension order on {variable}, needs rotation.')
         variable_needs_rotation = True
 
     return variable_needs_rotation
