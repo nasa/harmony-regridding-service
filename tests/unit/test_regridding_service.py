@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
@@ -10,7 +11,16 @@ from harmony_service_lib.message import Source as HarmonySource
 from harmony_regridding_service.regridding_service import regrid
 
 
-def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
+@pytest.mark.parametrize(
+    'width, height, expected_width, expected_height',
+    [
+        (100, 50, 100, 50),  # Enough grid parameters are provided.
+        (None, None, 3976, 1459),  # Grid parameters need to be created.
+    ],
+)
+def test_regrid_projected_data_end_to_end(
+    width, height, expected_width, expected_height, smap_projected_netcdf_file, tmp_path
+):
     """Test the full regrid process for projected input data."""
     input_filename = str(smap_projected_netcdf_file)
     output_filename = str(tmp_path / 'regridded_output.nc')
@@ -21,8 +31,8 @@ def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
         'format': {
             'mime': 'application/x-netcdf',
             'crs': 'EPSG:4326',
-            'width': 100,
-            'height': 50,
+            'width': width,
+            'height': height,
             'scaleExtent': {
                 'x': {'min': -180, 'max': 180},
                 'y': {'min': -90, 'max': 90},
@@ -46,8 +56,8 @@ def test_regrid_projected_data_end_to_end(smap_projected_netcdf_file, tmp_path):
     with xr.open_datatree(output_filename) as ds_out:
         assert 'crs' in ds_out
 
-        assert ds_out.dims['y'] == 50
-        assert ds_out.dims['x'] == 100
+        assert ds_out.dims['y'] == expected_height
+        assert ds_out.dims['x'] == expected_width
 
         assert 'sm_profile_forecast' in ds_out['Forecast_Data']
         assert 'sm_profile_analysis' in ds_out['Analysis_Data']
