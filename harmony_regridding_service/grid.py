@@ -93,10 +93,12 @@ def get_target_grid_parameters(
         has_scale_sizes(message) or has_dimensions(message)
     ):
         return get_grid_parameters_from_message(message)
-    return create_grid_parameters(filepath, var_info, message.format.crs or 'EPSG:4326')
+    return create_grid_parameters_from_source(
+        filepath, var_info, message.format.crs or 'EPSG:4326'
+    )
 
 
-def create_grid_parameters(
+def create_grid_parameters_from_source(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
     crs: str,

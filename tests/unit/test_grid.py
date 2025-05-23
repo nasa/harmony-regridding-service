@@ -24,7 +24,7 @@ from harmony_regridding_service.grid import (
     compute_projected_horizontal_source_grids,
     compute_source_swath,
     compute_target_area,
-    create_grid_parameters,
+    create_grid_parameters_from_source,
     crs_from_source_data,
     dims_are_lon_lat,
     dims_are_projected_x_y,
@@ -98,9 +98,9 @@ def test_compute_target_area(
     ],
 )
 @patch('harmony_regridding_service.grid.get_grid_parameters_from_message')
-@patch('harmony_regridding_service.grid.create_grid_parameters')
+@patch('harmony_regridding_service.grid.create_grid_parameters_from_source')
 def test_get_target_grid_parameters_implicitly_or_explicitly(
-    mock_create_grid_parameters,
+    mock_create_grid_parameters_from_source,
     mock_get_grid_parameters_from_message,
     scale_extent,
     scale_size,
@@ -145,9 +145,9 @@ def test_get_target_grid_parameters_implicitly_or_explicitly(
 
     if expected_params == 'get params from message':
         mock_get_grid_parameters_from_message.assert_called_once_with(message)
-        mock_create_grid_parameters.assert_not_called()
+        mock_create_grid_parameters_from_source.assert_not_called()
     elif expected_params == 'create params':
-        mock_create_grid_parameters.assert_called_once_with(
+        mock_create_grid_parameters_from_source.assert_called_once_with(
             test_2D_dimensions_ncfile, var_info, crs
         )
         mock_get_grid_parameters_from_message.assert_not_called()
@@ -429,7 +429,7 @@ def test_transform_area_extent_to_crs(
 )
 @patch('harmony_regridding_service.grid.calculate_source_resolution')
 @patch('harmony_regridding_service.grid.get_source_area_extent')
-def test_create_grid_parameters(
+def test_create_grid_parameters_from_source(
     mock_get_source_area_extent,
     mock_calculate_source_resolution,
     x_res,
@@ -445,8 +445,8 @@ def test_create_grid_parameters(
     mock_get_source_area_extent.return_value = expected_area_extent
     mock_calculate_source_resolution.return_value = (x_res, y_res)
 
-    actual_area_extent, actual_height, actual_width = create_grid_parameters(
-        test_2D_dimensions_ncfile, var_info, crs
+    actual_area_extent, actual_height, actual_width = (
+        create_grid_parameters_from_source(test_2D_dimensions_ncfile, var_info, crs)
     )
 
     assert expected_area_extent == actual_area_extent
