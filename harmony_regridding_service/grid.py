@@ -38,7 +38,7 @@ def compute_target_area(
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variable will be regridded to this target.
+    multi-dimensional variables will be regridded to this target.
 
     Computed parameters:
     ----------------------
