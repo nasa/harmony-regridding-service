@@ -29,7 +29,7 @@ from harmony_regridding_service.grid import (
     dims_are_lon_lat,
     dims_are_projected_x_y,
     get_source_area_extent,
-    get_target_grid_parameters,
+    get_target_grid_area_definition,
     get_x_y_grid_values,
     grid_height,
     grid_width,
@@ -38,15 +38,18 @@ from harmony_regridding_service.grid import (
 
 
 @patch('harmony_regridding_service.grid.AreaDefinition', wraps=AreaDefinition)
-@patch('harmony_regridding_service.grid.get_target_grid_parameters')
+@patch('harmony_regridding_service.grid.get_target_grid_area_definition')
 def test_compute_target_area(
-    mock_get_target_grid_parameters, mock_area, test_2D_dimensions_ncfile, var_info_fxn
+    mock_get_target_grid_area_definition,
+    mock_area,
+    test_2D_dimensions_ncfile,
+    var_info_fxn,
 ):
     """Ensure Area Definition correctly generated."""
     mock_area_extent = (-180, -90, 180, 90)
     mock_height = 90
     mock_width = 360
-    mock_get_target_grid_parameters.return_value = (
+    mock_get_target_grid_area_definition.return_value = (
         mock_area_extent,
         mock_height,
         mock_width,
@@ -77,7 +80,7 @@ def test_compute_target_area(
         mock_height,
         mock_area_extent,
     )
-    mock_get_target_grid_parameters.assert_called_once_with(
+    mock_get_target_grid_area_definition.assert_called_once_with(
         message,
         test_2D_dimensions_ncfile,
         var_info,
@@ -99,7 +102,7 @@ def test_compute_target_area(
 )
 @patch('harmony_regridding_service.grid.get_grid_parameters_from_message')
 @patch('harmony_regridding_service.grid.create_grid_parameters_from_source')
-def test_get_target_grid_parameters_implicitly_or_explicitly(
+def test_get_target_grid_area_definition_implicitly_or_explicitly(
     mock_create_grid_parameters_from_source,
     mock_get_grid_parameters_from_message,
     scale_extent,
@@ -109,7 +112,7 @@ def test_get_target_grid_parameters_implicitly_or_explicitly(
     test_2D_dimensions_ncfile,
     var_info_fxn,
 ):
-    """Test get_target_grid_parameters.
+    """Test get_target_grid_area_definition.
 
     Grid parameters are either extracted from the message or implicitly
     created depending on which parameters are include in the requeset. This
@@ -141,7 +144,7 @@ def test_get_target_grid_parameters_implicitly_or_explicitly(
     )
     var_info = var_info_fxn(test_2D_dimensions_ncfile)
 
-    get_target_grid_parameters(message, test_2D_dimensions_ncfile, var_info)
+    get_target_grid_area_definition(message, test_2D_dimensions_ncfile, var_info)
 
     if expected_params == 'get params from message':
         mock_get_grid_parameters_from_message.assert_called_once_with(message)
@@ -177,7 +180,7 @@ def test_get_grid_parameters_from_message(var_info_fxn, test_2D_dimensions_ncfil
     expected_height = 90
     expected_width = 360
 
-    actual_area_extent, actual_height, actual_width = get_target_grid_parameters(
+    actual_area_extent, actual_height, actual_width = get_target_grid_area_definition(
         message, test_2D_dimensions_ncfile, var_info
     )
 

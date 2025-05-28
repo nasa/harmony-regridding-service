@@ -64,21 +64,10 @@ def compute_target_area(
 
     # Get the target grid parameters from either the Harmony Message or
     # from input file if the grid parameters are not specified.
-    area_extent, height, width = get_target_grid_parameters(message, filepath, var_info)
-    projection = message.format.crs or 'EPSG:4326'
-
-    return AreaDefinition(
-        'target_area_id',
-        'target area definition',
-        None,
-        projection,
-        width,
-        height,
-        area_extent,
-    )
+    return get_target_grid_area_definition(message, filepath, var_info)
 
 
-def get_target_grid_parameters(
+def get_target_grid_area_definition(
     message: HarmonyMessage,
     filepath: str,
     var_info: VarInfoFromNetCDF4,
@@ -94,6 +83,12 @@ def get_target_grid_parameters(
         has_scale_sizes(message) or has_dimensions(message)
     ):
         return get_grid_parameters_from_message(message)
+
+    ## TODO [MHS, 05/28/2025]
+    ## We know don't have message parameters, and if the message.format.CRS is
+    ## EPSG:4326 we don't want to do anything.
+    ## If source_crs == target.crs: raise WeirdMatchingError:
+
     return create_grid_parameters_from_source(filepath, var_info)
 
 
@@ -101,36 +96,30 @@ def create_grid_parameters_from_source(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
 ) -> tuple[tuple, int, int]:
-    """Create the target grid parameters using the source grid information.
-
-    The area extent is taken from the source granule's upper right and lower
-    left corners. While area extents are typically defined using the outermost
-    points of the cell, the location of the geographic point within the cell
-    can vary per collection and cannot be assumed to be in the center of the
-    cell, so calulating the cell extents cannot easily be generalized.
-
-    This grid parameter calculation is an estimate given the limited information
-    received from the user. The differences between just using the input
-    grid's min/max values versus calculating the exact outermost corner points is
-    considered to be minimal.
-    """
+    """Create the target grid area definition using the source grid information."""
     dimension_pairs = get_resampled_dimension_pairs(var_info)
     variables = get_variables_for_dimension_pair(dimension_pairs[0], var_info)
-    source_swath = compute_source_swath(
-        dimension_pairs[0], filepath, var_info, variables
-    )
 
-    column_min = source_swath.lons[-1, 0]
-    row_min = source_swath.lats[-1, 0]
-    column_max = source_swath.lons[0, -1]
-    row_max = source_swath.lats[0, -1]
-
-    area_extent = (column_min, row_min, column_max, row_max)
-
-    width = source_swath.shape[1]
-    height = source_swath.shape[0]
-
-    return area_extent, height, width
+    # TODO [MHS, 05/28/2025] Rename this fxn
+    # TODO [MHS, 05/28/2025] some new function of these lines from
+    # compute_projected_horizontal_source_grids
+    # xdim_name = get_column_dims(grid_dimensions, var_info)[0]
+    # ydim_name = get_row_dims(grid_dimensions, var_info)[0]
+    # try:
+    #     with xr.open_datatree(filepath) as dt:
+    #         xvalues = dt[xdim_name].data
+    #         yvalues = dt[ydim_name].data
+    #         area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
+    #         source_crs = crs_from_source_data(dt, variables)
+    #         cell_width = np.abs(xvalues[1] - xvalues[0])
+    #         cell_height = np.abs(yvalues[1] - yvalues[0])
+    #         source_area = create_area_def(
+    #             'source grid area',
+    #             source_crs,
+    #             area_extent=area_extent,
+    #             shape=(len(yvalues), len(xvalues)),
+    #             resolution=(cell_width, cell_height),
+    return source_area
 
 
 def get_variables_for_dimension_pair(dimpair, var_info):
@@ -142,7 +131,10 @@ def get_variables_for_dimension_pair(dimpair, var_info):
 def get_grid_parameters_from_message(
     message: HarmonyMessage,
 ) -> tuple[tuple, int, int]:
-    """Retrieve the target grid parameters specified in the Harmony request."""
+    """Retrieve the target grid area specified in the Harmony request."""
+    ## TODO [MHS, 05/28/2025]  Add check for self consistent grid and raise
+    ## exception.  Also rename get_grid_area_definition_from_message()
+
     area_extent = (
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
@@ -153,7 +145,17 @@ def get_grid_parameters_from_message(
     height = grid_height(message)
     width = grid_width(message)
 
-    return area_extent, height, width
+    projection = message.format.crs or 'EPSG:4326'
+
+    return AreaDefinition(
+        'target_area_id',
+        'target area definition',
+        None,
+        projection,
+        width,
+        height,
+        area_extent,
+    )
 
 
 def grid_height(message: HarmonyMessage) -> int:

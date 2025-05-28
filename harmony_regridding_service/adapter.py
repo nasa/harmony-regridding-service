@@ -70,6 +70,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
         if not has_valid_interpolation(self.message):
             raise InvalidInterpolationMethod(self.message.format.interpolation)
 
+        # TODO [MHS, 05/28/2025] get rid of this.
         if not has_self_consistent_grid(self.message):
             raise InvalidTargetGrid()
 
