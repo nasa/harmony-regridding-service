@@ -14,6 +14,7 @@ from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
     get_column_dims,
+    get_resampled_dimension_pairs,
     get_row_dims,
     horizontal_dims_for_variable,
     is_column_dim,
@@ -230,21 +231,6 @@ def unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
             if not resampled_dims.intersection(set(dimension_name))
         ]
     )
-
-
-def get_resampled_dimension_pairs(
-    var_info: VarInfoFromNetCDF4,
-) -> list[tuple[str, str]]:
-    """Return a list of the resampled horizontal spatial dimensions.
-
-    Gives a list of the 2-element horizontal dimensions that are used in
-    regridding this granule file.
-    """
-    return [
-        dims
-        for dims in var_info.group_variables_by_horizontal_dimensions()
-        if len(dims) == 2
-    ]
 
 
 def get_resampled_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
