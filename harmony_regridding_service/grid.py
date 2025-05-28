@@ -11,7 +11,7 @@ from harmony_service_lib.message_utility import (
     has_scale_sizes,
 )
 from netCDF4 import Dataset
-from pyproj import CRS, transformer
+from pyproj import CRS
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition, SwathDefinition
@@ -19,6 +19,7 @@ from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
     get_column_dims,
+    get_resampled_dimension_pairs,
     get_row_dims,
 )
 from harmony_regridding_service.exceptions import (
@@ -93,146 +94,49 @@ def get_target_grid_parameters(
         has_scale_sizes(message) or has_dimensions(message)
     ):
         return get_grid_parameters_from_message(message)
-    return create_grid_parameters_from_source(
-        filepath, var_info, message.format.crs or 'EPSG:4326'
-    )
+    return create_grid_parameters_from_source(filepath, var_info)
 
 
 def create_grid_parameters_from_source(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
-    crs: str,
 ) -> tuple[tuple, int, int]:
-    """Create the target grid parameters using the source grid information."""
-    area_extent = get_source_area_extent(filepath, var_info, crs)
-    scale_extent = {
-        'x': {'min': area_extent[0], 'max': area_extent[2]},
-        'y': {'min': area_extent[1], 'max': area_extent[3]},
-    }
+    """Create the target grid parameters using the source grid information.
 
-    x_res, y_res = calculate_source_resolution(filepath, var_info)
-    scale_size = {
-        'x': x_res,
-        'y': y_res,
-    }
+    The area extent is taken from the source granule's upper right and lower
+    left corners. While area extents are typically defined using the outermost
+    points of the cell, the location of the geographic point within the cell
+    can vary per collection and cannot be assumed to be in the center of the
+    cell, so calulating the cell extents cannot easily be generalized.
 
-    width = int(
-        round((scale_extent['x']['max'] - scale_extent['x']['min']) / scale_size['x'])
+    This grid parameter calculation is an estimate given the limited information
+    received from the user. The differences between just using the input
+    grid's min/max values versus calculating the exact outermost corner points is
+    considered to be minimal.
+    """
+    dimension_pairs = get_resampled_dimension_pairs(var_info)
+    variables = get_variables_for_dimension_pair(dimension_pairs[0], var_info)
+    source_swath = compute_source_swath(
+        dimension_pairs[0], filepath, var_info, variables
     )
-    height = int(
-        round((scale_extent['y']['max'] - scale_extent['y']['min']) / scale_size['y'])
-    )
+
+    column_min = source_swath.lons[-1, 0]
+    row_min = source_swath.lats[-1, 0]
+    column_max = source_swath.lons[0, -1]
+    row_max = source_swath.lats[0, -1]
+
+    area_extent = (column_min, row_min, column_max, row_max)
+
+    width = source_swath.shape[1]
+    height = source_swath.shape[0]
 
     return area_extent, height, width
 
 
-def get_source_area_extent(
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-    crs: str,
-) -> tuple[np.float64, np.float64, np.float64, np.float64]:
-    """Get the area extent from the input granule.
-
-    If the source data is projection-gridded, transform it to latitude
-    and longitude.
-
-    """
-    xvalues, yvalues = get_x_y_grid_values(filepath, var_info)
-    area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-    dimensions = var_info.get_required_dimensions(var_info.get_all_variables())
-
-    # Transform area extent to geographic if it's not already.
-    if dims_are_projected_x_y(dimensions, var_info):
-        return transform_area_extent_to_crs(filepath, var_info, area_extent, crs)
-
-    return area_extent
-
-
-def get_x_y_grid_values(
-    filepath: str, var_info: VarInfoFromNetCDF4
-) -> tuple[np.array, np.array]:
-    """Retrieve the x and y grid values.
-
-    Note/future work: This code currently assumes the input granule only
-    contains one grid, and thus only one set of dimension variables.
-    This is not always the case, for example ATL16 contains three grids:
-    global, north polar, and south polar. This will not return the
-    correct x and y values for each grid when a multi-grid collection
-    is requested.
-
-    """
-    try:
-        with xr.open_datatree(filepath) as dt:
-            dimensions = var_info.get_required_dimensions(var_info.get_all_variables())
-            xvalues = dt[get_column_dims(dimensions, var_info)[0]].data
-            yvalues = dt[get_row_dims(dimensions, var_info)[0]].data
-    except Exception as e:
-        logger.error(e)
-        raise SourceDataError('Cannot retrieve source grid.') from e
-
-    return xvalues, yvalues
-
-
-def transform_area_extent_to_crs(
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-    area_extent: tuple[np.float64, np.float64, np.float64, np.float64],
-    output_crs: str,
-) -> tuple[np.float64, np.float64, np.float64, np.float64]:
-    """Convert area extent to the specified CRS.
-
-    Given an area extent (lower_left_x, lower_left_y, upper_right_x,
-    upper_right_y), transform the values.
-
-    """
-    with xr.open_datatree(filepath) as dt:
-        input_crs = crs_from_source_data(dt, var_info.get_all_variables())
-
-    transform_to_crs = transformer.Transformer.from_crs(
-        input_crs, output_crs, always_xy=True
-    )
-    x_extent, y_extent = transform_to_crs.transform(
-        area_extent[2], area_extent[3]
-    )  # xmax, ymax
-
-    x_max = abs(x_extent)
-    x_min = -x_max
-    y_max = abs(y_extent)
-    y_min = -y_max
-
-    return (x_min, y_min, x_max, y_max)
-
-
-def calculate_source_resolution(
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-) -> tuple[np.float64, np.float64]:
-    """Calculate the resolution found in the input granule.
-
-    If the input file is projection-gridded (resolution is in meters),
-    then the resolution (i.e., scale size/cell spacing) is converted to
-    degrees latitude at true scale.
-
-    Meters to degrees conversion factor:
-    - Earth circumference at the equator: 40,075,000 meters
-    - Earth circumference / 360deg = 111,319.444444 meters/deg
-
-    """
-    METERS_PER_DEGREE = 111319.444444
-
-    dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
-
-    xvalues, yvalues = get_x_y_grid_values(filepath, var_info)
-    x_res = abs(xvalues[1] - xvalues[0])
-    y_res = abs(yvalues[1] - yvalues[0])
-
-    for dimensions, _ in dimension_vars_mapping.items():
-        if len(dimensions) == 2:
-            if dims_are_projected_x_y(dimensions, var_info):
-                x_res = x_res / METERS_PER_DEGREE
-                y_res = y_res / METERS_PER_DEGREE
-
-    return x_res, y_res
+def get_variables_for_dimension_pair(dimpair, var_info):
+    """Return the variables associated with the input 2D dimension pair."""
+    dim_mapping = var_info.group_variables_by_horizontal_dimensions()
+    return dim_mapping[dimpair]
 
 
 def get_grid_parameters_from_message(
