@@ -64,21 +64,6 @@ def compute_target_area(
     """
     logger.info('compute target_area')
 
-    return get_target_area_definition(message, filepath, var_info)
-
-
-def get_target_area_definition(
-    message: HarmonyMessage,
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-) -> AreaDefinition:
-    """Retrieve the target grid area definition.
-
-    If all the required parameters exist in the Harmony message,
-    they are simply extracted from the message. If all the parameters do not
-    exist, they are created from the source grid.
-
-    """
     if has_scale_extents(message) and (
         has_scale_sizes(message) or has_dimensions(message)
     ):
