@@ -12,7 +12,6 @@ from tempfile import mkdtemp
 
 from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.message import Source as HarmonySource
-from harmony_service_lib.message_utility import has_self_consistent_grid
 from harmony_service_lib.util import (
     bbox_to_geometry,
     download,
@@ -24,7 +23,6 @@ from pystac import Asset, Catalog, Item
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
-    InvalidTargetGrid,
 )
 from harmony_regridding_service.file_io import get_file_mime_type
 from harmony_regridding_service.message_utilities import (
@@ -52,9 +50,6 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
 
         For an input Harmony message to be considered valid it must:
 
-        * Contain a valid target grid, with `format.scaleExtent` and either
-          `format.scaleSize` or both `format.height` and `format.width`
-          fully populated.
         * Not specify an incompatible target CRS. Initially, the target CRS
           is limited to geographic. The message should either specify a
           geographic CRS, or not specify one at all.
@@ -69,9 +64,6 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
 
         if not has_valid_interpolation(self.message):
             raise InvalidInterpolationMethod(self.message.format.interpolation)
-
-        if not has_self_consistent_grid(self.message):
-            raise InvalidTargetGrid()
 
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """Processes a single input STAC item."""

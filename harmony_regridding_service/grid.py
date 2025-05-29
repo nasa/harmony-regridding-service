@@ -9,6 +9,7 @@ from harmony_service_lib.message_utility import (
     has_dimensions,
     has_scale_extents,
     has_scale_sizes,
+    has_self_consistent_grid,
 )
 from netCDF4 import Dataset
 from pyproj import CRS
@@ -25,6 +26,7 @@ from harmony_regridding_service.dimensions import (
 from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
+    InvalidTargetGrid,
     SourceDataError,
 )
 
@@ -143,6 +145,9 @@ def get_grid_parameters_from_message(
     message: HarmonyMessage,
 ) -> tuple[tuple, int, int]:
     """Retrieve the target grid parameters specified in the Harmony request."""
+    if not has_self_consistent_grid(message):
+        raise InvalidTargetGrid()
+
     area_extent = (
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
