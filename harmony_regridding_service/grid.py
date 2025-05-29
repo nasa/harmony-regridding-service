@@ -27,6 +27,7 @@ from harmony_regridding_service.exceptions import (
     InvalidSourceCRS,
     InvalidSourceDimensions,
     InvalidTargetGrid,
+    SameSourceTargetCRS,
     SourceDataError,
 )
 
@@ -82,7 +83,23 @@ def get_target_area_definition(
         has_scale_sizes(message) or has_dimensions(message)
     ):
         return get_area_definition_from_message(message)
+
+    if same_source_and_target_crs(var_info):
+        raise SameSourceTargetCRS('The requested CRS is the same as the source CRS.')
+
     return create_area_definition_from_source(filepath, var_info)
+
+
+def same_source_and_target_crs(
+    var_info: VarInfoFromNetCDF4,
+) -> bool:
+    """Check if the requested CRS is the same as the input CRS.
+
+    For now, it is assumed that only one geographic CRS is available, but this
+    may not be the case in the future.
+    """
+    grid_dimensions = get_resampled_dimension_pairs(var_info)[0]
+    return dims_are_lon_lat(grid_dimensions, var_info)
 
 
 def create_area_definition_from_source(

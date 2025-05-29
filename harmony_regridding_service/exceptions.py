@@ -57,3 +57,10 @@ class InvalidSourceDimensions(RegridderException):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class SameSourceTargetCRS(RegridderException):
+    """Raised when the requested CRS is the same as the output CRS."""
+
+    def __init__(self, message=str):
+        super().__init__(message)

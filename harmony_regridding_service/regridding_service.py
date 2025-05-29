@@ -16,6 +16,9 @@ from harmony_regridding_service.crs import (
 from harmony_regridding_service.dimensions import (
     get_resampled_dimension_pairs,
 )
+from harmony_regridding_service.exceptions import (
+    SameSourceTargetCRS,
+)
 from harmony_regridding_service.file_io import (
     clone_variables,
     transfer_metadata,
@@ -54,7 +57,10 @@ def regrid(
         config_file=HRS_VARINFO_CONFIG_FILENAME,
     )
 
-    target_area = compute_target_area(message, input_filepath, var_info)
+    try:
+        target_area = compute_target_area(message, input_filepath, var_info)
+    except SameSourceTargetCRS:
+        return input_filepath
 
     resampler_cache = cache_resamplers(input_filepath, var_info, target_area)
 
