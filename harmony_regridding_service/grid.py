@@ -24,10 +24,10 @@ from harmony_regridding_service.dimensions import (
     get_row_dims,
 )
 from harmony_regridding_service.exceptions import (
+    InvalidCRSResampling,
     InvalidSourceCRS,
     InvalidSourceDimensions,
     InvalidTargetGrid,
-    SameSourceTargetCRS,
     SourceDataError,
 )
 
@@ -85,7 +85,9 @@ def get_target_area_definition(
         return get_area_definition_from_message(message)
 
     if same_source_and_target_crs(var_info):
-        raise SameSourceTargetCRS('The requested CRS is the same as the source CRS.')
+        raise InvalidCRSResampling(
+            'requested a resampling with no grid parameters to same CRS'
+        )
 
     return create_area_definition_from_source(filepath, var_info)
 
