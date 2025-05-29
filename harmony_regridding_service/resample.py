@@ -254,14 +254,12 @@ def cache_resamplers(
 
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
-    for dimensions, variable_set in dimension_vars_mapping.items():
+    for dimensions in dimension_vars_mapping:
         # create swath definitions from each unique 2D grid dimensions found in
         # the input file.
         if len(dimensions) == 2:
             logger.debug(f'computing weights for dimensions {dimensions}')
-            source_swath = compute_source_swath(
-                dimensions, filepath, var_info, variable_set
-            )
+            source_swath = compute_source_swath(dimensions, filepath, var_info)
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
             grid_cache[dimensions].precompute(
                 rows_per_scan=get_rows_per_scan(source_swath.shape[0]),
