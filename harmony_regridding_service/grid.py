@@ -74,7 +74,7 @@ def compute_target_area(
             'requested a resampling with no grid parameters to same CRS'
         )
 
-    return create_area_definition_from_source(filepath, var_info)
+    return create_target_area_from_source(filepath, var_info)
 
 
 def same_source_and_target_crs(
@@ -89,7 +89,7 @@ def same_source_and_target_crs(
     return dims_are_lon_lat(grid_dimensions, var_info)
 
 
-def create_area_definition_from_source(
+def create_target_area_from_source(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
 ) -> AreaDefinition:
@@ -99,7 +99,9 @@ def create_area_definition_from_source(
     had more than one grid.
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    return create_area_definition(filepath, dimension_pairs[0], var_info)
+    return create_area_definition_for_source_grid(
+        filepath, dimension_pairs[0], var_info
+    )
 
 
 def get_variables_for_dimension_pair(dimpair, var_info):
@@ -225,11 +227,13 @@ def compute_projected_horizontal_source_grids(
     in the source data and use those to generate 2D longitude and latitude arrays.
 
     """
-    source_area = create_area_definition(filepath, grid_dimensions, var_info)
+    source_area = create_area_definition_for_source_grid(
+        filepath, grid_dimensions, var_info
+    )
     return source_area.get_lonlats()
 
 
-def create_area_definition(
+def create_area_definition_for_source_grid(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
