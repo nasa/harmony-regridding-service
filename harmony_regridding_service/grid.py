@@ -104,10 +104,10 @@ def create_target_area_from_source(
     )
 
 
-def get_variables_for_dimension_pair(dimpair, var_info):
+def get_variables_for_dimension_pair(dim_pair, var_info):
     """Return the variables associated with the input 2D dimension pair."""
     dim_mapping = var_info.group_variables_by_horizontal_dimensions()
-    return dim_mapping[dimpair]
+    return dim_mapping[dim_pair]
 
 
 def get_area_definition_from_message(
