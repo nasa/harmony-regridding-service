@@ -15,7 +15,7 @@ from netCDF4 import Dataset
 from pyproj import CRS
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
-from pyresample.geometry import AreaDefinition, SwathDefinition
+from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
@@ -165,28 +165,6 @@ def compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
 
     num_elements = int(np.round((scale_extent.max - scale_extent.min) / scale_size))
     return num_elements
-
-
-def compute_source_swath(
-    grid_dimensions: tuple[str, str],
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-) -> SwathDefinition:
-    """Return a SwathDefinition for the input grid_dimensions."""
-    if dims_are_lon_lat(grid_dimensions, var_info):
-        longitudes, latitudes = compute_horizontal_source_grids(
-            grid_dimensions, filepath, var_info
-        )
-    elif dims_are_projected_x_y(grid_dimensions, var_info):
-        longitudes, latitudes = compute_projected_horizontal_source_grids(
-            grid_dimensions, filepath, var_info
-        )
-    else:
-        raise SourceDataError(
-            'Cannot determine correct dimension type from source {grid_dimensions}.'
-        )
-
-    return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
 def compute_horizontal_source_grids(

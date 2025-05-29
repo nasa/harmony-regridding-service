@@ -9,7 +9,7 @@ from netCDF4 import (
     Dimension,
 )
 from pyresample.ewa import DaskEWAResampler
-from pyresample.geometry import AreaDefinition
+from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
@@ -22,12 +22,18 @@ from harmony_regridding_service.dimensions import (
 )
 from harmony_regridding_service.exceptions import (
     RegridderException,
+    SourceDataError,
 )
 from harmony_regridding_service.file_io import (
     copy_var_with_attrs,
     copy_var_without_metadata,
 )
-from harmony_regridding_service.grid import compute_source_swath
+from harmony_regridding_service.grid import (
+    compute_horizontal_source_grids,
+    compute_projected_horizontal_source_grids,
+    dims_are_lon_lat,
+    dims_are_projected_x_y,
+)
 
 logger = getLogger(__name__)
 
@@ -266,6 +272,28 @@ def cache_resamplers(
             )
 
     return grid_cache
+
+
+def compute_source_swath(
+    grid_dimensions: tuple[str, str],
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> SwathDefinition:
+    """Return a SwathDefinition for the input grid_dimensions."""
+    if dims_are_lon_lat(grid_dimensions, var_info):
+        longitudes, latitudes = compute_horizontal_source_grids(
+            grid_dimensions, filepath, var_info
+        )
+    elif dims_are_projected_x_y(grid_dimensions, var_info):
+        longitudes, latitudes = compute_projected_horizontal_source_grids(
+            grid_dimensions, filepath, var_info
+        )
+    else:
+        raise SourceDataError(
+            'Cannot determine correct dimension type from source {grid_dimensions}.'
+        )
+
+    return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
 def transfer_resampled_dimensions(
