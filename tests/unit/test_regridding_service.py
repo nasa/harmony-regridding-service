@@ -15,7 +15,7 @@ from harmony_regridding_service.regridding_service import regrid
     'width, height, expected_width, expected_height',
     [
         (100, 50, 100, 50),  # Enough grid parameters are provided.
-        (None, None, 3976, 1459),  # Grid parameters need to be created.
+        (None, None, 5, 6),  # Grid parameters need to be created.
     ],
 )
 def test_regrid_projected_data_end_to_end(
