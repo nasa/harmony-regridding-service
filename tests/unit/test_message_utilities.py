@@ -2,11 +2,13 @@
 
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
+from pyproj import CRS
 
 from harmony_regridding_service.exceptions import InvalidTargetCRS
 from harmony_regridding_service.message_utilities import (
     has_valid_crs,
     is_geographic_crs,
+    target_crs_from_message,
 )
 from harmony_regridding_service.regridding_cli import (
     get_harmony_message_from_params,
@@ -20,7 +22,7 @@ def test_get_harmony_message_all_params(message_params):
     message = get_harmony_message_from_params(params)
     assert isinstance(message, HarmonyMessage)
     assert message.format.mime == 'application/x-netcdf'
-    assert message.format.crs == {'epsg': 'EPSG:4326'}
+    assert message.format.crs == 'EPSG:4326'
     assert message.format.srs.epsg == 'EPSG:4326'
     assert message.format.srs.wkt == 'GEOGCS["WGS 84",DATUM...'
     assert message.format.srs.proj4 == '+proj=longlat +datum=WGS84 +no_defs'
@@ -144,3 +146,51 @@ def test_is_geographic_raises_exception():
     crs_string = 'invalid CRS'
     with pytest.raises(InvalidTargetCRS, match=crs_string):
         is_geographic_crs(crs_string)
+
+
+@pytest.mark.parametrize(
+    'message, expected, description',
+    [
+        (HarmonyMessage({}), 'EPSG:4326', 'Empty HarmonyMessage'),
+        (HarmonyMessage({'format': {}}), 'EPSG:4326', 'format.crs = None'),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:4326'}}),
+            'EPSG:4326',
+            'format.crs = "EPSG:4326"',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '+proj=longlat'}}),
+            'EPSG:4326',
+            'format.crs = "+proj=longlat"',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': '4326'}}),
+            'EPSG:4326',
+            'format.crs = "4326"',
+        ),
+        (
+            HarmonyMessage({'format': {'crs': 'EPSG:6933'}}),
+            'EPSG:6933',
+            'format.crs = EPSG:6933',
+        ),
+        (
+            HarmonyMessage(
+                {
+                    'format': {
+                        'crs': (
+                            '+proj=cea +lat_ts=30 +lon_0=0 +x_0=0 +y_0=0'
+                            ' +datum=WGS84 +units=m +no_defs +type=crs'
+                        )
+                    }
+                }
+            ),
+            'EPSG:6933',
+            'Proj string for EPSG:6933',
+        ),
+    ],
+)
+def test_target_crs_from_message(message, expected, description):
+    """Test input CRS."""
+    expected_crs = CRS(expected)
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True, description
