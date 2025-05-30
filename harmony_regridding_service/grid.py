@@ -1,5 +1,6 @@
 """Module for accessing and creating grid parameters."""
 
+from collections.abc import Iterable
 from logging import getLogger
 
 import numpy as np
@@ -10,6 +11,7 @@ from harmony_service_lib.message_utility import (
     has_scale_extents,
     has_scale_sizes,
     has_self_consistent_grid,
+    target_crs_from_message,
 )
 from netCDF4 import Dataset
 from pyproj import CRS
@@ -22,6 +24,7 @@ from harmony_regridding_service.dimensions import (
     get_column_dims,
     get_resampled_dimension_pairs,
     get_row_dims,
+    horizontal_dims_for_variable,
 )
 from harmony_regridding_service.exceptions import (
     InvalidCRSResampling,
@@ -78,15 +81,21 @@ def compute_target_area(
 
 
 def same_source_and_target_crs(
+    message: HarmonyMessage,
     var_info: VarInfoFromNetCDF4,
 ) -> bool:
     """Check if the requested CRS is the same as the input CRS.
 
-    For now, it is assumed that only one geographic CRS is available, but this
-    may not be the case in the future.
+    For this version we are assuming that the only grids we need to be
+    concerned with are the first grid returned from
+    get_resampled_dimension_pairs.
+
     """
     grid_dimensions = get_resampled_dimension_pairs(var_info)[0]
-    return dims_are_lon_lat(grid_dimensions, var_info)
+    vars_on_this_grid = get_variables_for_dimension_pair(grid_dimensions, var_info)
+    source_crs = crs_from_source_data(vars_on_this_grid, var_info)
+    target_crs = target_crs_from_message(message)
+    return target_crs.equald(source_crs, ignore_axis_order=True)
 
 
 def create_target_area_from_source(
@@ -258,7 +267,7 @@ def create_area_definition_for_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            source_crs = crs_from_source_data(dt, variables)
+            source_crs = crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             return create_area_def(
@@ -327,39 +336,62 @@ def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
     return (left, right)
 
 
-def crs_from_source_data(dt: xr.DataTree, variables: set) -> CRS:
-    """Create a CRS describing the grid in the source file.
+def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> CRS:
+    """Create a CRS from variables in the source data.
 
-    Look through the variables for metadata that points to a grid_mapping
-    and generate a CRS from that information.
+    Given a list of one or more variables, all on the same horizonal
+    grid:
 
-    The metadata is not always clear or easy to parse into a CRS. Take a
-    shortcut when possible.
+    Look through the variables' metadata for a grid_mapping that can be used to
+    create a CRS and return it.
 
-    if the grid_mapping has a known EASE2 grid name, use the EPSG code known
-    apriori.
+    If no grid_mapping information can be made from any of the variables'
+    metadata, check the horizonal dimensions see if they are geographic, if so,
+    assume a CRS of EPSG:4326 and return that.
+
+    If you can't determine a CRS after that, raise an InvalidSourceCRS
+    exception.
 
     Args:
-      dt: the source file as an opened DataTree
+      variables:  variables all sharing the same 2-dimensional grid.
 
-      variables: set of variables all sharing the same 2-dimensional grid is
-                 traversed looking for a grid_mapping.
+      var_info: used to retrive grid_mapping metadata.
 
     Returns:
       CRS object
 
     """
-    for varname in variables:
-        var = dt[varname]
-        if 'grid_mapping' in var.attrs:
-            try:
-                return CRS.from_cf(dt[var.attrs['grid_mapping']].attrs)
-            except CRSError as e:
-                raise InvalidSourceCRS(
-                    'Could not create a CRS from grid_mapping metadata'
-                ) from e
+    for var_name in variables:
+        try:
+            cf_attributes = get_grid_mapping_attributes(var_name, var_info)
+            if cf_attributes:
+                return CRS.from_cf(cf_attributes)
+        except CRSError as e:
+            raise InvalidSourceCRS(
+                'Could not create a CRS from grid_mapping metadata'
+            ) from e
+
+    # No grid_mapping metadata was found so check the dimensions for geographic
+    # information and assume EPSG:4326 if so.
+    for var_name in variables:
+        if has_geographic_grid_dimensions(var_name, var_info):
+            return CRS.from_epsg(4326)
 
     raise InvalidSourceCRS('No grid_mapping metadata found.')
+
+
+def get_grid_mapping_attributes(var_name: str, var_info: VarInfoFromNetCDF4) -> str:
+    """Return the grid mapping attributes for a variable.
+
+    Use varinfo to get the metadata associated with the grid mapping variable.
+    """
+    cf_attrs = {}
+    grid_mapping = var_info.get_variable(var_name).references.get('grid_mapping', set())
+    coordinates = var_info.get_variable(var_name).references.get('coordinates', set())
+    grid_mapping_var_name = list(grid_mapping - coordinates)
+    if grid_mapping_var_name and len(grid_mapping_var_name) == 1:
+        cf_attrs = var_info.get_variable(grid_mapping_var_name[0]).attributes
+    return cf_attrs
 
 
 def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) -> bool:
@@ -367,6 +399,12 @@ def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) 
     return all(
         var_info.get_variable(dim_name).is_geographic() for dim_name in dimensions
     )
+
+
+def has_geographic_grid_dimensions(var_name: str, var_info: VarInfoFromNetCDF4) -> bool:
+    """Returns true if the horizonal dimensions for the variable are geographic."""
+    h_dims = horizontal_dims_for_variable(var_info, var_name)
+    return dims_are_lon_lat(h_dims, var_info)
 
 
 def dims_are_projected_x_y(
