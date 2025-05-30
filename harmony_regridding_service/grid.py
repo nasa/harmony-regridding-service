@@ -11,7 +11,6 @@ from harmony_service_lib.message_utility import (
     has_scale_extents,
     has_scale_sizes,
     has_self_consistent_grid,
-    target_crs_from_message,
 )
 from netCDF4 import Dataset
 from pyproj import CRS
@@ -33,6 +32,7 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetGrid,
     SourceDataError,
 )
+from harmony_regridding_service.message_utilities import target_crs_from_message
 
 logger = getLogger(__name__)
 
@@ -72,7 +72,7 @@ def compute_target_area(
     ):
         return get_area_definition_from_message(message)
 
-    if same_source_and_target_crs(var_info):
+    if same_source_and_target_crs(message, var_info):
         raise InvalidCRSResampling(
             'requested a resampling with no grid parameters to same CRS'
         )
