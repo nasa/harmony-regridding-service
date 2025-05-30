@@ -355,30 +355,12 @@ def test_compute_horizontal_source_grids_expected_result(
     np.testing.assert_array_equal(expected_longitudes, longitudes)
 
 
-@pytest.mark.parametrize('grid_dimensions', [('/y', '/x'), ('/x', '/y')])
-@patch('harmony_regridding_service.grid.create_area_definition_for_source_grid')
 def test_compute_projected_horizontal_source_grids(
-    mock_create_area_definition_for_source_grid,
-    grid_dimensions,
     var_info_fxn,
     smap_projected_netcdf_file,
 ):
     """Test source grid generation."""
-    crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
     var_info = var_info_fxn(smap_projected_netcdf_file)
-
-    mock_width = 5
-    mock_height = 6
-    mock_area_definition = AreaDefinition(
-        'target_area_id',
-        'target area definition',
-        None,
-        crs,
-        mock_width,
-        mock_height,
-        (-180, -90, 180, 90),
-    )
-    mock_create_area_definition_for_source_grid.return_value = mock_area_definition
 
     expected_longitudes = np.array(
         [
@@ -402,7 +384,7 @@ def test_compute_projected_horizontal_source_grids(
     )
 
     longitudes, latitudes = compute_projected_horizontal_source_grids(
-        grid_dimensions,
+        ('/y', '/x'),
         smap_projected_netcdf_file,
         var_info,
     )
@@ -411,9 +393,11 @@ def test_compute_projected_horizontal_source_grids(
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
 
 
+@patch('harmony_regridding_service.grid.crs_from_source_data')
 @patch('harmony_regridding_service.grid.compute_area_extent_from_regular_x_y_coords')
 def test_create_area_definition_for_source_grid(
     mock_compute_area_extent_from_regular_x_y_coords,
+    mock_crs_from_source_data,
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
@@ -422,7 +406,8 @@ def test_create_area_definition_for_source_grid(
     mock_area_extent = (-180, -90, 180, 90)
     mock_compute_area_extent_from_regular_x_y_coords.return_value = mock_area_extent
 
-    crs = 'epsg:6933'
+    mock_crs = 'epsg:6933'
+    mock_crs_from_source_data.return_value = mock_crs
     expected_width = 5
     expected_height = 6
 
@@ -432,7 +417,7 @@ def test_create_area_definition_for_source_grid(
 
     assert actual_area_definition.area_extent == mock_area_extent
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.crs == crs
+    assert actual_area_definition.crs == mock_crs
 
 
 def test_compute_horizontal_source_grids_2D_lat_lon_input(
