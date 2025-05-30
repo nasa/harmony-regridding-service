@@ -192,3 +192,10 @@ class TestCrsFromSourceData:
         """Empty variables list."""
         with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
             crs_from_source_data([], mock_var_info)
+
+
+def test_crs_from_source_data_expected_case(smap_projected_netcdf_file, var_info_fxn):
+    var_info = var_info_fxn(smap_projected_netcdf_file)
+    expected_crs = CRS('epsg:6933')
+    actual_crs = crs_from_source_data({'/Forecast_Data/sm_profile_forecast'}, var_info)
+    assert actual_crs.equals(expected_crs, ignore_axis_order=True)
