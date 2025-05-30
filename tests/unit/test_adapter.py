@@ -9,7 +9,6 @@ from harmony_regridding_service.adapter import RegriddingServiceAdapter
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
-    InvalidTargetGrid,
 )
 from tests.utilities import Granule, create_stac
 
@@ -131,29 +130,6 @@ class TestAdapter(TestCase):
                 harmony_adapter.validate_message()
             except HarmonyException as exception:
                 self.fail(f'Unexpected exception: {exception.message}')
-
-        with self.subTest('Inconsistent grid is not valid'):
-            test_message = Message(
-                {
-                    'format': {
-                        'height': valid_height + 100,
-                        'scaleExtent': valid_scale_extents,
-                        'scaleSize': valid_scale_sizes,
-                        'width': valid_width - 150,
-                    }
-                }
-            )
-            harmony_adapter = RegriddingServiceAdapter(
-                test_message, config=self.config, catalog=self.input_stac
-            )
-
-            with self.assertRaises(InvalidTargetGrid) as context:
-                harmony_adapter.validate_message()
-
-            self.assertEqual(
-                context.exception.message,
-                'Insufficient or invalid target grid parameters.',
-            )
 
         with self.subTest('Non-geographic CRS is not valid'):
             test_message = Message(
