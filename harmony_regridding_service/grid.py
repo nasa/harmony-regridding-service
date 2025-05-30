@@ -95,7 +95,7 @@ def same_source_and_target_crs(
     vars_on_this_grid = get_variables_for_dimension_pair(grid_dimensions, var_info)
     source_crs = crs_from_source_data(vars_on_this_grid, var_info)
     target_crs = target_crs_from_message(message)
-    return target_crs.equald(source_crs, ignore_axis_order=True)
+    return target_crs.equals(source_crs, ignore_axis_order=True)
 
 
 def create_target_area_from_source(
