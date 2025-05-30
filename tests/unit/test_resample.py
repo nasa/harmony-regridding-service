@@ -1,6 +1,6 @@
 """Tests the resample module."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -9,8 +9,13 @@ from netCDF4 import (
     Dimension,
 )
 from numpy.testing import assert_array_equal
+from pyresample.geometry import SwathDefinition
 
+from harmony_regridding_service.exceptions import (
+    SourceDataError,
+)
 from harmony_regridding_service.resample import (
+    compute_source_swath,
     copy_1d_dimension_variables,
     copy_dimension,
     copy_dimensions,
@@ -33,6 +38,106 @@ from harmony_regridding_service.resample import (
     transfer_resampled_dimensions,
     unresampled_variables,
 )
+
+
+@patch('harmony_regridding_service.resample.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_lon_lat(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test compute_source_swath with longitude/latitude dimensions."""
+    mock_dims_are_lon_lat.return_value = True
+    mock_dims_are_projected_x_y.return_value = False
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+
+    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/longitude', '/latitude')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info
+    )
+
+    mock_dims_are_projected_x_y.assert_not_called()
+    mock_compute_projected_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch('harmony_regridding_service.resample.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_projected_xy(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test compute_source_swath with projected x/y dimensions."""
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = True
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/y', '/x')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_projected_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info
+    )
+
+    mock_compute_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_invalid_dimensions(
+    mock_dims_are_lon_lat, mock_dims_are_projected_x_y
+):
+    """Test compute_source_swath with invalid dimensions."""
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = False
+
+    grid_dimensions = ('time', 'depth')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    with pytest.raises(
+        SourceDataError, match='Cannot determine correct dimension type from source'
+    ):
+        compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
 def test_resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
