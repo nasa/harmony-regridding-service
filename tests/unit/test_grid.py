@@ -6,6 +6,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
+from pyproj import CRS
 from pyresample.geometry import AreaDefinition
 
 from harmony_regridding_service.exceptions import (
