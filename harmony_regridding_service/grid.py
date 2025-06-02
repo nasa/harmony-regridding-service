@@ -345,7 +345,7 @@ def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
 
 
 def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> CRS:
-    """Create a CRS from variables in the source data.
+    """Create a CRS from grid variables in the source data.
 
     Given a list of one or more variables, all on the same horizontal
     grid:
