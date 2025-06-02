@@ -75,6 +75,12 @@ def has_valid_crs(message: Message) -> bool:
     return target_crs is None or is_geographic_crs(target_crs)
 
 
+def get_message_crs(message: Message) -> str | None:
+    """Return the crs information contained in the harmony message."""
+    target_crs = rgetattr(message, 'format.crs')
+    return target_crs
+
+
 def is_geographic_crs(crs_string: str) -> bool:
     """Infer if CRS is geographic.
 
