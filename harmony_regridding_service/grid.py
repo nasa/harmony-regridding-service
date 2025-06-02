@@ -105,17 +105,38 @@ def same_source_and_target_crs(
 
 
 def create_target_area_from_source(
-    filepath: str, var_info: VarInfoFromNetCDF4, crs: CRS
+    filepath: str, var_info: VarInfoFromNetCDF4, target_crs: CRS
 ) -> AreaDefinition:
     """Create the target area definition using the source grid information.
 
     TODO: Create area definition for every dimension pair, if the collection
     had more than one grid.
     """
+    # we have a target CRS that is different from the input source projected CRS.
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    return create_area_definition_for_projected_source_grid(
-        filepath, dimension_pairs[0], var_info, override_crs=crs
+    area_extent, cell_height, cell_width, shape = get_projected_source_grid_parameters(
+        filepath, dimension_pairs[0], var_info
     )
+
+    projected_area = create_area_definition_for_projected_source_grid(
+        filepath, dimension_pairs[0], var_info
+    )
+
+    # I have the correct projected areaDefinition, but I want to convert it to
+    # a geographic area
+    geographic_area = convert_projected_area_to_geographic(projected_area, target_crs)
+
+    return geographic_area
+
+
+def convert_projected_area_to_geographic(
+    projected_area: AreaDefinition, target_crs: CRS
+) -> AreaDefinition:
+    """Converts a Projected AreaDefinition into the similar area in the target_CRS.
+
+    For now the target_crs is always goign to be CRS('epsg:4326')
+    """
+    pass
 
 
 def get_variables_on_grid(dim_pair, var_info):
@@ -247,22 +268,17 @@ def compute_projected_horizontal_source_grids(
     return source_area.get_lonlats()
 
 
-def create_area_definition_for_projected_source_grid(
+def get_projected_source_grid_parameters(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
-    override_crs: CRS | None = None,
 ) -> AreaDefinition:
-    """Return the area definition given a grid dimensions pair.
+    """Return the grid parameters for a source grid.
 
-    Find the projected coordinate dimensions in the source data
-    and use those to create the correlating area definition.
-
-    override_crs: optional CRS object to allow for creation of targetAreas when
-    a user does not specify them.
+    Use the projected coordinate dimensions in the source data to compute the
+    area extent and cell dimensions.
 
     """
-    variables = get_variables_on_grid(dimension_pair, var_info)
     xdim_name = get_column_dims(dimension_pair, var_info)[0]
     ydim_name = get_row_dims(dimension_pair, var_info)[0]
     try:
@@ -276,19 +292,47 @@ def create_area_definition_for_projected_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            area_crs = override_crs or crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
-            return create_area_def(
-                'grid area',
-                area_crs,
-                area_extent=area_extent,
-                shape=(len(yvalues), len(xvalues)),
-                resolution=(cell_width, cell_height),
-            )
+            return (area_extent, cell_height, cell_width, (len(yvalues), len(xvalues)))
     except Exception as e:
         logger.error(e)
-        raise SourceDataError('cannot compute projected source grids') from e
+        raise SourceDataError(
+            'Cannot determine projected source grid parameters'
+        ) from e
+
+
+def create_area_definition_for_projected_source_grid(
+    filepath: str,
+    dimension_pair: tuple[str, str],
+    var_info: VarInfoFromNetCDF4,
+) -> AreaDefinition:
+    """Return the area definition given a grid dimensions pair.
+
+    Find the projected coordinate dimensions in the source data
+    and use those to create the correlating area definition.
+
+    override_crs: optional CRS object to allow for creation of targetAreas when
+    a user does not specify them.
+
+    """
+    try:
+        variables = get_variables_on_grid(dimension_pair, var_info)
+        source_crs = crs_from_source_data(variables, var_info)
+        area_extent, cell_height, cell_width, shape = (
+            get_projected_source_grid_parameters(filepath, dimension_pair, var_info)
+        )
+
+        return create_area_def(
+            'grid area',
+            source_crs,
+            area_extent=area_extent,
+            shape=shape,
+            resolution=(cell_width, cell_height),
+        )
+    except Exception as e:
+        logger.error(e)
+        raise SourceDataError('Cannot compute projected source grid.') from e
 
 
 def compute_area_extent_from_regular_x_y_coords(
