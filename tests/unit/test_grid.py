@@ -84,33 +84,35 @@ def test_compute_target_area_with_parameters(
     assert actual_area_definition.proj_str == crs
 
 
-@patch('harmony_regridding_service.grid.create_target_area_from_source')
+@patch(
+    'harmony_regridding_service.grid.create_target_area_from_source',
+    wraps=create_target_area_from_source,
+)
+@patch(
+    'harmony_regridding_service.grid.get_area_definition_from_message',
+    wraps=get_area_definition_from_message,
+)
 def test_compute_target_area_without_parameters(
-    mock_create_target_area_from_source, smap_projected_netcdf_file, var_info_fxn
+    mock_get_area_definition_from_message,
+    mock_create_target_area_from_source,
+    smap_projected_netcdf_file,
+    var_info_fxn,
 ):
     """Ensure Area Definition correctly generated."""
     var_info = var_info_fxn(smap_projected_netcdf_file)
-    crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
 
-    message = HarmonyMessage(
-        {
-            'format': {
-                'crs': crs,
-            }
-        }
-    )
+    # Default CRS should be 4326 when the message does not have one.
+    crs = CRS.from_epsg(4326)
 
-    mock_width = 5
-    mock_height = 6
-    mock_area_extent = (-180, -90, 180, 90)
-    mock_create_target_area_from_source.return_value = AreaDefinition(
-        'target_area_id',
-        'target area definition',
-        None,
-        crs,
-        mock_width,
-        mock_height,
-        mock_area_extent,
+    message = HarmonyMessage({})
+
+    expected_width = 5
+    expected_height = 6
+    mock_area_extent = (
+        -15565920.1875,
+        6233574.51953125,
+        -15520879.90918,
+        6287622.853515619,
     )
 
     actual_area_definition = compute_target_area(
@@ -121,9 +123,64 @@ def test_compute_target_area_without_parameters(
         smap_projected_netcdf_file, var_info
     )
 
-    assert actual_area_definition.shape == (mock_height, mock_width)
+    mock_get_area_definition_from_message.assert_not_called()
+
+    assert actual_area_definition.shape == (expected_height, expected_width)
     assert actual_area_definition.area_extent == mock_area_extent
-    assert actual_area_definition.proj_str == crs
+    assert CRS.from_proj4(actual_area_definition.proj_str).equals(
+        crs, ignore_axis_order=True
+    )
+
+
+@patch(
+    'harmony_regridding_service.grid.create_target_area_from_source',
+    wraps=create_target_area_from_source,
+)
+@patch(
+    'harmony_regridding_service.grid.get_area_definition_from_message',
+    wraps=get_area_definition_from_message,
+)
+def test_compute_target_area_with_only_CRS_parameter(
+    mock_get_area_definition_from_message,
+    mock_create_target_area_from_source,
+    smap_projected_netcdf_file,
+    var_info_fxn,
+):
+    """Ensure Area Definition correctly generated."""
+    var_info = var_info_fxn(smap_projected_netcdf_file)
+
+    crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
+
+    message = HarmonyMessage(
+        {
+            'format': {
+                'crs': crs,
+            }
+        }
+    )
+
+    expected_width = 5
+    expected_height = 6
+    mock_area_extent = (
+        -15565920.1875,
+        6233574.51953125,
+        -15520879.90918,
+        6287622.853515619,
+    )
+
+    actual_area_definition = compute_target_area(
+        message, smap_projected_netcdf_file, var_info
+    )
+
+    mock_create_target_area_from_source.assert_called_once_with(
+        smap_projected_netcdf_file, var_info
+    )
+
+    assert actual_area_definition.shape == (expected_height, expected_width)
+    assert actual_area_definition.area_extent == mock_area_extent
+    assert CRS.from_proj4(actual_area_definition.proj_str).equals(
+        crs, ignore_axis_order=True
+    )
 
 
 @pytest.mark.parametrize(
