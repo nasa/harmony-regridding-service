@@ -347,14 +347,14 @@ def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
 def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> CRS:
     """Create a CRS from variables in the source data.
 
-    Given a list of one or more variables, all on the same horizonal
+    Given a list of one or more variables, all on the same horizontal
     grid:
 
     Look through the variables' metadata for a grid_mapping that can be used to
     create a CRS and return it.
 
     If no grid_mapping information can be made from any of the variables'
-    metadata, check the horizonal dimensions see if they are geographic, if so,
+    metadata, check the horizontal dimensions see if they are geographic, if so,
     assume a CRS of EPSG:4326 and return that.
 
     If you can't determine a CRS after that, raise an InvalidSourceCRS
@@ -410,7 +410,7 @@ def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) 
 
 
 def has_geographic_grid_dimensions(var_name: str, var_info: VarInfoFromNetCDF4) -> bool:
-    """Returns true if the horizonal dimensions for the variable are geographic."""
+    """Returns true if the horizontal dimensions for the variable are geographic."""
     h_dims = horizontal_dims_for_variable(var_info, var_name)
     return dims_are_lon_lat(h_dims, var_info)
 
