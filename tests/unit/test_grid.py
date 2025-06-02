@@ -350,7 +350,7 @@ def test_compute_projected_horizontal_source_grids(
 
 @patch('harmony_regridding_service.grid.crs_from_source_data')
 @patch('harmony_regridding_service.grid.compute_area_extent_from_regular_x_y_coords')
-def test_create_area_definition_for_projected_source_grid(
+def test_create_area_definition_for_projected_source_grid_with_no_crs_override(
     mock_compute_area_extent_from_regular_x_y_coords,
     mock_crs_from_source_data,
     smap_projected_netcdf_file,
@@ -361,8 +361,8 @@ def test_create_area_definition_for_projected_source_grid(
     mock_area_extent = (-180, -90, 180, 90)
     mock_compute_area_extent_from_regular_x_y_coords.return_value = mock_area_extent
 
-    mock_crs = 'epsg:6933'
-    mock_crs_from_source_data.return_value = mock_crs
+    test_crs = 'epsg:6933'
+    mock_crs_from_source_data.return_value = test_crs
     expected_width = 5
     expected_height = 6
 
@@ -370,9 +370,38 @@ def test_create_area_definition_for_projected_source_grid(
         smap_projected_netcdf_file, ('/y', '/x'), var_info
     )
 
+    mock_crs_from_source_data.assert_called_once()
     assert actual_area_definition.area_extent == mock_area_extent
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.crs == mock_crs
+    assert actual_area_definition.crs == test_crs
+
+
+@patch('harmony_regridding_service.grid.crs_from_source_data')
+@patch('harmony_regridding_service.grid.compute_area_extent_from_regular_x_y_coords')
+def test_create_area_definition_for_projected_source_grid_with_crs_override(
+    mock_compute_area_extent_from_regular_x_y_coords,
+    mock_crs_from_source_data,
+    smap_projected_netcdf_file,
+    var_info_fxn,
+):
+    var_info = var_info_fxn(smap_projected_netcdf_file)
+
+    mock_area_extent = (-180, -90, 180, 90)
+    mock_compute_area_extent_from_regular_x_y_coords.return_value = mock_area_extent
+
+    override_crs = 'epsg:4326'
+    mock_crs_from_source_data.return_value = override_crs
+    expected_width = 5
+    expected_height = 6
+
+    actual_area_definition = create_area_definition_for_projected_source_grid(
+        smap_projected_netcdf_file, ('/y', '/x'), var_info, override_crs=override_crs
+    )
+
+    mock_crs_from_source_data.assert_not_called()
+    assert actual_area_definition.area_extent == mock_area_extent
+    assert actual_area_definition.shape == (expected_height, expected_width)
+    assert actual_area_definition.crs == override_crs
 
 
 def test_compute_horizontal_source_grids_2D_lat_lon_input(
