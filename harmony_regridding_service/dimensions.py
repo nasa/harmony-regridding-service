@@ -34,7 +34,7 @@ def get_column_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> list[s
 
 
 def is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a horizontal dimension."""
+    """Test if dim is a column dimension."""
     try:
         dim_var = var_info.get_variable(dim)
         is_x_dim = dim_var.is_longitude() or dim_var.is_projection_x()
@@ -44,7 +44,7 @@ def is_column_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
 
 
 def is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
-    """Test if dim is a projection Y dimension."""
+    """Test if dim is a row dimension."""
     is_y_dim = False
     try:
         dim_var = var_info.get_variable(dim)

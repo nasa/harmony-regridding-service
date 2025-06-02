@@ -1,6 +1,6 @@
 {
   "Identification": "harmony_regridding_service_varinfo_config",
-  "Version": 4,
+  "Version": 5,
   "CollectionShortNamePath": [
     "/HDF5_GLOBAL/short_name",
     "/NC_GLOBAL/short_name",
@@ -15,17 +15,25 @@
   ],
   "Mission": {
     "ATL\\d{2}": "ICESat2",
-    "SPL4.+": "SMAP"
+    "SPL[34].+": "SMAP"
   },
- "ExcludedScienceVariables": [
+  "ExcludedScienceVariables": [
     {
       "Applicability": {
-        "Mission": "ICESat2"
+	"Mission": "ICESat2"
       },
       "VariablePattern": [
-        "/quality_assessment/.*",
-        "/orbit_info/.*",
-        "/atlas_impulse_response/.*"
+	"/quality_assessment/.*",
+	"/orbit_info/.*",
+	"/atlas_impulse_response/.*"
+      ]
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP"
+      },
+      "VariablePattern": [
+	"/.*time_utc.*"
       ]
     }
   ],
@@ -60,7 +68,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMAU",
-	      "VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
+	"VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
       },
       "Attributes": [
         {
@@ -74,7 +82,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4CMDL",
-	      "VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
+	"VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
       },
       "Attributes": [
         {
@@ -88,7 +96,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMGP",
-	      "VariablePattern": "^/Geophysical_Data/.*"
+	"VariablePattern": "^/Geophysical_Data/.*"
       },
       "Attributes": [
         {
@@ -102,7 +110,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMLM",
-	      "VariablePattern": "^/Land-Model-Constants_Data/.*"
+	"VariablePattern": "^/Land-Model-Constants_Data/.*"
       },
       "Attributes": [
         {

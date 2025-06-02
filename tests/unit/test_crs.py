@@ -45,10 +45,10 @@ def test_add_grid_mapping_metadata_sets_attributes(
 
     crs_map = {('/y', '/x'): 'crs_var1', ('/y2', '/x2'): 'crs_var2'}
 
-    def _get_variable_side_effect(datset, var_name):
+    def get_variable_side_effect(datset, var_name):
         return mock_var1 if var_name == 'var1' else mock_var2
 
-    mock_get_variable.side_effect = _get_variable_side_effect
+    mock_get_variable.side_effect = get_variable_side_effect
 
     add_grid_mapping_metadata(mock_dataset, variables, mock_varinfo, crs_map)
 
