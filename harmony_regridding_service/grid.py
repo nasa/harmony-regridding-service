@@ -30,6 +30,7 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetGrid,
     SourceDataError,
 )
+from harmony_regridding_service.message_utilities import get_message_crs
 
 logger = getLogger(__name__)
 
@@ -74,7 +75,9 @@ def compute_target_area(
             'requested a resampling with no grid parameters to same CRS'
         )
 
-    return create_target_area_from_source(filepath, var_info)
+    target_crs = CRS(get_message_crs(message) or 'epsg:4326')
+
+    return create_target_area_from_source(filepath, var_info, target_crs)
 
 
 def same_source_and_target_crs(
@@ -90,8 +93,7 @@ def same_source_and_target_crs(
 
 
 def create_target_area_from_source(
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
+    filepath: str, var_info: VarInfoFromNetCDF4, crs: CRS
 ) -> AreaDefinition:
     """Create the target area definition using the source grid information.
 
@@ -100,7 +102,7 @@ def create_target_area_from_source(
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
     return create_area_definition_for_projected_source_grid(
-        filepath, dimension_pairs[0], var_info
+        filepath, dimension_pairs[0], var_info, override_crs=crs
     )
 
 
@@ -237,11 +239,15 @@ def create_area_definition_for_projected_source_grid(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
+    override_crs: CRS | None = None,
 ) -> AreaDefinition:
     """Return the area definition given a grid dimensions pair.
 
     Find the projected coordinate dimensions in the source data
     and use those to create the correlating area definition.
+
+    override_crs: optional CRS object to allow for creation of targetAreas when
+    a user does not specify them.
 
     """
     variables = get_variables_for_dimension_pair(dimension_pair, var_info)
@@ -258,7 +264,7 @@ def create_area_definition_for_projected_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            source_crs = crs_from_source_data(dt, variables)
+            source_crs = override_crs or crs_from_source_data(dt, variables)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             return create_area_def(

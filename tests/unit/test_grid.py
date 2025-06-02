@@ -120,7 +120,7 @@ def test_compute_target_area_without_parameters(
     )
 
     mock_create_target_area_from_source.assert_called_once_with(
-        smap_projected_netcdf_file, var_info
+        smap_projected_netcdf_file, var_info, crs
     )
 
     mock_get_area_definition_from_message.assert_not_called()
@@ -150,6 +150,7 @@ def test_compute_target_area_with_only_CRS_parameter(
     var_info = var_info_fxn(smap_projected_netcdf_file)
 
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
+    target_crs = CRS(crs)
 
     message = HarmonyMessage(
         {
@@ -173,7 +174,7 @@ def test_compute_target_area_with_only_CRS_parameter(
     )
 
     mock_create_target_area_from_source.assert_called_once_with(
-        smap_projected_netcdf_file, var_info
+        smap_projected_netcdf_file, var_info, target_crs
     )
 
     assert actual_area_definition.shape == (expected_height, expected_width)
