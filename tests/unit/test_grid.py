@@ -69,8 +69,8 @@ def test_compute_target_area_with_parameters(
             },
         }
     )
-    expected_height = (ymax - ymin) / 2.0
-    expected_width = (xmax - xmin) / 1.0
+    expected_height = (ymax - ymin) / scale_y
+    expected_width = (xmax - xmin) / scale_x
 
     actual_area_definition = compute_target_area(
         message, smap_projected_netcdf_file, var_info
@@ -161,7 +161,7 @@ def test_compute_target_area_with_only_CRS_parameter(
 
     expected_width = 5
     expected_height = 6
-    mock_area_extent = (
+    expected_area_extent = (
         -15565920.1875,
         6233574.51953125,
         -15520879.90918,
@@ -177,7 +177,7 @@ def test_compute_target_area_with_only_CRS_parameter(
     )
 
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == mock_area_extent
+    assert actual_area_definition.area_extent == expected_area_extent
     assert CRS.from_proj4(actual_area_definition.proj_str).equals(
         crs, ignore_axis_order=True
     )
