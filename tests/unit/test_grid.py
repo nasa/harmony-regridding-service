@@ -22,7 +22,7 @@ from harmony_regridding_service.grid import (
     compute_num_elements,
     compute_projected_horizontal_source_grids,
     compute_target_area,
-    create_area_definition_for_source_grid,
+    create_area_definition_for_projected_source_grid,
     create_target_area_from_source,
     crs_from_source_data,
     dims_are_lon_lat,
@@ -349,7 +349,7 @@ def test_compute_projected_horizontal_source_grids(
 
 @patch('harmony_regridding_service.grid.crs_from_source_data')
 @patch('harmony_regridding_service.grid.compute_area_extent_from_regular_x_y_coords')
-def test_create_area_definition_for_source_grid(
+def test_create_area_definition_for_projected_source_grid(
     mock_compute_area_extent_from_regular_x_y_coords,
     mock_crs_from_source_data,
     smap_projected_netcdf_file,
@@ -365,7 +365,7 @@ def test_create_area_definition_for_source_grid(
     expected_width = 5
     expected_height = 6
 
-    actual_area_definition = create_area_definition_for_source_grid(
+    actual_area_definition = create_area_definition_for_projected_source_grid(
         smap_projected_netcdf_file, ('/y', '/x'), var_info
     )
 

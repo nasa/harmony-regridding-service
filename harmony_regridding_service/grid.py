@@ -99,7 +99,7 @@ def create_target_area_from_source(
     had more than one grid.
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    return create_area_definition_for_source_grid(
+    return create_area_definition_for_projected_source_grid(
         filepath, dimension_pairs[0], var_info
     )
 
@@ -227,13 +227,13 @@ def compute_projected_horizontal_source_grids(
     in the source data and use those to generate 2D longitude and latitude arrays.
 
     """
-    source_area = create_area_definition_for_source_grid(
+    source_area = create_area_definition_for_projected_source_grid(
         filepath, grid_dimensions, var_info
     )
     return source_area.get_lonlats()
 
 
-def create_area_definition_for_source_grid(
+def create_area_definition_for_projected_source_grid(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
