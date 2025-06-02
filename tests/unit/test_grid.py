@@ -33,9 +33,19 @@ from harmony_regridding_service.grid import (
 )
 
 
-@patch('harmony_regridding_service.grid.get_area_definition_from_message')
+@patch(
+    'harmony_regridding_service.grid.create_target_area_from_source',
+    wraps=create_target_area_from_source,
+)
+@patch(
+    'harmony_regridding_service.grid.get_area_definition_from_message',
+    wraps=get_area_definition_from_message,
+)
 def test_compute_target_area_with_parameters(
-    mock_get_area_definition_from_message, smap_projected_netcdf_file, var_info_fxn
+    mock_get_area_definition_from_message,
+    mock_create_target_area_from_source,
+    smap_projected_netcdf_file,
+    var_info_fxn,
 ):
     """Ensure Area Definition correctly generated."""
     var_info = var_info_fxn(smap_projected_netcdf_file)
@@ -44,39 +54,32 @@ def test_compute_target_area_with_parameters(
     xmax = 180
     ymin = -90
     ymax = 90
+    scale_y = 2.0
+    scale_x = 1.0
 
     message = HarmonyMessage(
         {
             'format': {
                 'crs': crs,
-                'scaleSize': {'x': 1.0, 'y': 2.0},
+                'scaleSize': {'x': scale_x, 'y': scale_y},
                 'scaleExtent': {
                     'x': {'min': xmin, 'max': xmax},
                     'y': {'min': ymin, 'max': ymax},
                 },
-            }
+            },
         }
     )
-
-    mock_width = 5
-    mock_height = 6
-    mock_get_area_definition_from_message.return_value = AreaDefinition(
-        'target_area_id',
-        'target area definition',
-        None,
-        crs,
-        mock_width,
-        mock_height,
-        (xmin, ymin, xmax, ymax),
-    )
+    expected_height = (ymax - ymin) / 2.0
+    expected_width = (xmax - xmin) / 1.0
 
     actual_area_definition = compute_target_area(
         message, smap_projected_netcdf_file, var_info
     )
 
     mock_get_area_definition_from_message.assert_called_once_with(message)
+    mock_create_target_area_from_source.assert_not_called()
 
-    assert actual_area_definition.shape == (mock_height, mock_width)
+    assert actual_area_definition.shape == (expected_height, expected_width)
     assert actual_area_definition.area_extent == (xmin, ymin, xmax, ymax)
     assert actual_area_definition.proj_str == crs
 
