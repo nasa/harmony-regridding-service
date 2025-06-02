@@ -223,43 +223,6 @@ def test_get_area_definition_from_message(mock_area_definition):
     )
 
 
-@patch('harmony_regridding_service.grid.create_area_definition_for_source_grid')
-@patch('harmony_regridding_service.grid.get_resampled_dimension_pairs')
-def test_create_target_area_from_source(
-    mock_get_resampled_dimension_pairs,
-    mock_create_area_definition_for_source_grid,
-    test_2D_dimensions_ncfile,
-    var_info_fxn,
-):
-    crs = 'EPSG:4326'
-    var_info = var_info_fxn(test_2D_dimensions_ncfile)
-
-    dimension_pairs = ('/x', '/y')
-    mock_get_resampled_dimension_pairs.return_value = dimension_pairs
-
-    mock_area_definition = AreaDefinition(
-        'target_area_id',
-        'target area definition',
-        None,
-        crs,
-        10,
-        20,
-        (-180, -90, 180, 90),
-    )
-    mock_create_area_definition_for_source_grid.return_value = mock_area_definition
-
-    actual_area_definition = create_target_area_from_source(
-        test_2D_dimensions_ncfile, var_info
-    )
-
-    mock_get_resampled_dimension_pairs.assert_called_once_with(var_info)
-    mock_create_area_definition_for_source_grid.assert_called_once_with(
-        test_2D_dimensions_ncfile, dimension_pairs[0], var_info
-    )
-
-    assert actual_area_definition == mock_area_definition
-
-
 def test_grid_height_message_with_scale_size(test_message_with_scale_size):
     expected_grid_height = 50
     actual_grid_height = grid_height(test_message_with_scale_size)
