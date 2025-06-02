@@ -97,6 +97,6 @@ def is_geographic_crs(crs_string: str) -> bool:
 
 
 def target_crs_from_message(message: Message) -> CRS:
-    """Return the message's crs or one from 4326."""
+    """Return the message's CRS or default to one from EPSG::4326."""
     target_crs = rgetattr(message, 'format.crs')
     return CRS(target_crs or 'EPSG:4326')
