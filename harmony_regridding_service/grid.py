@@ -77,7 +77,8 @@ def compute_target_area(
 
     if same_source_and_target_crs(message, var_info):
         raise InvalidCRSResampling(
-            'requested a resampling with no grid parameters to same CRS'
+            'Requested a resampling with the same '
+            'source and target CRS and no grid parameters.'
         )
 
     target_crs = CRS(get_message_crs(message) or 'epsg:4326')
