@@ -32,7 +32,10 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetGrid,
     SourceDataError,
 )
-from harmony_regridding_service.message_utilities import target_crs_from_message, get_message_crs
+from harmony_regridding_service.message_utilities import (
+    get_message_crs,
+    target_crs_from_message,
+)
 
 logger = getLogger(__name__)
 
@@ -272,7 +275,7 @@ def create_area_definition_for_projected_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            source_crs = override_crs or crs_from_source_data(variables, var_info)
+            area_crs = override_crs or crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             return create_area_def(
