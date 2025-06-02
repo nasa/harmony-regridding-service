@@ -97,7 +97,7 @@ def same_source_and_target_crs(
 
     """
     grid_dimensions = get_resampled_dimension_pairs(var_info)[0]
-    vars_on_this_grid = get_variables_for_dimension_pair(grid_dimensions, var_info)
+    vars_on_this_grid = get_variables_on_grid(grid_dimensions, var_info)
     source_crs = crs_from_source_data(vars_on_this_grid, var_info)
     target_crs = target_crs_from_message(message)
     return target_crs.equals(source_crs, ignore_axis_order=True)
@@ -117,7 +117,7 @@ def create_target_area_from_source(
     )
 
 
-def get_variables_for_dimension_pair(dim_pair, var_info):
+def get_variables_on_grid(dim_pair, var_info):
     """Return the variables associated with the input 2D dimension pair."""
     dim_mapping = var_info.group_variables_by_horizontal_dimensions()
     return dim_mapping[dim_pair]
@@ -261,7 +261,7 @@ def create_area_definition_for_projected_source_grid(
     a user does not specify them.
 
     """
-    variables = get_variables_for_dimension_pair(dimension_pair, var_info)
+    variables = get_variables_on_grid(dimension_pair, var_info)
     xdim_name = get_column_dims(dimension_pair, var_info)[0]
     ydim_name = get_row_dims(dimension_pair, var_info)[0]
     try:
