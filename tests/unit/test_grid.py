@@ -5,13 +5,11 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
 from pyproj import CRS
 from pyresample.geometry import AreaDefinition
 
 from harmony_regridding_service.exceptions import (
-    InvalidSourceCRS,
     InvalidSourceDimensions,
     SourceDataError,
 )
@@ -24,7 +22,6 @@ from harmony_regridding_service.grid import (
     compute_target_area,
     create_area_definition_for_projected_source_grid,
     create_target_area_from_source,
-    crs_from_source_data,
     dims_are_lon_lat,
     dims_are_projected_x_y,
     get_area_definition_from_message,
@@ -464,30 +461,6 @@ def test_compute_array_bounds_failures(input_values, expected_error, expected_me
     """Test expected cases."""
     with pytest.raises(expected_error, match=expected_message):
         compute_array_bounds(input_values)
-
-
-def test_crs_from_source_data_expected_case(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    expected_crs = CRS('epsg:6933')
-    crs = crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
-    assert crs.to_epsg() == expected_crs
-
-
-def test_crs_from_source_data_missing(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    dt['/Forecast_Data/sm_profile_forecast'].attrs.pop('grid_mapping')
-    with pytest.raises(InvalidSourceCRS, match='No grid_mapping metadata found'):
-        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
-
-
-def test_crs_from_source_data_bad(smap_projected_netcdf_file):
-    dt = xr.open_datatree(smap_projected_netcdf_file)
-    dt['EASE2_global_projection'].attrs['grid_mapping_name'] = 'nonsense projection'
-    dt['/Forecast_Data/sm_profile_forecast'].attrs['grid_mapping']
-    with pytest.raises(
-        InvalidSourceCRS, match='Could not create a CRS from grid_mapping metadata'
-    ):
-        crs_from_source_data(dt, set({'/Forecast_Data/sm_profile_forecast'}))
 
 
 @pytest.mark.parametrize(

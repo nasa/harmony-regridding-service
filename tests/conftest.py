@@ -213,7 +213,7 @@ def message_params():
     """Fixture for creating Harmony Messages."""
     params = {
         'mime': 'application/x-netcdf',
-        'crs': {'epsg': 'EPSG:4326'},
+        'crs': 'EPSG:4326',
         'srs': {
             'epsg': 'EPSG:4326',
             'proj4': '+proj=longlat +datum=WGS84 +no_defs',
