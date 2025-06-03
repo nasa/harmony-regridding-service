@@ -127,7 +127,7 @@ def create_target_area_from_source(
 def convert_projected_area_to_geographic(
     projected_area: AreaDefinition, target_crs: CRS
 ) -> AreaDefinition:
-    """Converts a Projected AreaDefinition into the similar area in the target_CRS.
+    """Converts a projected AreaDefinition into the similar area in the target_CRS.
 
     For now the target_crs is always going to be CRS('epsg:4326')
 
