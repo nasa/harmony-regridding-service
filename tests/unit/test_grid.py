@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
 from pyproj import CRS
+from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition
 from pytest import approx
 
@@ -21,6 +22,7 @@ from harmony_regridding_service.grid import (
     compute_num_elements,
     compute_projected_horizontal_source_grids,
     compute_target_area,
+    convert_projected_area_to_geographic,
     create_area_definition_for_projected_source_grid,
     create_target_area_from_source,
     dims_are_lon_lat,
@@ -480,3 +482,52 @@ def test_dims_are_projected_x_y(
 )
 def test_reorder_extents(test_extent, expected, description):
     assert expected == reorder_extents(*test_extent)
+
+
+@patch('harmony_regridding_service.grid.create_area_def', wraps=create_area_def)
+def test_convert_projected_area_to_geographic_ease_grid(mock_create_area_def):
+    # Create a projected AreaDefinition using EPSG:6933 (NSIDC EASE-Grid 2.0
+    # Global) Reversing the area extent values for good measure.
+
+    projected_crs = CRS('epsg:6933')
+    projected_area = AreaDefinition(
+        area_id='test_ease_grid',
+        description='Test EASE Grid Area',
+        proj_id='ease_grid_2',
+        projection=projected_crs,
+        width=964,
+        height=406,
+        area_extent=(
+            17367530.445161,
+            -7314540.8306386,
+            -17367530.4451615,
+            7314540.8306386,
+        ),
+    )
+
+    expected_area_extent = reorder_extents(*projected_area.area_extent_ll)
+
+    # Convert to geographic
+    target_crs = CRS('epsg:4326')
+    actual_geographic_area = convert_projected_area_to_geographic(
+        projected_area, target_crs
+    )
+
+    mock_create_area_def.assert_called_once_with(
+        'Geographic Area',
+        target_crs,
+        area_extent=expected_area_extent,
+        width=projected_area.width,
+        height=projected_area.height,
+        shape=projected_area.shape,
+    )
+
+    assert isinstance(actual_geographic_area, AreaDefinition)
+    assert actual_geographic_area.crs == target_crs
+    assert actual_geographic_area.width == projected_area.width
+    assert actual_geographic_area.height == projected_area.height
+    assert actual_geographic_area.shape == projected_area.shape
+
+    lon_min, lat_min, lon_max, lat_max = actual_geographic_area.area_extent
+    assert lon_min < lon_max
+    assert lat_min < lat_max
