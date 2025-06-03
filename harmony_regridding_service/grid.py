@@ -144,15 +144,35 @@ def convert_projected_area_to_geographic(
     geographic_area = create_area_def(
         'Geographic Area',
         target_crs,
-        area_extent=projected_area.area_extent_ll,
+        area_extent=reorder_extents(*projected_area.area_extent_ll),
         width=projected_area.width,
         height=projected_area.height,
         shape=projected_area.shape,
     )
-    logger.info(f'source projected Area: {projected_area}')
-    logger.info(f'Converted Geographic Area: {geographic_area}')
+    logger.debug(f'source projected Area: {projected_area}')
+    logger.debug(f'Converted Geographic Area: {geographic_area}')
 
     return geographic_area
+
+
+def reorder_extents(min_x, min_y, max_x, max_y):
+    """This is a way to ensure the correct area extents.
+
+    # The pyresample generated area_extent_ll is not always returning the
+    # expected values for the area extent point documented as (lower_left_lon,
+    # lower_left_lat, upper_right_lon, upper_right_lat) Resulting in some bad
+    # resampling outputs. This may be a stop-gap/workaround?
+
+    Returns:
+      tuple: (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
+
+    """
+    return (
+        np.min([min_x, max_x]),
+        np.min([min_y, max_y]),
+        np.max([min_x, max_x]),
+        np.max([min_y, max_y]),
+    )
 
 
 def get_variables_on_grid(dim_pair, var_info):
@@ -363,12 +383,8 @@ def compute_area_extent_from_regular_x_y_coords(
     """
     min_x, max_x = compute_array_bounds(xvalues)
     min_y, max_y = compute_array_bounds(yvalues)
-    return (
-        np.min([min_x, max_x]),
-        np.min([min_y, max_y]),
-        np.max([min_x, max_x]),
-        np.max([min_y, max_y]),
-    )
+
+    return reorder_extents(min_x, min_y, max_x, max_y)
 
 
 def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
