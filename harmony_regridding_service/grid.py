@@ -187,7 +187,7 @@ def get_area_definition_from_message(
     if not has_self_consistent_grid(message):
         raise InvalidTargetGrid()
 
-    area_extent = (
+    area_extent = reorder_extents(
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
         message.format.scaleExtent.x.max,

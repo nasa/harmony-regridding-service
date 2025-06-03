@@ -28,6 +28,7 @@ from harmony_regridding_service.grid import (
     get_area_definition_from_message,
     grid_height,
     grid_width,
+    reorder_extents,
 )
 
 
@@ -466,3 +467,16 @@ def test_dims_are_projected_x_y(
     file_fixture = request.getfixturevalue(file_fixture_name)
     var_info = var_info_fxn(file_fixture)
     assert dims_are_projected_x_y(dimensions, var_info) is expected_result
+
+
+@pytest.mark.parametrize(
+    'test_extent, expected, description',
+    [
+        ((1, 2, 3, 4), (1, 2, 3, 4), 'no reordering necessary'),
+        ((3, 2, 1, 4), (1, 2, 3, 4), 'x needs swapped'),
+        ((1, 4, 3, 2), (1, 2, 3, 4), 'y needs swapped'),
+        ((3, 4, 1, 2), (1, 2, 3, 4), 'x  and y need swapped'),
+    ],
+)
+def test_reorder_extents(test_extent, expected, description):
+    assert expected == reorder_extents(*test_extent)
