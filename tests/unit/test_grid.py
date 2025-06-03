@@ -477,7 +477,7 @@ def test_dims_are_projected_x_y(
         ((1, 2, 3, 4), (1, 2, 3, 4), 'no reordering necessary'),
         ((3, 2, 1, 4), (1, 2, 3, 4), 'x needs swapped'),
         ((1, 4, 3, 2), (1, 2, 3, 4), 'y needs swapped'),
-        ((3, 4, 1, 2), (1, 2, 3, 4), 'x  and y need swapped'),
+        ((3, 4, 1, 2), (1, 2, 3, 4), 'x and y need swapped'),
     ],
 )
 def test_reorder_extents(test_extent, expected, description):
