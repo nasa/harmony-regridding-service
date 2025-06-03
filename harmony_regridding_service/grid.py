@@ -144,7 +144,7 @@ def convert_projected_area_to_geographic(
         height=projected_area.height,
         shape=projected_area.shape,
     )
-    logger.debug(f'source projected Area: {projected_area}')
+    logger.debug(f'Source projected Area: {projected_area}')
     logger.debug(f'Converted Geographic Area: {geographic_area}')
 
     return geographic_area
@@ -303,16 +303,11 @@ def create_area_definition_for_projected_source_grid(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
-    override_crs: CRS | None = None,
 ) -> AreaDefinition:
-    """Return the area definition given a grid dimensions pair.
+    """Return the area definition for a source grid.
 
-    Find the projected coordinate dimensions in the source data
-    and use those to create the correlating area definition.
-
-    override_crs: optional CRS object to allow for creation of targetAreas when
-    a user does not specify them.
-
+    Use the projected coordinate dimensions in the source data to compute the
+    area definition.
     """
     variables = get_variables_on_grid(dimension_pair, var_info)
     xdim_name = get_column_dims(dimension_pair, var_info)[0]
@@ -328,7 +323,7 @@ def create_area_definition_for_projected_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            area_crs = override_crs or crs_from_source_data(variables, var_info)
+            area_crs = crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             return create_area_def(
