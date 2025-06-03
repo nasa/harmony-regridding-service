@@ -486,9 +486,11 @@ def test_reorder_extents(test_extent, expected, description):
 
 @patch('harmony_regridding_service.grid.create_area_def', wraps=create_area_def)
 def test_convert_projected_area_to_geographic_ease_grid(mock_create_area_def):
-    # Create a projected AreaDefinition using EPSG:6933 (NSIDC EASE-Grid 2.0
-    # Global) Reversing the area extent values for good measure.
+    """Test converting projected area.
 
+    Create a projected AreaDefinition using EPSG:6933 (NSIDC EASE-Grid 2.0
+    Global) Reversing the area extent values for good measure.
+    """
     projected_crs = CRS('epsg:6933')
     projected_area = AreaDefinition(
         area_id='test_ease_grid',
