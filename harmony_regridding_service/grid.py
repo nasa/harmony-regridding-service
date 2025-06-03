@@ -135,8 +135,24 @@ def convert_projected_area_to_geographic(
     """Converts a Projected AreaDefinition into the similar area in the target_CRS.
 
     For now the target_crs is always goign to be CRS('epsg:4326')
+
+    This is the "simple case" where we know that the x/y corners transform
+    directly to lon/lat corners. ***This does not handle polar grids.***
+    to handle polar you may be able to use area.boundary().
+
     """
-    pass
+    geographic_area = create_area_def(
+        'Geographic Area',
+        target_crs,
+        area_extent=projected_area.area_extent_ll,
+        width=projected_area.width,
+        height=projected_area.height,
+        shape=projected_area.shape,
+    )
+    logger.info(f'source projected Area: {projected_area}')
+    logger.info(f'Converted Geographic Area: {geographic_area}')
+
+    return geographic_area
 
 
 def get_variables_on_grid(dim_pair, var_info):
@@ -311,10 +327,6 @@ def create_area_definition_for_projected_source_grid(
 
     Find the projected coordinate dimensions in the source data
     and use those to create the correlating area definition.
-
-    override_crs: optional CRS object to allow for creation of targetAreas when
-    a user does not specify them.
-
     """
     try:
         variables = get_variables_on_grid(dimension_pair, var_info)
