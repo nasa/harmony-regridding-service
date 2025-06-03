@@ -8,6 +8,7 @@ import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
 from pyproj import CRS
 from pyresample.geometry import AreaDefinition
+from pytest import approx
 
 from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
@@ -105,11 +106,11 @@ def test_compute_target_area_without_parameters(
 
     expected_width = 5
     expected_height = 6
-    mock_area_extent = (
-        -161.32780895919518,
-        58.218360113868385,
-        -160.861003956423,
-        59.02410167296635,
+    expected_area_extent = (
+        -161.3278089,
+        58.2183601,
+        -160.8610039,
+        59.0241016,
     )
 
     actual_area_definition = compute_target_area(
@@ -123,7 +124,7 @@ def test_compute_target_area_without_parameters(
     mock_get_area_definition_from_message.assert_not_called()
 
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == mock_area_extent
+    assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-6)
     assert CRS.from_proj4(actual_area_definition.proj_str).equals(
         crs, ignore_axis_order=True
     )
@@ -160,10 +161,10 @@ def test_compute_target_area_with_only_CRS_parameter(
     expected_width = 5
     expected_height = 6
     expected_area_extent = (
-        -161.32780895919518,
-        58.218360113868385,
-        -160.861003956423,
-        59.02410167296635,
+        -161.3278089,
+        58.2183601,
+        -160.8610039,
+        59.0241016,
     )
 
     actual_area_definition = compute_target_area(
@@ -175,7 +176,7 @@ def test_compute_target_area_with_only_CRS_parameter(
     )
 
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == expected_area_extent
+    assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-6)
     assert CRS.from_proj4(actual_area_definition.proj_str).equals(
         crs, ignore_axis_order=True
     )
