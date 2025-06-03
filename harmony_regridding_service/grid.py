@@ -129,7 +129,7 @@ def convert_projected_area_to_geographic(
 ) -> AreaDefinition:
     """Converts a Projected AreaDefinition into the similar area in the target_CRS.
 
-    For now the target_crs is always goign to be CRS('epsg:4326')
+    For now the target_crs is always going to be CRS('epsg:4326')
 
     This is the "simple case" where we know that the x/y corners transform
     directly to lon/lat corners. ***This does not handle polar grids.***
