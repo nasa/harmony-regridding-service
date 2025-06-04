@@ -71,7 +71,7 @@ def has_valid_crs(message: Message) -> bool:
     should either be undefined or specify a geographic CRS.
 
     """
-    target_crs = rgetattr(message, 'format.crs')
+    target_crs = get_message_crs(message)
     return target_crs is None or is_geographic_crs(target_crs)
 
 
@@ -97,5 +97,5 @@ def is_geographic_crs(crs_string: str) -> bool:
 
 def target_crs_from_message(message: Message) -> CRS:
     """Return the message's CRS or default to one from EPSG::4326."""
-    target_crs = rgetattr(message, 'format.crs')
+    target_crs = get_message_crs(message)
     return CRS(target_crs or 'EPSG:4326')
