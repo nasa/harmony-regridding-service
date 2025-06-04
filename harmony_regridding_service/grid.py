@@ -2,6 +2,7 @@
 
 from collections.abc import Iterable
 from logging import getLogger
+from typing import Any
 
 import numpy as np
 import xarray as xr
@@ -432,7 +433,9 @@ def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> C
     raise InvalidSourceCRS('No grid_mapping metadata found.')
 
 
-def get_grid_mapping_attributes(var_name: str, var_info: VarInfoFromNetCDF4) -> str:
+def get_grid_mapping_attributes(
+    var_name: str, var_info: VarInfoFromNetCDF4
+) -> dict[str, Any]:
     """Return the grid mapping attributes for a variable.
 
     Use varinfo to get the metadata associated with the grid mapping variable.
