@@ -55,11 +55,10 @@ def test_compute_source_swath_lon_lat(
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test compute_source_swath with longitude/latitude dimensions.
+    """Test output SwathDefinition when input granule is geographic.
 
-    Test for geographic dimensions.  This test ensures that we are generating
-    the lat/lon swathDefinition via the latitude and longitude dimension data
-    in the compute_horizontal_source_grids function.
+    Test that the correct SwathDefinition is created when a collection has
+    latitude and longitude horizontal dimensions.
     """
     mock_dims_are_lon_lat.return_value = True
     mock_dims_are_projected_x_y.return_value = False
@@ -99,11 +98,10 @@ def test_compute_source_swath_projected_xy(
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test compute_source_swath with projected x/y dimensions.
+    """Test output SwathDefinition when input granule is projection-gridded.
 
-    Test for projected dimensions.  This test ensures that we are generating
-    the lat/lon swathDefinition via the x and y dimension data
-    in the compute_projected_horizontal_source_grids function
+    Test that the correct SwathDefinition is created when a collection has
+    projected x and y gridded horizontal dimensions.
     """
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = True
@@ -138,11 +136,10 @@ def test_compute_source_swath_projected_xy(
 def test_compute_source_swath_invalid_dimensions(
     mock_dims_are_lon_lat, mock_dims_are_projected_x_y
 ):
-    """Test compute_source_swath with invalid dimensions.
+    """Test output SwathDefinition when input granule's dimensions are invalid.
 
-    Tests the error case of dimesions that return neither geographic nor
-    projected.
-
+    Test that the expected exception is thrown when a collection has neither
+    geographic or projection-gridded horizontal dimensions.
     """
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = False
