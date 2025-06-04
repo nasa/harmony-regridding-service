@@ -437,13 +437,12 @@ def get_grid_mapping_attributes(var_name: str, var_info: VarInfoFromNetCDF4) -> 
 
     Use varinfo to get the metadata associated with the grid mapping variable.
     """
-    cf_attrs = {}
     grid_mapping = var_info.get_variable(var_name).references.get('grid_mapping', set())
     coordinates = var_info.get_variable(var_name).references.get('coordinates', set())
     grid_mapping_var_name = list(grid_mapping - coordinates)
     if grid_mapping_var_name and len(grid_mapping_var_name) == 1:
-        cf_attrs = var_info.get_variable(grid_mapping_var_name[0]).attributes
-    return cf_attrs
+        return var_info.get_variable(grid_mapping_var_name[0]).attributes
+    return {}
 
 
 def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) -> bool:
