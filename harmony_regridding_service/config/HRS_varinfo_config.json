@@ -68,7 +68,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4.+",
-	"VariablePattern": "^/(?!Metadata/)[^/].+/.+"
+	"VariablePattern": "^/(?!Metadata).+/.+"
       },
       "Attributes": [
         {
