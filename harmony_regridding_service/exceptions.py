@@ -60,7 +60,7 @@ class InvalidSourceDimensions(RegridderException):
 
 
 class InvalidCRSResampling(RegridderException):
-    """Raised when a geographic grid is resampled without grid parameters."""
+    """Raised when target and source CRS match and message has no grid parameters."""
 
     def __init__(self, message: str):
         super().__init__(message)
