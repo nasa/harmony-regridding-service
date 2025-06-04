@@ -348,7 +348,7 @@ def compute_source_swath(
         )
     else:
         raise SourceDataError(
-            'Cannot determine correct dimension type from source {grid_dimensions}.'
+            f'Cannot determine correct dimension type from source {grid_dimensions}.'
         )
 
     return SwathDefinition(lons=longitudes, lats=latitudes)
