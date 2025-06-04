@@ -399,14 +399,14 @@ def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> C
 
     """
     for var_name in variables:
-        try:
-            cf_attributes = get_grid_mapping_attributes(var_name, var_info)
-            if cf_attributes:
+        cf_attributes = get_grid_mapping_attributes(var_name, var_info)
+        if cf_attributes:
+            try:
                 return CRS.from_cf(cf_attributes)
-        except CRSError as e:
-            raise InvalidSourceCRS(
-                'Could not create a CRS from grid_mapping metadata'
-            ) from e
+            except CRSError as e:
+                raise InvalidSourceCRS(
+                    'Could not create a CRS from grid_mapping metadata'
+                ) from e
 
     # No grid_mapping metadata was found so check the dimensions for geographic
     # information and assume EPSG:4326 if so.
