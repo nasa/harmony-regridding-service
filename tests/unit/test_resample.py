@@ -55,7 +55,12 @@ def test_compute_source_swath_lon_lat(
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test compute_source_swath with longitude/latitude dimensions."""
+    """Test compute_source_swath with longitude/latitude dimensions.
+
+    Test for geographic dimensions.  This test ensures that we are generating
+    the lat/lon swathDefinition via the latitude and longitude dimension data
+    in the compute_horizontal_source_grids function.
+    """
     mock_dims_are_lon_lat.return_value = True
     mock_dims_are_projected_x_y.return_value = False
 
@@ -63,7 +68,6 @@ def test_compute_source_swath_lon_lat(
     mock_lats = np.array([[5, 6], [7, 8]])
 
     mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
-    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
 
     grid_dimensions = ('/longitude', '/latitude')
     filepath = 'fake_filepath.nc'
@@ -76,6 +80,7 @@ def test_compute_source_swath_lon_lat(
         grid_dimensions, filepath, var_info
     )
 
+    # only called compute_horizontal_source_grids
     mock_dims_are_projected_x_y.assert_not_called()
     mock_compute_projected_horizontal_source_grids.assert_not_called()
 
@@ -94,13 +99,18 @@ def test_compute_source_swath_projected_xy(
     mock_compute_horizontal_source_grids,
     mock_compute_projected_horizontal_source_grids,
 ):
-    """Test compute_source_swath with projected x/y dimensions."""
+    """Test compute_source_swath with projected x/y dimensions.
+
+    Test for projected dimensions.  This test ensures that we are generating
+    the lat/lon swathDefinition via the x and y dimension data
+    in the compute_projected_horizontal_source_grids function
+    """
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = True
 
     mock_lons = np.array([[1, 2], [3, 4]])
     mock_lats = np.array([[5, 6], [7, 8]])
-    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
     mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
 
     grid_dimensions = ('/y', '/x')
@@ -128,7 +138,12 @@ def test_compute_source_swath_projected_xy(
 def test_compute_source_swath_invalid_dimensions(
     mock_dims_are_lon_lat, mock_dims_are_projected_x_y
 ):
-    """Test compute_source_swath with invalid dimensions."""
+    """Test compute_source_swath with invalid dimensions.
+
+    Tests the error case of dimesions that return neither geographic nor
+    projected.
+
+    """
     mock_dims_are_lon_lat.return_value = False
     mock_dims_are_projected_x_y.return_value = False
 
