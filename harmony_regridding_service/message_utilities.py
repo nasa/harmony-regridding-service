@@ -77,8 +77,7 @@ def has_valid_crs(message: Message) -> bool:
 
 def get_message_crs(message: Message) -> str | None:
     """Return the crs information contained in the harmony message."""
-    target_crs = rgetattr(message, 'format.crs')
-    return target_crs
+    return rgetattr(message, 'format.crs')
 
 
 def is_geographic_crs(crs_string: str) -> bool:
