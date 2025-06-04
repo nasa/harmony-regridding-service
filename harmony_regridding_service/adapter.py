@@ -12,6 +12,12 @@ from tempfile import mkdtemp
 
 from harmony_service_lib import BaseHarmonyAdapter
 from harmony_service_lib.message import Source as HarmonySource
+from harmony_service_lib.message_utility import (
+    has_dimensions,
+    has_scale_extents,
+    has_scale_sizes,
+    has_self_consistent_grid,
+)
 from harmony_service_lib.util import (
     bbox_to_geometry,
     download,
@@ -23,6 +29,7 @@ from pystac import Asset, Catalog, Item
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
+    InvalidTargetGrid,
 )
 from harmony_regridding_service.file_io import get_file_mime_type
 from harmony_regridding_service.message_utilities import (
@@ -64,6 +71,15 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
 
         if not has_valid_interpolation(self.message):
             raise InvalidInterpolationMethod(self.message.format.interpolation)
+
+        if any(
+            (
+                has_scale_extents(self.message),
+                has_scale_sizes(self.message),
+                has_dimensions(self.message),
+            )
+        ) and not has_self_consistent_grid(self.message):
+            raise InvalidTargetGrid()
 
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """Processes a single input STAC item."""
