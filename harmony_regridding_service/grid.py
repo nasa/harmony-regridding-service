@@ -457,8 +457,7 @@ def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) 
 
 def has_geographic_grid_dimensions(var_name: str, var_info: VarInfoFromNetCDF4) -> bool:
     """Returns true if the horizontal dimensions for the variable are geographic."""
-    h_dims = horizontal_dims_for_variable(var_info, var_name)
-    return dims_are_lon_lat(h_dims, var_info)
+    return dims_are_lon_lat(horizontal_dims_for_variable(var_info, var_name), var_info)
 
 
 def dims_are_projected_x_y(
