@@ -48,7 +48,13 @@ def test_compute_target_area_with_parameters(
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
-    """Ensure Area Definition correctly generated."""
+    """Ensure Area Definition correctly generated from message parameters.
+
+    This test defines a valid grid in the Harmony Message, and verifies that
+    the resulting target area from compute_target_area is pulled from the
+    message not computed from the source.
+
+    """
     var_info = var_info_fxn(smap_projected_netcdf_file)
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
     xmin = -180
@@ -77,7 +83,9 @@ def test_compute_target_area_with_parameters(
         message, smap_projected_netcdf_file, var_info
     )
 
+    # We pulled the grid from the message.
     mock_get_area_definition_from_message.assert_called_once_with(message)
+    # We did not compute the source grid area.
     mock_create_target_area_from_source.assert_not_called()
 
     assert actual_area_definition.shape == (expected_height, expected_width)
@@ -99,7 +107,13 @@ def test_compute_target_area_without_parameters(
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
-    """Ensure Area Definition correctly generated."""
+    """Ensure Area Definition generated from source when no grid params.
+
+    This test uses a Harmony Message with no grid parameters, and verifies that
+    the resulting target from compute_target_area is generated from the source
+    grid.
+
+    """
     var_info = var_info_fxn(smap_projected_netcdf_file)
 
     # Default CRS should be 4326 when the message does not have one.
@@ -107,6 +121,7 @@ def test_compute_target_area_without_parameters(
 
     message = HarmonyMessage({})
 
+    # values from our SMAP fixture.
     expected_width = 5
     expected_height = 6
     expected_area_extent = (
@@ -120,14 +135,18 @@ def test_compute_target_area_without_parameters(
         message, smap_projected_netcdf_file, var_info
     )
 
+    # We called the function that pulls a grid from the source
     mock_create_target_area_from_source.assert_called_once_with(
         smap_projected_netcdf_file, var_info, crs
     )
-
+    # we did not get any information from the message.
     mock_get_area_definition_from_message.assert_not_called()
 
     assert actual_area_definition.shape == (expected_height, expected_width)
     assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-6)
+    assert CRS.from_proj4(actual_area_definition.proj_str).equals(
+        crs, ignore_axis_order=True
+    )
     assert CRS.from_proj4(actual_area_definition.proj_str).equals(
         crs, ignore_axis_order=True
     )
@@ -147,7 +166,13 @@ def test_compute_target_area_with_only_CRS_parameter(
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
-    """Ensure Area Definition correctly generated."""
+    """Ensure Area Definition generated from source if only CRS in message.
+
+    This test uses a Harmony Message with just a CRS parameter, and verifies
+    that the resulting target from compute_target_area is generated from the
+    source grid.
+
+    """
     var_info = var_info_fxn(smap_projected_netcdf_file)
 
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
