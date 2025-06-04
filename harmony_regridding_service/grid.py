@@ -105,16 +105,68 @@ def same_source_and_target_crs(
 
 
 def create_target_area_from_source(
-    filepath: str, var_info: VarInfoFromNetCDF4, crs: CRS
+    filepath: str, var_info: VarInfoFromNetCDF4, target_crs: CRS
 ) -> AreaDefinition:
-    """Create the target area definition using the source grid information.
+    """Create the target area using the source grid information.
 
     TODO: Create area definition for every dimension pair, if the collection
     had more than one grid.
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    return create_area_definition_for_projected_source_grid(
-        filepath, dimension_pairs[0], var_info, override_crs=crs
+    projected_area = create_area_definition_for_projected_source_grid(
+        filepath, dimension_pairs[0], var_info
+    )
+
+    # I have the correct projected areaDefinition, but I want to convert it to
+    # a geographic area
+    geographic_area = convert_projected_area_to_geographic(projected_area, target_crs)
+
+    return geographic_area
+
+
+def convert_projected_area_to_geographic(
+    projected_area: AreaDefinition, target_crs: CRS
+) -> AreaDefinition:
+    """Converts a projected AreaDefinition into the similar area in the target_CRS.
+
+    For now the target_crs is always going to be CRS('epsg:4326')
+
+    This is the "simple case" where we know that the x/y corners transform
+    directly to lon/lat corners. ***This does not handle polar grids.***
+    to handle polar you may be able to use area.boundary().
+
+    """
+    geographic_area = create_area_def(
+        'Geographic Area',
+        target_crs,
+        area_extent=reorder_extents(*projected_area.area_extent_ll),
+        width=projected_area.width,
+        height=projected_area.height,
+        shape=projected_area.shape,
+    )
+    logger.debug(f'Source projected Area: {projected_area}')
+    logger.debug(f'Converted Geographic Area: {geographic_area}')
+
+    return geographic_area
+
+
+def reorder_extents(min_x, min_y, max_x, max_y):
+    """This is a way to ensure the correct area extents.
+
+    # The pyresample generated area_extent_ll is not always returning the
+    # expected values for the area extent point documented as (lower_left_lon,
+    # lower_left_lat, upper_right_lon, upper_right_lat) Resulting in some bad
+    # resampling outputs. This may be a stop-gap/workaround?
+
+    Returns:
+      tuple: (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
+
+    """
+    return (
+        np.min([min_x, max_x]),
+        np.min([min_y, max_y]),
+        np.max([min_x, max_x]),
+        np.max([min_y, max_y]),
     )
 
 
@@ -135,7 +187,7 @@ def get_area_definition_from_message(
     if not has_self_consistent_grid(message):
         raise InvalidTargetGrid()
 
-    area_extent = (
+    area_extent = reorder_extents(
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
         message.format.scaleExtent.x.max,
@@ -251,16 +303,11 @@ def create_area_definition_for_projected_source_grid(
     filepath: str,
     dimension_pair: tuple[str, str],
     var_info: VarInfoFromNetCDF4,
-    override_crs: CRS | None = None,
 ) -> AreaDefinition:
-    """Return the area definition given a grid dimensions pair.
+    """Return the area definition for a source grid.
 
-    Find the projected coordinate dimensions in the source data
-    and use those to create the correlating area definition.
-
-    override_crs: optional CRS object to allow for creation of targetAreas when
-    a user does not specify them.
-
+    Use the projected coordinate dimensions in the source data to compute the
+    area definition.
     """
     variables = get_variables_on_grid(dimension_pair, var_info)
     xdim_name = get_column_dims(dimension_pair, var_info)[0]
@@ -276,7 +323,7 @@ def create_area_definition_for_projected_source_grid(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            area_crs = override_crs or crs_from_source_data(variables, var_info)
+            area_crs = crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
             return create_area_def(
@@ -307,12 +354,8 @@ def compute_area_extent_from_regular_x_y_coords(
     """
     min_x, max_x = compute_array_bounds(xvalues)
     min_y, max_y = compute_array_bounds(yvalues)
-    return (
-        np.min([min_x, max_x]),
-        np.min([min_y, max_y]),
-        np.max([min_x, max_x]),
-        np.max([min_y, max_y]),
-    )
+
+    return reorder_extents(min_x, min_y, max_x, max_y)
 
 
 def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
