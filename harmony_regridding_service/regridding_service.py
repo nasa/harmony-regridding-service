@@ -60,7 +60,7 @@ def regrid(
     try:
         target_area = compute_target_area(message, input_filepath, var_info)
     except InvalidCRSResampling as e:
-        logger.error(e)
+        logger.warning(f'{e}: Returning your input file unchanged.')
         return input_filepath
 
     resampler_cache = cache_resamplers(input_filepath, var_info, target_area)
