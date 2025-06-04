@@ -15,12 +15,7 @@ from harmony_regridding_service.grid import (
 class TestGetGridMappingAttributes:
     """Tests for get_grid_mapping_attributes."""
 
-    @pytest.fixture
-    def mock_var_info(self):
-        """Create a mock VarInfoFromNetCDF4 object."""
-        return Mock()
-
-    def test_single_grid_mapping_variable(self, mock_var_info):
+    def test_single_grid_mapping_variable(self):
         """Test retrieving attributes from a single grid mapping variable."""
         mock_test_variable = Mock()
         mock_test_variable.references = {
@@ -40,6 +35,7 @@ class TestGetGridMappingAttributes:
         mock_grid_mapping_variable.attributes = expected_attrs
 
         # Configure mock_var_info to return appropriate variables
+        mock_var_info = Mock()
         mock_var_info.get_variable.side_effect = lambda name: {
             'test_var_name': mock_test_variable,
             '/EASE2_global_projection': mock_grid_mapping_variable,
@@ -51,7 +47,7 @@ class TestGetGridMappingAttributes:
         mock_var_info.get_variable.assert_any_call('test_var_name')
         mock_var_info.get_variable.assert_any_call('/EASE2_global_projection')
 
-    def test_grid_mapping_with_coordinates_filtered_out(self, mock_var_info):
+    def test_grid_mapping_with_coordinates_filtered_out(self):
         """Test that coordinates are excluded from grid mapping variables."""
         mock_variable = Mock()
         mock_variable.references = {
@@ -63,6 +59,7 @@ class TestGetGridMappingAttributes:
         expected_attrs = {'grid_mapping_name': 'latitude_longitude'}
         mock_gm_variable.attributes = expected_attrs
 
+        mock_var_info = Mock()
         mock_var_info.get_variable.side_effect = lambda name: {
             'test_var': mock_variable,
             '/EASE2_global_projection': mock_gm_variable,
@@ -74,7 +71,7 @@ class TestGetGridMappingAttributes:
         mock_var_info.get_variable.assert_any_call('test_var')
         mock_var_info.get_variable.assert_any_call('/EASE2_global_projection')
 
-    def test_no_grid_mapping_reference(self, mock_var_info):
+    def test_no_grid_mapping_reference(self):
         """Test when variable has no grid_mapping reference."""
         mock_variable = Mock()
         mock_variable.references = {
@@ -82,24 +79,26 @@ class TestGetGridMappingAttributes:
             # No 'grid_mapping' key
         }
 
+        mock_var_info = Mock()
         mock_var_info.get_variable.return_value = mock_variable
 
         result = get_grid_mapping_attributes('test_var', mock_var_info)
 
         assert result == {}
 
-    def test_empty_grid_mapping_set(self, mock_var_info):
+    def test_empty_grid_mapping_set(self):
         """Test when grid_mapping reference is empty."""
         mock_variable = Mock()
         mock_variable.references = {'grid_mapping': set(), 'coordinates': set()}
 
+        mock_var_info = Mock()
         mock_var_info.get_variable.return_value = mock_variable
 
         result = get_grid_mapping_attributes('test_var', mock_var_info)
 
         assert result == {}
 
-    def test_multiple_grid_mapping_variables_after_filtering(self, mock_var_info):
+    def test_multiple_grid_mapping_variables_after_filtering(self):
         """Multiple grid mapping variables remain after coordinate filtering."""
         mock_variable = Mock()
         mock_variable.references = {
@@ -107,6 +106,7 @@ class TestGetGridMappingAttributes:
             'coordinates': set(),
         }
 
+        mock_var_info = Mock()
         mock_var_info.get_variable.return_value = mock_variable
 
         result = get_grid_mapping_attributes('test_var', mock_var_info)
