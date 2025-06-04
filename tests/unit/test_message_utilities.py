@@ -148,49 +148,66 @@ def test_is_geographic_raises_exception():
         is_geographic_crs(crs_string)
 
 
-@pytest.mark.parametrize(
-    'message, expected, description',
-    [
-        (HarmonyMessage({}), 'EPSG:4326', 'Empty HarmonyMessage'),
-        (HarmonyMessage({'format': {}}), 'EPSG:4326', 'format.crs = None'),
-        (
-            HarmonyMessage({'format': {'crs': 'EPSG:4326'}}),
-            'EPSG:4326',
-            'format.crs = "EPSG:4326"',
-        ),
-        (
-            HarmonyMessage({'format': {'crs': '+proj=longlat'}}),
-            'EPSG:4326',
-            'format.crs = "+proj=longlat"',
-        ),
-        (
-            HarmonyMessage({'format': {'crs': '4326'}}),
-            'EPSG:4326',
-            'format.crs = "4326"',
-        ),
-        (
-            HarmonyMessage({'format': {'crs': 'EPSG:6933'}}),
-            'EPSG:6933',
-            'format.crs = EPSG:6933',
-        ),
-        (
-            HarmonyMessage(
-                {
-                    'format': {
-                        'crs': (
-                            '+proj=cea +lat_ts=30 +lon_0=0 +x_0=0 +y_0=0'
-                            ' +datum=WGS84 +units=m +no_defs +type=crs'
-                        )
-                    }
-                }
-            ),
-            'EPSG:6933',
-            'Proj string for EPSG:6933',
-        ),
-    ],
-)
-def test_target_crs_from_message(message, expected, description):
-    """Test input CRS."""
-    expected_crs = CRS(expected)
+def test_target_crs_from_message_empty_harmony_message():
+    """Test input CRS with empty HarmonyMessage."""
+    message = HarmonyMessage({})
+    expected_crs = CRS('EPSG:4326')
     actual = target_crs_from_message(message)
-    assert actual.equals(expected_crs, ignore_axis_order=True) is True, description
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_format_crs_none():
+    """Test input CRS with empty format.crs."""
+    message = HarmonyMessage({'format': {}})
+    expected_crs = CRS('EPSG:4326')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_format_crs_epsg_4326():
+    """Test input CRS when format.crs = 'EPSG:4326'."""
+    message = HarmonyMessage({'format': {'crs': 'EPSG:4326'}})
+    expected_crs = CRS('EPSG:4326')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_format_crs_proj_longlat():
+    """Test input CRS when format.crs = '+proj=longlat'."""
+    message = HarmonyMessage({'format': {'crs': '+proj=longlat'}})
+    expected_crs = CRS('EPSG:4326')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_format_crs_4326():
+    """Test input CRS when format.crs = '6931'."""
+    message = HarmonyMessage({'format': {'crs': '6931'}})
+    expected_crs = CRS('EPSG:6931')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_format_crs_epsg_6933():
+    """Test input CRS when format.crs = 'EPSG:6933'."""
+    message = HarmonyMessage({'format': {'crs': 'EPSG:6933'}})
+    expected_crs = CRS('EPSG:6933')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
+
+
+def test_target_crs_from_message_proj_string_epsg_6933():
+    """Test input CRS with Proj string for EPSG:6933."""
+    message = HarmonyMessage(
+        {
+            'format': {
+                'crs': (
+                    '+proj=cea +lat_ts=30 +lon_0=0 +x_0=0 +y_0=0'
+                    ' +datum=WGS84 +units=m +no_defs +type=crs'
+                )
+            }
+        }
+    )
+    expected_crs = CRS('EPSG:6933')
+    actual = target_crs_from_message(message)
+    assert actual.equals(expected_crs, ignore_axis_order=True) is True
