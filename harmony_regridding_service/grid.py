@@ -49,42 +49,26 @@ def compute_target_area(
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variables will be regridded to this target.
-
-    Computed parameters:
-    ----------------------
-    Area extent: [tuple]
-        The two real-world projection coordinate pairs of the grid's upper
-        right and lower left points (in order):
-        - lower left x coordinate of the lower left pixel
-        - lower left y coordinate of the lower left pixel
-        - upper right x coordinate of the upper right pixel
-        - upper right y coordinate of the upper right pixel
-    Height: [int]
-        The number of grid rows.
-    Width: [int]
-        The number of grid columns.
-    Projection: [dict]
-        The target Coordinate Reference System (CRS) represented by a dictionary with an
-        EPSG code, proj4 string, or wkt key string.
-
+    multi-dimensional variables will be regridded to this target area.
     """
-    logger.info('compute target_area')
-
-    if has_scale_extents(message) and (
-        has_scale_sizes(message) or has_dimensions(message)
+    if any(
+        (has_scale_extents(message), has_scale_sizes(message), has_dimensions(message))
     ):
-        return get_area_definition_from_message(message)
+        # If there's any parts to a grid, get it from the message.
+        area_definition = get_area_definition_from_message(message)
 
-    if same_source_and_target_crs(message, var_info):
+    elif same_source_and_target_crs(message, var_info):
+        # Don't resample if you the source and target have the same CRS
         raise InvalidCRSResampling(
             'Requested a resampling with matching '
             'source and target CRS and no grid parameters.'
         )
+    else:
+        # compute a target grid from the source data
+        target_crs = CRS(get_message_crs(message) or 'epsg:4326')
+        area_definition = create_target_area_from_source(filepath, var_info, target_crs)
 
-    target_crs = CRS(get_message_crs(message) or 'epsg:4326')
-
-    return create_target_area_from_source(filepath, var_info, target_crs)
+    return area_definition
 
 
 def same_source_and_target_crs(
