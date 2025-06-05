@@ -125,14 +125,14 @@ def test_copy_var_with_attrs(
     test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
 ):
     target_file = test_file
-    target_area = test_area_fxn()
+    target_areas = {('/lon', '/lat'): test_area_fxn()}
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     expected_metadata = {'units': 'widgets per month'}
     with (
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_areas, var_info)
         copy_var_with_attrs(source_ds, target_ds, '/data')
 
     with Dataset(target_file, mode='r') as validate:
@@ -147,7 +147,7 @@ def test_copy_vars_without_metadata(
     test_file, test_area_fxn, test_1D_dimensions_ncfile, var_info_fxn
 ):
     target_file = test_file
-    target_area = test_area_fxn()
+    target_area = {('/lon', '/lat'): test_area_fxn()}
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     with (
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
@@ -172,16 +172,14 @@ def test_clone_variables(
     width = 36
     height = 18
 
-    _generate_test_area = test_area_fxn(width=width, height=height)
+    test_areas = {('/lon', '/lat'): test_area_fxn(width=width, height=height)}
 
     copy_vars = {'/time', '/time_bnds'}
     with (
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(
-            source_ds, target_ds, _generate_test_area, var_info
-        )
+        transfer_resampled_dimensions(source_ds, target_ds, test_areas, var_info)
 
         copied = clone_variables(source_ds, target_ds, copy_vars)
 

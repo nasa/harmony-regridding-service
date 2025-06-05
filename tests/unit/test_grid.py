@@ -11,6 +11,7 @@ from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition
 from pytest import approx
 
+from harmony_regridding_service.dimensions import GridDimensionPair
 from harmony_regridding_service.exceptions import (
     InvalidSourceDimensions,
     SourceDataError,
@@ -21,10 +22,10 @@ from harmony_regridding_service.grid import (
     compute_horizontal_source_grids,
     compute_num_elements,
     compute_projected_horizontal_source_grids,
-    compute_target_area,
+    compute_target_areas,
     convert_projected_area_to_geographic,
     create_area_definition_for_projected_source_grid,
-    create_target_area_from_source,
+    create_target_areas_from_source,
     dims_are_lon_lat,
     dims_are_projected_x_y,
     get_area_definition_from_message,
@@ -35,23 +36,23 @@ from harmony_regridding_service.grid import (
 
 
 @patch(
-    'harmony_regridding_service.grid.create_target_area_from_source',
-    wraps=create_target_area_from_source,
+    'harmony_regridding_service.grid.create_target_areas_from_source',
+    wraps=create_target_areas_from_source,
 )
 @patch(
     'harmony_regridding_service.grid.get_area_definition_from_message',
     wraps=get_area_definition_from_message,
 )
-def test_compute_target_area_with_parameters(
+def test_compute_target_areas_with_parameters(
     mock_get_area_definition_from_message,
-    mock_create_target_area_from_source,
+    mock_create_target_areas_from_source,
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
     """Ensure Area Definition correctly generated from message parameters.
 
     This test defines a valid grid in the Harmony Message, and verifies that
-    the resulting target area from compute_target_area is pulled from the
+    the resulting target area from compute_target_areas is pulled from the
     message not computed from the source.
 
     """
@@ -79,38 +80,43 @@ def test_compute_target_area_with_parameters(
     expected_height = (ymax - ymin) / scale_y
     expected_width = (xmax - xmin) / scale_x
 
-    actual_area_definition = compute_target_area(
+    actual_area_definitions = compute_target_areas(
         message, smap_projected_netcdf_file, var_info
     )
 
     # We pulled the grid from the message.
     mock_get_area_definition_from_message.assert_called_once_with(message)
     # We did not compute the source grid area.
-    mock_create_target_area_from_source.assert_not_called()
+    mock_create_target_areas_from_source.assert_not_called()
 
-    assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == (xmin, ymin, xmax, ymax)
-    assert actual_area_definition.proj_str == crs
+    expected_grid = GridDimensionPair('/y', '/x')
+
+    assert expected_grid in actual_area_definitions.keys()
+    actual_area = actual_area_definitions[expected_grid]
+
+    assert actual_area.shape == (expected_height, expected_width)
+    assert actual_area.area_extent == (xmin, ymin, xmax, ymax)
+    assert actual_area.proj_str == crs
 
 
 @patch(
-    'harmony_regridding_service.grid.create_target_area_from_source',
-    wraps=create_target_area_from_source,
+    'harmony_regridding_service.grid.create_target_areas_from_source',
+    wraps=create_target_areas_from_source,
 )
 @patch(
     'harmony_regridding_service.grid.get_area_definition_from_message',
     wraps=get_area_definition_from_message,
 )
-def test_compute_target_area_without_parameters(
+def test_compute_target_areas_without_parameters(
     mock_get_area_definition_from_message,
-    mock_create_target_area_from_source,
+    mock_create_target_areas_from_source,
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
     """Ensure Area Definition generated from source when no grid params.
 
     This test uses a Harmony Message with no grid parameters, and verifies that
-    the resulting target from compute_target_area is generated from the source
+    the resulting target from compute_target_areas is generated from the source
     grid.
 
     """
@@ -131,12 +137,11 @@ def test_compute_target_area_without_parameters(
         59.0241016,
     )
 
-    actual_area_definition = compute_target_area(
-        message, smap_projected_netcdf_file, var_info
-    )
+    actual_areas = compute_target_areas(message, smap_projected_netcdf_file, var_info)
+    actual_area_definition = actual_areas[('/y', '/x')]
 
     # We called the function that pulls a grid from the source
-    mock_create_target_area_from_source.assert_called_once_with(
+    mock_create_target_areas_from_source.assert_called_once_with(
         smap_projected_netcdf_file, var_info, crs
     )
     # we did not get any information from the message.
@@ -153,23 +158,23 @@ def test_compute_target_area_without_parameters(
 
 
 @patch(
-    'harmony_regridding_service.grid.create_target_area_from_source',
-    wraps=create_target_area_from_source,
+    'harmony_regridding_service.grid.create_target_areas_from_source',
+    wraps=create_target_areas_from_source,
 )
 @patch(
     'harmony_regridding_service.grid.get_area_definition_from_message',
     wraps=get_area_definition_from_message,
 )
-def test_compute_target_area_with_only_CRS_parameter(
+def test_compute_target_areas_with_only_CRS_parameter(
     mock_get_area_definition_from_message,
-    mock_create_target_area_from_source,
+    mock_create_target_areas_from_source,
     smap_projected_netcdf_file,
     var_info_fxn,
 ):
     """Ensure Area Definition generated from source if only CRS in message.
 
     This test uses a Harmony Message with just a CRS parameter, and verifies
-    that the resulting target from compute_target_area is generated from the
+    that the resulting target from compute_target_areas is generated from the
     source grid.
 
     """
@@ -195,19 +200,21 @@ def test_compute_target_area_with_only_CRS_parameter(
         59.0241016,
     )
 
-    actual_area_definition = compute_target_area(
+    actual_area_definitions = compute_target_areas(
         message, smap_projected_netcdf_file, var_info
     )
 
-    mock_create_target_area_from_source.assert_called_once_with(
+    mock_create_target_areas_from_source.assert_called_once_with(
         smap_projected_netcdf_file, var_info, target_crs
     )
 
-    assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-6)
-    assert CRS.from_proj4(actual_area_definition.proj_str).equals(
-        crs, ignore_axis_order=True
-    )
+    expected_grid = GridDimensionPair('/y', '/x')
+    assert expected_grid in actual_area_definitions
+    actual_area = actual_area_definitions[expected_grid]
+
+    assert actual_area.shape == (expected_height, expected_width)
+    assert actual_area.area_extent == approx(expected_area_extent, abs=1e-6)
+    assert CRS.from_proj4(actual_area.proj_str).equals(crs, ignore_axis_order=True)
 
 
 @patch('harmony_regridding_service.grid.AreaDefinition', wraps=AreaDefinition)

@@ -107,6 +107,7 @@ def test_write_grid_mappings(
     target_file = test_file
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     _generate_test_area = test_area_fxn()
+    test_areas = {('/lon', '/lat'): _generate_test_area}
     expected_crs_map = {('/lon', '/lat'): '/crs'}
 
     with (
@@ -114,12 +115,10 @@ def test_write_grid_mappings(
         Dataset(target_file, mode='w') as target_ds,
     ):
         transfer_metadata(source_ds, target_ds)
-        transfer_resampled_dimensions(
-            source_ds, target_ds, _generate_test_area, var_info
-        )
+        transfer_resampled_dimensions(source_ds, target_ds, test_areas, var_info)
 
         actual_crs_map = write_grid_mappings(
-            target_ds, get_resampled_dimension_pairs(var_info), _generate_test_area
+            target_ds, get_resampled_dimension_pairs(var_info), test_areas
         )
         assert expected_crs_map == actual_crs_map
 

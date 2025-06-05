@@ -7,6 +7,7 @@ from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
+    GridDimensionPair,
     horizontal_dims_for_variable,
 )
 from harmony_regridding_service.file_io import (
@@ -15,7 +16,7 @@ from harmony_regridding_service.file_io import (
 
 
 def get_crs_variable_name(
-    dim_pair: tuple[str, str], resampled_dim_pairs: list[tuple[str, str]]
+    dim_pair: GridDimensionPair, resampled_dim_pairs: list[GridDimensionPair]
 ) -> str:
     """Return a crs variable name for this dimension pair.
 
@@ -38,8 +39,8 @@ def get_crs_variable_name(
 
 def write_grid_mappings(
     target_ds: Dataset,
-    resampled_dim_pairs: list[tuple[str, str]],
-    target_area: AreaDefinition,
+    resampled_dim_pairs: list[GridDimensionPair],
+    target_areas: dict[GridDimensionPair, AreaDefinition],
 ) -> dict:
     """Add coordinate reference system metadata variables.
 
@@ -50,10 +51,9 @@ def write_grid_mappings(
     pointing back to the correct crs variable in the regridded variables.
 
     """
-    crs_metadata = target_area.crs.to_cf()
     crs_map = {}
-
     for dim_pair in resampled_dim_pairs:
+        crs_metadata = target_areas[dim_pair].crs.to_cf()
         crs_variable_name = get_crs_variable_name(dim_pair, resampled_dim_pairs)
         var = PurePath(crs_variable_name)
         t_group = target_ds.createGroup(var.parent)

@@ -21,6 +21,7 @@ from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
+    GridDimensionPair,
     get_column_dims,
     get_resampled_dimension_pairs,
     get_row_dims,
@@ -41,21 +42,36 @@ from harmony_regridding_service.message_utilities import (
 logger = getLogger(__name__)
 
 
-def compute_target_area(
+def compute_target_areas(
     message: HarmonyMessage,
     filepath: str,
     var_info: VarInfoFromNetCDF4,
-) -> AreaDefinition:
-    """Define the output area for your regridding operation.
+) -> dict[GridDimensionPair, AreaDefinition]:
+    """Define the output areas for your regridding operations.
 
-    Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variables will be regridded to this target area.
+    This function computes the target areas for resampling.
+
+    First The HarmonyMessage is searched for grid information, if this is
+    found this grid is used for all resampling operations in the file.
+
+    If there is no grid information in the HarmonyMessage, a target area is
+    generated from each horizontal grid pair in the source granule. That is,
+    we generate a target area for each unique grid in the input data.
+
+    We return a dictionary of the grid dimension pair pointing to their
+    AreaDefinitions
+
     """
     if any(
         (has_scale_extents(message), has_scale_sizes(message), has_dimensions(message))
     ):
-        # If there's any parts to a grid, get it from the message.
+        # If there's any grid parts, get the target area from the message and
+        # store it on every grid in the source.
         area_definition = get_area_definition_from_message(message)
+        area_definitions = {
+            dim_pair: area_definition
+            for dim_pair in get_resampled_dimension_pairs(var_info)
+        }
 
     elif same_source_and_target_crs(message, var_info):
         # Don't resample if you the source and target have the same CRS
@@ -64,11 +80,13 @@ def compute_target_area(
             'source and target CRS and no grid parameters.'
         )
     else:
-        # compute a target grid from the source data
+        # compute target grids from the source data
         target_crs = CRS(get_message_crs(message) or 'epsg:4326')
-        area_definition = create_target_area_from_source(filepath, var_info, target_crs)
+        area_definitions = create_target_areas_from_source(
+            filepath, var_info, target_crs
+        )
 
-    return area_definition
+    return area_definitions
 
 
 def same_source_and_target_crs(
@@ -89,24 +107,31 @@ def same_source_and_target_crs(
     return target_crs.equals(source_crs, ignore_axis_order=True)
 
 
-def create_target_area_from_source(
+def create_target_areas_from_source(
     filepath: str, var_info: VarInfoFromNetCDF4, target_crs: CRS
-) -> AreaDefinition:
-    """Create the target area using the source grid information.
+) -> dict[GridDimensionPair, AreaDefinition]:
+    """Create the target areas using the source grid information.
 
-    TODO: Create area definition for every dimension pair, if the collection
-    had more than one grid.
+    Loop over the source grids generating the correct target areas for each.
+
+    return a dictionary of the grid dimension pairs to their corresponding
+    AreaDefinitions.
+
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    projected_area = create_area_definition_for_projected_source_grid(
-        filepath, dimension_pairs[0], var_info
-    )
+    target_areas = {}
+    for dim_pair in dimension_pairs:
+        projected_area = create_area_definition_for_projected_source_grid(
+            filepath, dim_pair, var_info
+        )
 
-    # I have the correct projected areaDefinition, but I want to convert it to
-    # a geographic area
-    geographic_area = convert_projected_area_to_geographic(projected_area, target_crs)
+        # I have the correct projected areaDefinition, but I want to convert it to
+        # a geographic area
+        target_areas[dim_pair] = convert_projected_area_to_geographic(
+            projected_area, target_crs
+        )
 
-    return geographic_area
+    return target_areas
 
 
 def convert_projected_area_to_geographic(
