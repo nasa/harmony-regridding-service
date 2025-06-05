@@ -10,9 +10,14 @@ from netCDF4 import (
     Dimension,
 )
 from numpy.testing import assert_array_equal
+from pyresample.geometry import SwathDefinition
 
-from harmony_regridding_service.exceptions import RegridderException
+from harmony_regridding_service.exceptions import (
+    RegridderException,
+    SourceDataError,
+)
 from harmony_regridding_service.resample import (
+    compute_source_swath,
     copy_1d_dimension_variables,
     copy_dimension,
     copy_dimensions,
@@ -38,6 +43,118 @@ from harmony_regridding_service.resample import (
     transfer_resampled_dimensions,
     unresampled_variables,
 )
+
+
+@patch('harmony_regridding_service.resample.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_lon_lat(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test output SwathDefinition when input granule is geographic.
+
+    Test that the correct SwathDefinition is created when a collection has
+    latitude and longitude horizontal dimensions.
+    """
+    mock_dims_are_lon_lat.return_value = True
+    mock_dims_are_projected_x_y.return_value = False
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+
+    mock_compute_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/longitude', '/latitude')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info
+    )
+
+    # only called compute_horizontal_source_grids
+    mock_dims_are_projected_x_y.assert_not_called()
+    mock_compute_projected_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch('harmony_regridding_service.resample.compute_projected_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.compute_horizontal_source_grids')
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_projected_xy(
+    mock_dims_are_lon_lat,
+    mock_dims_are_projected_x_y,
+    mock_compute_horizontal_source_grids,
+    mock_compute_projected_horizontal_source_grids,
+):
+    """Test output SwathDefinition when input granule is projection-gridded.
+
+    Test that the correct SwathDefinition is created when a collection has
+    projected x and y gridded horizontal dimensions.
+    """
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = True
+
+    mock_lons = np.array([[1, 2], [3, 4]])
+    mock_lats = np.array([[5, 6], [7, 8]])
+
+    mock_compute_projected_horizontal_source_grids.return_value = (mock_lons, mock_lats)
+
+    grid_dimensions = ('/y', '/x')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    swath_def = compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
+    mock_compute_projected_horizontal_source_grids.assert_called_once_with(
+        grid_dimensions, filepath, var_info
+    )
+
+    mock_compute_horizontal_source_grids.assert_not_called()
+
+    assert isinstance(swath_def, SwathDefinition)
+    np.testing.assert_array_equal(swath_def.lons, mock_lons)
+    np.testing.assert_array_equal(swath_def.lats, mock_lats)
+
+
+@patch('harmony_regridding_service.resample.dims_are_projected_x_y')
+@patch('harmony_regridding_service.resample.dims_are_lon_lat')
+def test_compute_source_swath_invalid_dimensions(
+    mock_dims_are_lon_lat, mock_dims_are_projected_x_y
+):
+    """Test output SwathDefinition when input granule's dimensions are invalid.
+
+    Test that the expected exception is thrown when a collection has neither
+    geographic or projection-gridded horizontal dimensions.
+    """
+    mock_dims_are_lon_lat.return_value = False
+    mock_dims_are_projected_x_y.return_value = False
+
+    grid_dimensions = ('time', 'depth')
+    filepath = 'fake_filepath.nc'
+    var_info = MagicMock()
+
+    with pytest.raises(
+        SourceDataError, match='Cannot determine correct dimension type from source'
+    ):
+        compute_source_swath(grid_dimensions, filepath, var_info)
+
+    mock_dims_are_lon_lat.assert_called_once_with(grid_dimensions, var_info)
+    mock_dims_are_projected_x_y.assert_called_once_with(grid_dimensions, var_info)
 
 
 def test_resample_layer_compute_float_explicit_fill(var_info_fxn, test_MERRA2_ncfile):
@@ -606,14 +723,14 @@ def test_get_bounds_var(var_info_fxn, test_IMERG_ncfile):
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test_get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims_mock):
+def test_get_fully_qualified_preferred_ordered_dimensions_correct(horizontal_dims_mock):
     variable_mock = MagicMock()
     variable_mock.dimensions = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+    horizontal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
 
     expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
@@ -624,7 +741,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_correct(horizonal_dims
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
-    horizonal_dims_mock,
+    horizontal_dims_mock,
 ):
     variable_mock = MagicMock()
     variable_mock.dimensions = ['/Group1/x', '/Group1/y', '/Group1/lc_type']
@@ -632,7 +749,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
+    horizontal_dims_mock.return_value = ('/Group1/x', '/Group1/y')
 
     expected = ['/Group1/lc_type', '/Group1/x', '/Group1/y']
 
@@ -643,7 +760,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_needs_ordered(
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_get_fully_qualified_preferred_ordered_dimensions_has_only_two(
-    horizonal_dims_mock,
+    horizontal_dims_mock,
 ):
     """Contrived example to show that two input dimensions returns them unchanged."""
     variable_mock = MagicMock()
@@ -652,7 +769,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_has_only_two(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = '/Group1/y'
+    horizontal_dims_mock.return_value = '/Group1/y'
 
     expected = ['/Group1/y', '/Group1/lc_type']
 
@@ -663,7 +780,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_has_only_two(
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_get_fully_qualified_preferred_ordered_dimensions_has_only_one(
-    horizonal_dims_mock,
+    horizontal_dims_mock,
 ):
     variable_mock = MagicMock()
     variable_mock.dimensions = ['/Group1/y']
@@ -671,7 +788,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_has_only_one(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/Group1/y',)
+    horizontal_dims_mock.return_value = ('/Group1/y',)
 
     expected = ['/Group1/y']
 
@@ -681,8 +798,8 @@ def test_get_fully_qualified_preferred_ordered_dimensions_has_only_one(
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
-def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_order(
-    horizonal_dims_mock,
+def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizontal_order(
+    horizontal_dims_mock,
 ):
     """Contrived to show the horizontal dims retain their order."""
     variable_mock = MagicMock()
@@ -697,7 +814,7 @@ def test_get_fully_qualified_preferred_ordered_dimensions_retains_horizonal_orde
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/Group1/y', '/Group1/x')
+    horizontal_dims_mock.return_value = ('/Group1/y', '/Group1/x')
 
     expected = [
         '/Group1/z',
@@ -792,7 +909,7 @@ def sample_3d_variable():
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_order_source_variable_3d_col_row_ending_is_unchanged(
-    horizonal_dims_mock, sample_3d_variable
+    horizontal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with  either (a, col, row)."""
     sample_data = np.copy(sample_3d_variable)
@@ -804,7 +921,7 @@ def test_order_source_variable_3d_col_row_ending_is_unchanged(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/x', '/y')
+    horizontal_dims_mock.return_value = ('/x', '/y')
 
     actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, sample_data)
@@ -812,7 +929,7 @@ def test_order_source_variable_3d_col_row_ending_is_unchanged(
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_order_source_variable_3d_row_col_ending_is_unchanged(
-    horizonal_dims_mock, sample_3d_variable
+    horizontal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with (a, ROW, COL) is unchanged."""
     sample_data = np.copy(sample_3d_variable)
@@ -821,7 +938,7 @@ def test_order_source_variable_3d_row_col_ending_is_unchanged(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/x', '/y')
+    horizontal_dims_mock.return_value = ('/x', '/y')
 
     actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, sample_data)
@@ -829,7 +946,7 @@ def test_order_source_variable_3d_row_col_ending_is_unchanged(
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_order_source_variable_3d_incorrect_final_dimension_is_ordered(
-    horizonal_dims_mock, sample_3d_variable
+    horizontal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
     sample_data = np.copy(sample_3d_variable)
@@ -844,7 +961,7 @@ def test_order_source_variable_3d_incorrect_final_dimension_is_ordered(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/y', '/x')
+    horizontal_dims_mock.return_value = ('/y', '/x')
 
     actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)
@@ -852,7 +969,7 @@ def test_order_source_variable_3d_incorrect_final_dimension_is_ordered(
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
-    horizonal_dims_mock, sample_3d_variable
+    horizontal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
     sample_data = np.copy(sample_3d_variable)
@@ -866,14 +983,14 @@ def test_order_source_variable_3d_incorrect_final_reversed_col_row_is_ordered(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/x', '/y')
+    horizontal_dims_mock.return_value = ('/x', '/y')
     actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)
 
 
 @patch('harmony_regridding_service.resample.horizontal_dims_for_variable')
 def test_order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
-    horizonal_dims_mock, sample_3d_variable
+    horizontal_dims_mock, sample_3d_variable
 ):
     """A 3D var ending with an incorrect dimension is reordered to CF ordering."""
     sample_data = np.random.randint(0, 10, (11, 12, 5, 7, 3))
@@ -887,7 +1004,7 @@ def test_order_source_variable_5d_incorrect_col_row_any_order_is_ordered(
     var_info = MagicMock()
     var_info.get_variable.return_value = variable_mock
 
-    horizonal_dims_mock.return_value = ('/x', '/y')
+    horizontal_dims_mock.return_value = ('/x', '/y')
 
     actual = order_source_variable(sample_data, var_info, 'var_name')
     np.testing.assert_array_equal(actual, expected)

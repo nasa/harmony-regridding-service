@@ -101,7 +101,7 @@ def copy_var_without_metadata(
 
     override_dimensions is an optional input to allow you to reorder the
     target's dimensions. If provided it should be a tuple of the target's
-    dimension names in preferred order (horizonal dims last).
+    dimension names in preferred order (horizontal dims last).
 
     """
     var = PurePath(variable_name)

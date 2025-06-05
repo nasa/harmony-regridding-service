@@ -71,8 +71,13 @@ def has_valid_crs(message: Message) -> bool:
     should either be undefined or specify a geographic CRS.
 
     """
-    target_crs = rgetattr(message, 'format.crs')
+    target_crs = get_message_crs(message)
     return target_crs is None or is_geographic_crs(target_crs)
+
+
+def get_message_crs(message: Message) -> str | None:
+    """Return the crs information contained in the harmony message."""
+    return rgetattr(message, 'format.crs')
 
 
 def is_geographic_crs(crs_string: str) -> bool:
@@ -88,3 +93,9 @@ def is_geographic_crs(crs_string: str) -> bool:
         raise InvalidTargetCRS(crs_string) from exception
 
     return is_geographic
+
+
+def target_crs_from_message(message: Message) -> CRS:
+    """Return the message's CRS or default to one from EPSG::4326."""
+    target_crs = get_message_crs(message)
+    return CRS(target_crs or 'EPSG:4326')

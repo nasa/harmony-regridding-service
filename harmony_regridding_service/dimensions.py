@@ -52,3 +52,18 @@ def is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
     except AttributeError:
         pass
     return is_y_dim
+
+
+def get_resampled_dimension_pairs(
+    var_info: VarInfoFromNetCDF4,
+) -> list[tuple[str, str]]:
+    """Return a list of the resampled horizontal spatial dimensions.
+
+    Gives a list of the 2-element horizontal dimensions that are used in
+    regridding this granule file.
+    """
+    return [
+        dims
+        for dims in var_info.group_variables_by_horizontal_dimensions()
+        if len(dims) == 2
+    ]

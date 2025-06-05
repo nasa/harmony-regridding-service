@@ -15,7 +15,6 @@ from harmony_regridding_service.adapter import RegriddingServiceAdapter
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
-    InvalidTargetGrid,
 )
 from tests.utilities import Granule, create_stac
 
@@ -148,102 +147,6 @@ class TestAdapter(TestCase):
 
         # Ensure container clean-up was requested:
         mock_rmtree.assert_called_once_with(self.temp_dir)
-
-    @patch('harmony_regridding_service.adapter.rmtree')
-    @patch('harmony_regridding_service.adapter.mkdtemp')
-    @patch('harmony_regridding_service.adapter.download')
-    @patch('harmony_regridding_service.adapter.stage')
-    def test_missing_grid(self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree):
-        """Test missing grid message.
-
-        Ensure a request that fails message validation correctly raises an
-        exception that is reported at the top level of invocation. Message
-        validation occurs prior to the `RegriddingServiceAdapter.process_item`
-        method, so none of the functions or methods within that method
-        should be called. In this test there are no target grid parameters,
-        so the validation should raise an `InvalidTargetGrid` exception.
-
-        """
-        error_message = 'Insufficient or invalid target grid parameters.'
-
-        harmony_message = HarmonyMessage(
-            {
-                'accessToken': self.access_token,
-                'callback': 'https://example.com/',
-                'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
-                'stagingLocation': self.staging_location,
-                'user': self.user,
-            }
-        )
-
-        regridder = RegriddingServiceAdapter(
-            harmony_message, config=self.config, catalog=self.input_stac
-        )
-
-        with self.assertRaises(InvalidTargetGrid) as context_manager:
-            regridder.invoke()
-
-        # Ensure exception message was propagated back to the end-user:
-        self.assertEqual(context_manager.exception.message, error_message)
-
-        # Ensure no additional functions were called after the exception:
-        mock_mkdtemp.assert_not_called()
-        mock_download.assert_not_called()
-        mock_stage.assert_not_called()
-        mock_rmtree.assert_not_called()
-
-    @patch('harmony_regridding_service.adapter.rmtree')
-    @patch('harmony_regridding_service.adapter.mkdtemp')
-    @patch('harmony_regridding_service.adapter.download')
-    @patch('harmony_regridding_service.adapter.stage')
-    def test_invalid_grid(self, mock_stage, mock_download, mock_mkdtemp, mock_rmtree):
-        """Tests invalid grid message.
-
-        Ensure a request that fails message validation correctly raises an
-        exception that is reported at the top level of invocation. Message
-        validation occurs prior to the `RegriddingServiceAdapter.process_item`
-        method, so none of the functions or methods within that method
-        should be called. In this test there ae target grid parameters that
-        are inconsistent with one another, so the validation should raise
-        an `InvalidTargetGrid` exception.
-
-        """
-        error_message = 'Insufficient or invalid target grid parameters.'
-
-        harmony_message = HarmonyMessage(
-            {
-                'accessToken': self.access_token,
-                'callback': 'https://example.com/',
-                'format': {
-                    'height': 234,
-                    'scaleExtent': {
-                        'x': {'min': -180, 'max': 180},
-                        'y': {'min': -90, 'max': 90},
-                    },
-                    'scaleSize': {'x': 0.5, 'y': 0.5},
-                    'width': 123,
-                },
-                'sources': [{'collection': 'C1234-EEDTEST', 'shortName': 'test'}],
-                'stagingLocation': self.staging_location,
-                'user': self.user,
-            }
-        )
-
-        regridder = RegriddingServiceAdapter(
-            harmony_message, config=self.config, catalog=self.input_stac
-        )
-
-        with self.assertRaises(InvalidTargetGrid) as context_manager:
-            regridder.invoke()
-
-        # Ensure exception message was propagated back to the end-user:
-        self.assertEqual(context_manager.exception.message, error_message)
-
-        # Ensure no additional functions were called after the exception:
-        mock_mkdtemp.assert_not_called()
-        mock_download.assert_not_called()
-        mock_stage.assert_not_called()
-        mock_rmtree.assert_not_called()
 
     @patch('harmony_regridding_service.adapter.rmtree')
     @patch('harmony_regridding_service.adapter.mkdtemp')

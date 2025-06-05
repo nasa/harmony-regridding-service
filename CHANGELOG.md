@@ -4,6 +4,14 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.3.0] - 2025-06-04
+
+### Changed
+
+- Adds functionality that allows the regridder to implicitly determine grid
+parameters when the user does not provide the scale extent or resolution,
+based on the source grid parameters.
+
 ## [v1.2.0] - 2025-05-21
 
 ### Added
@@ -104,6 +112,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.3.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.3.0
 [v1.2.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.2.0
 [v1.1.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.1.1
 [v1.1.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.1.0

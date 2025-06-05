@@ -1,41 +1,178 @@
 """Module for accessing and creating grid parameters."""
 
+from collections.abc import Iterable
 from logging import getLogger
+from typing import Any
 
 import numpy as np
 import xarray as xr
 from harmony_service_lib.message import Message as HarmonyMessage
-from harmony_service_lib.message_utility import has_dimensions
+from harmony_service_lib.message_utility import (
+    has_dimensions,
+    has_scale_extents,
+    has_scale_sizes,
+    has_self_consistent_grid,
+)
 from netCDF4 import Dataset
 from pyproj import CRS
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
-from pyresample.geometry import AreaDefinition, SwathDefinition
+from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
     get_column_dims,
+    get_resampled_dimension_pairs,
     get_row_dims,
+    horizontal_dims_for_variable,
 )
 from harmony_regridding_service.exceptions import (
+    InvalidCRSResampling,
     InvalidSourceCRS,
     InvalidSourceDimensions,
+    InvalidTargetGrid,
     SourceDataError,
+)
+from harmony_regridding_service.message_utilities import (
+    get_message_crs,
+    target_crs_from_message,
 )
 
 logger = getLogger(__name__)
 
 
-def compute_target_area(message: HarmonyMessage) -> AreaDefinition:
+def compute_target_area(
+    message: HarmonyMessage,
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> AreaDefinition:
     """Define the output area for your regridding operation.
 
     Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variables will be regridded to this target.
+    multi-dimensional variables will be regridded to this target area.
+    """
+    if any(
+        (has_scale_extents(message), has_scale_sizes(message), has_dimensions(message))
+    ):
+        # If there's any parts to a grid, get it from the message.
+        area_definition = get_area_definition_from_message(message)
+
+    elif same_source_and_target_crs(message, var_info):
+        # Don't resample if you the source and target have the same CRS
+        raise InvalidCRSResampling(
+            'Requested a resampling with matching '
+            'source and target CRS and no grid parameters.'
+        )
+    else:
+        # compute a target grid from the source data
+        target_crs = CRS(get_message_crs(message) or 'epsg:4326')
+        area_definition = create_target_area_from_source(filepath, var_info, target_crs)
+
+    return area_definition
+
+
+def same_source_and_target_crs(
+    message: HarmonyMessage,
+    var_info: VarInfoFromNetCDF4,
+) -> bool:
+    """Check if the requested CRS is the same as the input CRS.
+
+    For this version we are assuming that the only grids we need to be
+    concerned with are the first grid returned from
+    get_resampled_dimension_pairs.
 
     """
-    # ScaleExtent is required and validated.
-    logger.info('compute target_area')
-    area_extent = (
+    grid_dimensions = get_resampled_dimension_pairs(var_info)[0]
+    vars_on_this_grid = get_variables_on_grid(grid_dimensions, var_info)
+    source_crs = crs_from_source_data(vars_on_this_grid, var_info)
+    target_crs = target_crs_from_message(message)
+    return target_crs.equals(source_crs, ignore_axis_order=True)
+
+
+def create_target_area_from_source(
+    filepath: str, var_info: VarInfoFromNetCDF4, target_crs: CRS
+) -> AreaDefinition:
+    """Create the target area using the source grid information.
+
+    TODO: Create area definition for every dimension pair, if the collection
+    had more than one grid.
+    """
+    dimension_pairs = get_resampled_dimension_pairs(var_info)
+    projected_area = create_area_definition_for_projected_source_grid(
+        filepath, dimension_pairs[0], var_info
+    )
+
+    # I have the correct projected areaDefinition, but I want to convert it to
+    # a geographic area
+    geographic_area = convert_projected_area_to_geographic(projected_area, target_crs)
+
+    return geographic_area
+
+
+def convert_projected_area_to_geographic(
+    projected_area: AreaDefinition, target_crs: CRS
+) -> AreaDefinition:
+    """Converts a projected AreaDefinition into the similar area in the target_CRS.
+
+    For now the target_crs is always going to be CRS('epsg:4326')
+
+    This is the "simple case" where we know that the x/y corners transform
+    directly to lon/lat corners. ***This does not handle polar grids.***
+    to handle polar you may be able to use area.boundary().
+
+    """
+    geographic_area = create_area_def(
+        'Geographic Area',
+        target_crs,
+        area_extent=reorder_extents(*projected_area.area_extent_ll),
+        width=projected_area.width,
+        height=projected_area.height,
+        shape=projected_area.shape,
+    )
+    logger.debug(f'Source projected Area: {projected_area}')
+    logger.debug(f'Converted Geographic Area: {geographic_area}')
+
+    return geographic_area
+
+
+def reorder_extents(min_x, min_y, max_x, max_y):
+    """This is a way to ensure the correct area extents.
+
+    # The pyresample generated area_extent_ll is not always returning the
+    # expected values for the area extent point documented as (lower_left_lon,
+    # lower_left_lat, upper_right_lon, upper_right_lat) Resulting in some bad
+    # resampling outputs. This may be a stop-gap/workaround?
+
+    Returns:
+      tuple: (lower_left_x, lower_left_y, upper_right_x, upper_right_y)
+
+    """
+    return (
+        np.min([min_x, max_x]),
+        np.min([min_y, max_y]),
+        np.max([min_x, max_x]),
+        np.max([min_y, max_y]),
+    )
+
+
+def get_variables_on_grid(dim_pair, var_info):
+    """Return the variables associated with the input 2D dimension pair."""
+    dim_mapping = var_info.group_variables_by_horizontal_dimensions()
+    return dim_mapping[dim_pair]
+
+
+def get_area_definition_from_message(
+    message: HarmonyMessage,
+) -> AreaDefinition:
+    """Retrieve the target grid area definition from the Harmony message.
+
+    Create the area definition using the target grid specified in the Harmony
+    request.
+    """
+    if not has_self_consistent_grid(message):
+        raise InvalidTargetGrid()
+
+    area_extent = reorder_extents(
         message.format.scaleExtent.x.min,
         message.format.scaleExtent.y.min,
         message.format.scaleExtent.x.max,
@@ -44,6 +181,7 @@ def compute_target_area(message: HarmonyMessage) -> AreaDefinition:
 
     height = grid_height(message)
     width = grid_width(message)
+
     projection = message.format.crs or 'EPSG:4326'
 
     return AreaDefinition(
@@ -84,29 +222,6 @@ def compute_num_elements(message: HarmonyMessage, dimension_name: str) -> int:
 
     num_elements = int(np.round((scale_extent.max - scale_extent.min) / scale_size))
     return num_elements
-
-
-def compute_source_swath(
-    grid_dimensions: tuple[str, str],
-    filepath: str,
-    var_info: VarInfoFromNetCDF4,
-    variable_set: set,
-) -> SwathDefinition:
-    """Return a SwathDefinition for the input grid_dimensions."""
-    if dims_are_lon_lat(grid_dimensions, var_info):
-        longitudes, latitudes = compute_horizontal_source_grids(
-            grid_dimensions, filepath, var_info
-        )
-    elif dims_are_projected_x_y(grid_dimensions, var_info):
-        longitudes, latitudes = compute_projected_horizontal_source_grids(
-            grid_dimensions, filepath, var_info, variable_set
-        )
-    else:
-        raise SourceDataError(
-            'Cannot determine correct dimension type from source {grid_dimensions}.'
-        )
-
-    return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
 def compute_horizontal_source_grids(
@@ -156,7 +271,6 @@ def compute_projected_horizontal_source_grids(
     grid_dimensions: tuple[str, str],
     filepath: str,
     var_info: VarInfoFromNetCDF4,
-    variables: set,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return longitude and latitude grids for a projected grid_dimensions pair.
 
@@ -164,8 +278,25 @@ def compute_projected_horizontal_source_grids(
     in the source data and use those to generate 2D longitude and latitude arrays.
 
     """
-    xdim_name = get_column_dims(grid_dimensions, var_info)[0]
-    ydim_name = get_row_dims(grid_dimensions, var_info)[0]
+    source_area = create_area_definition_for_projected_source_grid(
+        filepath, grid_dimensions, var_info
+    )
+    return source_area.get_lonlats()
+
+
+def create_area_definition_for_projected_source_grid(
+    filepath: str,
+    dimension_pair: tuple[str, str],
+    var_info: VarInfoFromNetCDF4,
+) -> AreaDefinition:
+    """Return the area definition for a source grid.
+
+    Use the projected coordinate dimensions in the source data to compute the
+    area definition.
+    """
+    variables = get_variables_on_grid(dimension_pair, var_info)
+    xdim_name = get_column_dims(dimension_pair, var_info)[0]
+    ydim_name = get_row_dims(dimension_pair, var_info)[0]
     try:
         with xr.open_datatree(
             filepath,
@@ -177,17 +308,16 @@ def compute_projected_horizontal_source_grids(
             xvalues = dt[xdim_name].data
             yvalues = dt[ydim_name].data
             area_extent = compute_area_extent_from_regular_x_y_coords(xvalues, yvalues)
-            source_crs = crs_from_source_data(dt, variables)
+            area_crs = crs_from_source_data(variables, var_info)
             cell_width = np.abs(xvalues[1] - xvalues[0])
             cell_height = np.abs(yvalues[1] - yvalues[0])
-            source_area = create_area_def(
-                'source grid area',
-                source_crs,
+            return create_area_def(
+                'grid area',
+                area_crs,
                 area_extent=area_extent,
                 shape=(len(yvalues), len(xvalues)),
                 resolution=(cell_width, cell_height),
             )
-            return source_area.get_lonlats()
     except Exception as e:
         logger.error(e)
         raise SourceDataError('cannot compute projected source grids') from e
@@ -209,12 +339,8 @@ def compute_area_extent_from_regular_x_y_coords(
     """
     min_x, max_x = compute_array_bounds(xvalues)
     min_y, max_y = compute_array_bounds(yvalues)
-    return (
-        np.min([min_x, max_x]),
-        np.min([min_y, max_y]),
-        np.max([min_x, max_x]),
-        np.max([min_y, max_y]),
-    )
+
+    return reorder_extents(min_x, min_y, max_x, max_y)
 
 
 def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
@@ -247,39 +373,63 @@ def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
     return (left, right)
 
 
-def crs_from_source_data(dt: xr.DataTree, variables: set) -> CRS:
-    """Create a CRS describing the grid in the source file.
+def crs_from_source_data(variables: Iterable, var_info: VarInfoFromNetCDF4) -> CRS:
+    """Create a CRS from grid variables in the source data.
 
-    Look through the variables for metadata that points to a grid_mapping
-    and generate a CRS from that information.
+    Given a list of one or more variables, all on the same horizontal
+    grid:
 
-    The metadata is not always clear or easy to parse into a CRS. Take a
-    shortcut when possible.
+    Look through the variables' metadata for a grid_mapping that can be used to
+    create a CRS and return it.
 
-    if the grid_mapping has a known EASE2 grid name, use the EPSG code known
-    apriori.
+    If no grid_mapping information can be made from any of the variables'
+    metadata, check the horizontal dimensions see if they are geographic, if so,
+    assume a CRS of EPSG:4326 and return that.
+
+    If you can't determine a CRS after that, raise an InvalidSourceCRS
+    exception.
 
     Args:
-      dt: the source file as an opened DataTree
+      variables:  variables all sharing the same 2-dimensional grid.
 
-      variables: set of variables all sharing the same 2-dimensional grid is
-                 traversed looking for a grid_mapping.
+      var_info: used to retrive grid_mapping metadata.
 
     Returns:
       CRS object
 
     """
-    for varname in variables:
-        var = dt[varname]
-        if 'grid_mapping' in var.attrs:
+    for var_name in variables:
+        cf_attributes = get_grid_mapping_attributes(var_name, var_info)
+        if cf_attributes:
             try:
-                return CRS.from_cf(dt[var.attrs['grid_mapping']].attrs)
+                return CRS.from_cf(cf_attributes)
             except CRSError as e:
                 raise InvalidSourceCRS(
                     'Could not create a CRS from grid_mapping metadata'
                 ) from e
 
+    # No grid_mapping metadata was found so check the dimensions for geographic
+    # information and assume EPSG:4326 if so.
+    for var_name in variables:
+        if has_geographic_grid_dimensions(var_name, var_info):
+            return CRS.from_epsg(4326)
+
     raise InvalidSourceCRS('No grid_mapping metadata found.')
+
+
+def get_grid_mapping_attributes(
+    var_name: str, var_info: VarInfoFromNetCDF4
+) -> dict[str, Any]:
+    """Return the grid mapping attributes for a variable.
+
+    Use varinfo to get the metadata associated with the grid mapping variable.
+    """
+    grid_mapping = var_info.get_variable(var_name).references.get('grid_mapping', set())
+    coordinates = var_info.get_variable(var_name).references.get('coordinates', set())
+    grid_mapping_var_name = list(grid_mapping - coordinates)
+    if grid_mapping_var_name and len(grid_mapping_var_name) == 1:
+        return var_info.get_variable(grid_mapping_var_name[0]).attributes
+    return {}
 
 
 def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) -> bool:
@@ -287,6 +437,11 @@ def dims_are_lon_lat(dimensions: tuple[str, str], var_info: VarInfoFromNetCDF4) 
     return all(
         var_info.get_variable(dim_name).is_geographic() for dim_name in dimensions
     )
+
+
+def has_geographic_grid_dimensions(var_name: str, var_info: VarInfoFromNetCDF4) -> bool:
+    """Returns true if the horizontal dimensions for the variable are geographic."""
+    return dims_are_lon_lat(horizontal_dims_for_variable(var_info, var_name), var_info)
 
 
 def dims_are_projected_x_y(

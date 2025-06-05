@@ -9,11 +9,12 @@ from netCDF4 import (
     Dimension,
 )
 from pyresample.ewa import DaskEWAResampler
-from pyresample.geometry import AreaDefinition
+from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
     get_column_dims,
+    get_resampled_dimension_pairs,
     get_row_dims,
     horizontal_dims_for_variable,
     is_column_dim,
@@ -21,12 +22,18 @@ from harmony_regridding_service.dimensions import (
 )
 from harmony_regridding_service.exceptions import (
     RegridderException,
+    SourceDataError,
 )
 from harmony_regridding_service.file_io import (
     copy_var_with_attrs,
     copy_var_without_metadata,
 )
-from harmony_regridding_service.grid import compute_source_swath
+from harmony_regridding_service.grid import (
+    compute_horizontal_source_grids,
+    compute_projected_horizontal_source_grids,
+    dims_are_lon_lat,
+    dims_are_projected_x_y,
+)
 
 logger = getLogger(__name__)
 
@@ -290,21 +297,6 @@ def unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
     )
 
 
-def get_resampled_dimension_pairs(
-    var_info: VarInfoFromNetCDF4,
-) -> list[tuple[str, str]]:
-    """Return a list of the resampled horizontal spatial dimensions.
-
-    Gives a list of the 2-element horizontal dimensions that are used in
-    regridding this granule file.
-    """
-    return [
-        dims
-        for dims in var_info.group_variables_by_horizontal_dimensions()
-        if len(dims) == 2
-    ]
-
-
 def get_resampled_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
     """Return a set of all resampled dimension names."""
     return {
@@ -326,20 +318,40 @@ def cache_resamplers(
 
     dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
 
-    for dimensions, variable_set in dimension_vars_mapping.items():
+    for dimensions in dimension_vars_mapping:
         # create swath definitions from each unique 2D grid dimensions found in
         # the input file.
         if len(dimensions) == 2:
             logger.debug(f'computing weights for dimensions {dimensions}')
-            source_swath = compute_source_swath(
-                dimensions, filepath, var_info, variable_set
-            )
+            source_swath = compute_source_swath(dimensions, filepath, var_info)
             grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
             grid_cache[dimensions].precompute(
                 rows_per_scan=get_rows_per_scan(source_swath.shape[0]),
             )
 
     return grid_cache
+
+
+def compute_source_swath(
+    grid_dimensions: tuple[str, str],
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+) -> SwathDefinition:
+    """Return a SwathDefinition for the input grid_dimensions."""
+    if dims_are_lon_lat(grid_dimensions, var_info):
+        longitudes, latitudes = compute_horizontal_source_grids(
+            grid_dimensions, filepath, var_info
+        )
+    elif dims_are_projected_x_y(grid_dimensions, var_info):
+        longitudes, latitudes = compute_projected_horizontal_source_grids(
+            grid_dimensions, filepath, var_info
+        )
+    else:
+        raise SourceDataError(
+            f'Cannot determine correct dimension type from source {grid_dimensions}.'
+        )
+
+    return SwathDefinition(lons=longitudes, lats=latitudes)
 
 
 def transfer_resampled_dimensions(

@@ -46,7 +46,7 @@ def write_grid_mappings(
     Add placeholder variables that contain the metadata related the coordinate
     reference system for the target grid.
 
-    Returns a dictionary of horizonal tuple[dim pair] to full crs name for
+    Returns a dictionary of horizontal tuple[dim pair] to full crs name for
     pointing back to the correct crs variable in the regridded variables.
 
     """

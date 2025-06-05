@@ -67,6 +67,20 @@
     {
       "Applicability": {
         "Mission": "SMAP",
+        "ShortNamePath": "SPL4.+",
+	"VariablePattern": "^/(?!Metadata).+/.+"
+      },
+      "Attributes": [
+        {
+          "Name": "grid_mapping",
+          "Value": "/EASE2_global_projection"
+        }
+      ],
+      "_Description": "Ensure SMAP L4 variables point to the correct grid_mapping variable in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
         "ShortNamePath": "SPL4SMAU",
 	"VariablePattern": "^/(Forecast|Analysis|Observations)_Data/.*"
       },
