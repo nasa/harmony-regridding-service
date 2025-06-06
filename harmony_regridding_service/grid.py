@@ -86,6 +86,13 @@ def compute_target_areas(
             filepath, var_info, target_crs
         )
 
+    logger.debug('Using TARGET Area Definitions:')
+    for dim_pair, area in area_definitions.items():
+        logger.debug(f'dim_pair: {dim_pair}')
+        logger.debug(f'target Area: {area}')
+        logger.debug(f'target Area_extent: {area.area_extent}')
+        logger.debug(f'target crs: {area.crs.to_proj4()}')
+
     return area_definitions
 
 
@@ -120,7 +127,9 @@ def create_target_areas_from_source(
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
     target_areas = {}
+
     for dim_pair in dimension_pairs:
+        logger.info(f'Generating Target Areas from Source with {dim_pair}')
         projected_area = create_area_definition_for_projected_source_grid(
             filepath, dim_pair, var_info
         )
@@ -146,10 +155,12 @@ def convert_projected_area_to_geographic(
     to handle polar you may be able to use area.boundary().
 
     """
+    geographic_extent = get_geographic_area_extent(projected_area)
+
     geographic_area = create_area_def(
         'Geographic Area',
         target_crs,
-        area_extent=reorder_extents(*projected_area.area_extent_ll),
+        area_extent=geographic_extent,
         width=projected_area.width,
         height=projected_area.height,
         shape=projected_area.shape,
@@ -158,6 +169,23 @@ def convert_projected_area_to_geographic(
     logger.debug(f'Converted Geographic Area: {geographic_area}')
 
     return geographic_area
+
+
+def get_geographic_area_extent(
+    projected_area: AreaDefinition,
+) -> tuple[float, float, float, float]:
+    """Return the geographic area extent.
+
+    Compute the latitude and longitude for every grid cell in the
+    projected_area's grid and return the area extent in lon and lat.
+
+    """
+    lons, lats = projected_area.get_lonlats()
+    min_lon = np.min(lons)
+    max_lon = np.max(lats)
+    min_lat = np.min(lons)
+    max_lat = np.max(lats)
+    return (min_lon, min_lat, max_lon, max_lat)
 
 
 def reorder_extents(min_x, min_y, max_x, max_y):
@@ -208,6 +236,13 @@ def get_area_definition_from_message(
     width = grid_width(message)
 
     projection = message.format.crs or 'EPSG:4326'
+
+    logger.info(
+        f'Creating target area from message:\n'
+        f'proj:{projection}\n'
+        f'area_extent:{area_extent}\n'
+        f'height:{height}\nwidth:{width}'
+    )
 
     return AreaDefinition(
         'target_area_id',
