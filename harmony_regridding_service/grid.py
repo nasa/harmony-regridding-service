@@ -181,11 +181,7 @@ def get_geographic_area_extent(
 
     """
     lons, lats = projected_area.get_lonlats()
-    min_lon = np.min(lons)
-    max_lon = np.max(lats)
-    min_lat = np.min(lons)
-    max_lat = np.max(lats)
-    return (min_lon, min_lat, max_lon, max_lat)
+    return (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
 
 
 def reorder_extents(min_x, min_y, max_x, max_y):
