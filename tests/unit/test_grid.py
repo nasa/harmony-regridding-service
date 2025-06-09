@@ -1,7 +1,7 @@
 """Tests the grid module."""
 
 import re
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import numpy as np
 import pytest
@@ -29,6 +29,8 @@ from harmony_regridding_service.grid import (
     dims_are_lon_lat,
     dims_are_projected_x_y,
     get_area_definition_from_message,
+    get_geographic_area_extent,
+    get_geographic_resolution,
     grid_height,
     grid_width,
     reorder_extents,
@@ -269,6 +271,51 @@ def test_grid_width_message_with_width(test_message_with_height_width):
     expected_grid_width = 40
     actual_grid_width = grid_width(test_message_with_height_width)
     assert expected_grid_width == actual_grid_width
+
+
+def test_get_geographic_area_extent():
+    """Verify extent behavior.
+
+    extent is just defined:
+    (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+
+    """
+    mock_area_def = Mock()
+    lats = np.array([-10, 0, 10, -20])
+    lons = np.array([-170, -175, -160, -170])
+
+    mock_area_def.get_lonlats.return_value = (lons, lats)
+
+    expected_area_extent = (-175, -20, -160, 10)
+
+    actual_area_extent = get_geographic_area_extent(mock_area_def)
+
+    assert expected_area_extent == actual_area_extent
+
+
+def test_get_geographic_resolution():
+    """Ensure conversion from meters to degrees is correct."""
+    meters_per_degree = 111320.0
+
+    ease_resolution = (36000.0, 36000.0)
+    ease_upper_left = (-9000000.0, 9000000.0)
+    ease_width = 500
+    ease_height = 500
+
+    projected_crs = CRS.from_epsg(6931)
+    projected_area = create_area_def(
+        'test_ease_grid_polar',
+        projected_crs,
+        width=ease_width,
+        height=ease_height,
+        upper_left_extent=ease_upper_left,
+        resolution=ease_resolution,
+    )
+    expected_resolution = (36000.0 / meters_per_degree, 36000.0 / meters_per_degree)
+
+    actual_geographic_resolution = get_geographic_resolution(projected_area)
+
+    assert expected_resolution == actual_geographic_resolution
 
 
 def test_compute_num_elements():
