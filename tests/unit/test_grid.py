@@ -129,13 +129,8 @@ def test_compute_target_areas_without_parameters(
 
     # values from our SMAP fixture.
     expected_width = 5
-    expected_height = 6
-    expected_area_extent = (
-        -161.3278089,
-        58.2183601,
-        -160.8610039,
-        59.0241016,
-    )
+    expected_height = 9
+    expected_area_extent = (-161.2811, 58.2848, -160.9077, 58.9562)
 
     actual_areas = compute_target_areas(message, smap_projected_netcdf_file, var_info)
     actual_area_definition = actual_areas[('/y', '/x')]
@@ -148,7 +143,7 @@ def test_compute_target_areas_without_parameters(
     mock_get_area_definition_from_message.assert_not_called()
 
     assert actual_area_definition.shape == (expected_height, expected_width)
-    assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-6)
+    assert actual_area_definition.area_extent == approx(expected_area_extent, abs=1e-4)
     assert CRS.from_proj4(actual_area_definition.proj_str).equals(
         crs, ignore_axis_order=True
     )
@@ -192,13 +187,8 @@ def test_compute_target_areas_with_only_CRS_parameter(
     )
 
     expected_width = 5
-    expected_height = 6
-    expected_area_extent = (
-        -161.3278089,
-        58.2183601,
-        -160.8610039,
-        59.0241016,
-    )
+    expected_height = 9
+    expected_area_extent = (-161.2811, 58.2848, -160.9077, 58.9562)
 
     actual_area_definitions = compute_target_areas(
         message, smap_projected_netcdf_file, var_info
@@ -213,7 +203,7 @@ def test_compute_target_areas_with_only_CRS_parameter(
     actual_area = actual_area_definitions[expected_grid]
 
     assert actual_area.shape == (expected_height, expected_width)
-    assert actual_area.area_extent == approx(expected_area_extent, abs=1e-6)
+    assert actual_area.area_extent == approx(expected_area_extent, abs=1e-4)
     assert CRS.from_proj4(actual_area.proj_str).equals(crs, ignore_axis_order=True)
 
 
@@ -517,32 +507,32 @@ def test_reorder_extents(test_extent, expected, description):
 
 
 @patch('harmony_regridding_service.grid.create_area_def', wraps=create_area_def)
-def test_convert_projected_area_to_geographic_ease_grid(mock_create_area_def):
+def test_convert_projected_area_to_geographic_ease_grid_global(mock_create_area_def):
     """Test converting projected area.
 
-    Create a projected AreaDefinition using EPSG:6933 (NSIDC EASE-Grid 2.0
-    Global) Reversing the area extent values for good measure.
+    Create a projected AreaDefinition using EPSG:6933
+    (NSIDC EASE-Grid 2.0 Global)
     """
-    projected_crs = CRS('epsg:6933')
-    projected_area = AreaDefinition(
-        area_id='test_ease_grid',
-        description='Test EASE Grid Area',
-        proj_id='ease_grid_2',
-        projection=projected_crs,
-        width=964,
-        height=406,
-        area_extent=(
-            17367530.445161,
-            -7314540.8306386,
-            -17367530.4451615,
-            7314540.8306386,
-        ),
+    ease_resolution = (36032.220840584, 36032.220840584)
+    ease_upper_left = (-17367530.4451615, 7314540.8306386)
+    ease_width = 964
+    ease_height = 406
+
+    projected_crs = CRS.from_epsg(6933)
+    projected_area = create_area_def(
+        'test_ease_grid_global',
+        projected_crs,
+        width=ease_width,
+        height=ease_height,
+        upper_left_extent=ease_upper_left,
+        resolution=ease_resolution,
     )
 
-    expected_area_extent = reorder_extents(*projected_area.area_extent_ll)
+    lons, lats = projected_area.get_lonlats()
+    expected_geo_extent = (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    expected_resolution = (ease_resolution[0] / 111320.0, ease_resolution[1] / 111320.0)
 
-    # Convert to geographic
-    target_crs = CRS('epsg:4326')
+    target_crs = CRS.from_epsg(4326)
     actual_geographic_area = convert_projected_area_to_geographic(
         projected_area, target_crs
     )
@@ -550,18 +540,73 @@ def test_convert_projected_area_to_geographic_ease_grid(mock_create_area_def):
     mock_create_area_def.assert_called_once_with(
         'Geographic Area',
         target_crs,
-        area_extent=expected_area_extent,
-        width=projected_area.width,
-        height=projected_area.height,
-        shape=projected_area.shape,
+        area_extent=expected_geo_extent,
+        resolution=expected_resolution,
     )
 
     assert isinstance(actual_geographic_area, AreaDefinition)
     assert actual_geographic_area.crs == target_crs
-    assert actual_geographic_area.width == projected_area.width
-    assert actual_geographic_area.height == projected_area.height
-    assert actual_geographic_area.shape == projected_area.shape
+    assert actual_geographic_area.width == 1112
+    assert actual_geographic_area.height == 517
+
+    # creating an area definition by extent and resolution does not ensure
+    # whole numbers of gridcells and pyresample adjusts the resolution
+    # accordingly.
+    assert actual_geographic_area.resolution != expected_resolution
 
     lon_min, lat_min, lon_max, lat_max = actual_geographic_area.area_extent
-    assert lon_min < lon_max
-    assert lat_min < lat_max
+    assert -180 < lon_min < lon_max < 180
+    assert -90 < lat_min < lat_max < 90
+
+
+@patch('harmony_regridding_service.grid.create_area_def', wraps=create_area_def)
+def test_convert_projected_area_to_geographic_ease_grid_polar(mock_create_area_def):
+    """Test converting projected area.
+
+    Create a projected AreaDefinition using EPSG:6931
+    (NSIDC EASE-Grid 2.0 Northern)
+    """
+    ease_resolution = (36000.0, 36000.0)
+    ease_upper_left = (-9000000.0, 9000000.0)
+    ease_width = 500
+    ease_height = 500
+
+    projected_crs = CRS.from_epsg(6931)
+    projected_area = create_area_def(
+        'test_ease_grid_polar',
+        projected_crs,
+        width=ease_width,
+        height=ease_height,
+        upper_left_extent=ease_upper_left,
+        resolution=ease_resolution,
+    )
+
+    lons, lats = projected_area.get_lonlats()
+    expected_geo_extent = (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    expected_resolution = (ease_resolution[0] / 111320.0, ease_resolution[1] / 111320.0)
+
+    target_crs = CRS.from_epsg(4326)
+    actual_geographic_area = convert_projected_area_to_geographic(
+        projected_area, target_crs
+    )
+
+    mock_create_area_def.assert_called_once_with(
+        'Geographic Area',
+        target_crs,
+        area_extent=expected_geo_extent,
+        resolution=expected_resolution,
+    )
+
+    assert isinstance(actual_geographic_area, AreaDefinition)
+    assert actual_geographic_area.crs == target_crs
+    assert actual_geographic_area.width == 1113
+    assert actual_geographic_area.height == 529
+
+    # creating an area definition by extent and resolution does not ensure
+    # whole numbers of gridcells and pyresample adjusts the resolution
+    # accordingly.
+    assert actual_geographic_area.resolution != expected_resolution
+
+    lon_min, lat_min, lon_max, lat_max = actual_geographic_area.area_extent
+    assert -180 < lon_min < lon_max < 180
+    assert -90 < lat_min < lat_max < 90

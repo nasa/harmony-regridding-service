@@ -20,7 +20,7 @@ test_scale_extent = {
     'width, height, scale_extent, expected_width, expected_height, description',
     [
         (100, 50, test_scale_extent, 100, 50, 'Grid parameters are provided.'),
-        (None, None, None, 5, 6, 'Grid parameters are excluded from message.'),
+        (None, None, None, 5, 9, 'Grid parameters are excluded from message.'),
     ],
 )
 def test_regrid_projected_data_end_to_end(

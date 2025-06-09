@@ -127,13 +127,11 @@ def create_target_areas_from_source(
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
     target_areas = {}
-
     for dim_pair in dimension_pairs:
-        logger.info(f'Generating Target Areas from Source with {dim_pair}')
+        logger.info(f'Generating Target Areas from Source for: {dim_pair}')
         projected_area = create_area_definition_for_projected_source_grid(
             filepath, dim_pair, var_info
         )
-
         # I have the correct projected areaDefinition, but I want to convert it to
         # a geographic area
         target_areas[dim_pair] = convert_projected_area_to_geographic(
@@ -150,20 +148,25 @@ def convert_projected_area_to_geographic(
 
     For now the target_crs is always going to be CRS('epsg:4326')
 
-    This is the "simple case" where we know that the x/y corners transform
-    directly to lon/lat corners. ***This does not handle polar grids.***
-    to handle polar you may be able to use area.boundary().
+    The geographic extent is found by looking at the lat/lon values of every
+    grid cell in the projected area and computing the min/max of those to get
+    an extent.
+
+    The geographic resolution is computed in degrees at using a conversion from
+    meters at the equator.
+
+    create_area_def will adjust the area by rounding to the nearest whole
+    number columns and rows and adjusting the resolution accordingly.
 
     """
     geographic_extent = get_geographic_area_extent(projected_area)
+    resolution = get_geographic_resolution(projected_area)
 
     geographic_area = create_area_def(
         'Geographic Area',
         target_crs,
         area_extent=geographic_extent,
-        width=projected_area.width,
-        height=projected_area.height,
-        shape=projected_area.shape,
+        resolution=resolution,
     )
     logger.debug(f'Source projected Area: {projected_area}')
     logger.debug(f'Converted Geographic Area: {geographic_area}')
@@ -182,6 +185,21 @@ def get_geographic_area_extent(
     """
     lons, lats = projected_area.get_lonlats()
     return (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+
+
+def get_geographic_resolution(projected_area: AreaDefinition) -> tuple[float, float]:
+    """Given a projected area, compute the equivalent geographic resolution.
+
+    The projected grid resolution in x/y meters is converted to an equivalent
+    lon/lat in degrees using the conversion from meters to degrees at the
+    equator using the WGS84 equatorial radius of 6,378,137 meters.
+
+    """
+    meters_per_degree = 111320.0
+    return tuple(
+        cell_dimension / meters_per_degree
+        for cell_dimension in projected_area.resolution
+    )
 
 
 def reorder_extents(min_x, min_y, max_x, max_y):
