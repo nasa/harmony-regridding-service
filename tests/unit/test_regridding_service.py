@@ -20,7 +20,7 @@ test_scale_extent = {
     'width, height, scale_extent, expected_width, expected_height, description',
     [
         (100, 50, test_scale_extent, 100, 50, 'Grid parameters are provided.'),
-        (None, None, None, 5, 6, 'Grid parameters are excluded from message.'),
+        (None, None, None, 5, 9, 'Grid parameters are excluded from message.'),
     ],
 )
 def test_regrid_projected_data_end_to_end(
@@ -80,3 +80,62 @@ def test_regrid_projected_data_end_to_end(
             ds_out['Observations_Data/tb_v_obs'].attrs['long_name']
             == 'Composite resolution observed (L2_SM_AP or L1C_TB) V-pol ...'
         ), description
+
+
+def test_regrid_smap_data_end_to_end(
+    test_spl3ftp_ncfile,
+    tmp_path,
+):
+    """Test the full regrid process for projected input data."""
+    input_filename = str(test_spl3ftp_ncfile)
+    output_filename = str(tmp_path / 'regridded_output.nc')
+    logger_mock = MagicMock()
+
+    # Define a target CRS [and optionally grid parameters]
+    params = {
+        'format': {
+            'mime': 'application/x-netcdf',
+            'crs': 'EPSG:4326',
+        },
+        'sources': [{'collection': 'C123-test', 'shortName': 'SPL3FTP'}],
+    }
+    message = HarmonyMessage(params)
+    source = HarmonySource({'collection': 'C123-TEST', 'shortName': 'SPL3FTP'})
+
+    # Mock generate_output_filename to control the output path
+    with patch(
+        'harmony_regridding_service.regridding_service.generate_output_filename',
+        return_value=output_filename,
+    ):
+        result_filename = regrid(message, input_filename, source, logger_mock)
+
+    assert result_filename == output_filename
+    assert Path(output_filename).exists()
+
+    expected_groups = [
+        '/Freeze_Thaw_Retrieval_Data_Polar',
+        '/Freeze_Thaw_Retrieval_Data_Global',
+    ]
+    expected = {
+        '/Freeze_Thaw_Retrieval_Data_Polar': {
+            'width': 263,
+            'height': 122,
+        },
+        '/Freeze_Thaw_Retrieval_Data_Global': {
+            'width': 186,
+            'height': 73,
+        },
+    }
+
+    with xr.open_datatree(output_filename) as dt:
+        for group in expected_groups:
+            expects = expected[group]
+
+            assert 'crs' in dt[group], f'failed: {group}'
+
+            assert dt[group].dims['y'] == expects['height'], f'failed: {group}'
+            assert dt[group].dims['x'] == expects['width'], f'failed: {group}'
+
+            assert 'longitude' in dt[group], f'failed: {group}'
+            assert 'latitude' in dt[group], f'failed: {group}'
+            assert 'altitude_dem' in dt[group], f'failed: {group}'

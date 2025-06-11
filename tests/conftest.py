@@ -49,6 +49,12 @@ def test_IMERG_ncfile(test_fixtures_dir):
 
 
 @pytest.fixture(scope='session')
+def test_spl3ftp_ncfile(test_fixtures_dir):
+    """Return path to the SPL3FTP test file."""
+    return Path(test_fixtures_dir, 'SPL3FTP_subsetted.nc4')
+
+
+@pytest.fixture(scope='session')
 def longitudes():
     """Return longitudes array used in tests."""
     return np.array([-180, -80, -45, 45, 80, 180], dtype=np.dtype('f8'))

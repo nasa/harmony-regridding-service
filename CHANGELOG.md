@@ -4,6 +4,22 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.4.0] - 2025-06-09
+
+### Changed
+
+- Implicit grids are now determined by their source grid information.
+
+    + This includes multiple target areas for collections that have multiple
+    horizontal grids (polar and global for example).  The target grid areas are
+    determined by the min/max values of the source data's longitude and
+    latitude values of their cell centers.  The geographic resolution, width or
+    height of a gridcell in degrees is estimated by converting the projected
+    cell width or height from meters to degrees using the circumference of the
+    Earth using the WGS84 equatorial radius of 6,378,137 meters. This
+    resolution will be adjusted so that there are an integer number of columns
+    and rows in the target grid.
+
 ## [v1.3.0] - 2025-06-04
 
 ### Changed
@@ -112,6 +128,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.4.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.4.0
 [v1.3.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.3.0
 [v1.2.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.2.0
 [v1.1.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.1.1

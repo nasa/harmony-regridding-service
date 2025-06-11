@@ -13,6 +13,7 @@ from pyresample.geometry import AreaDefinition, SwathDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
+    GridDimensionPair,
     get_column_dims,
     get_resampled_dimension_pairs,
     get_row_dims,
@@ -176,7 +177,7 @@ def copy_resampled_bounds_variable(
     source_ds: Dataset,
     target_ds: Dataset,
     bounds_var: str,
-    target_area: AreaDefinition,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
 ):
     """Copy computed values for dimension variable bounds variables."""
@@ -185,9 +186,11 @@ def copy_resampled_bounds_variable(
     xdims = get_column_dims(var_dims, var_info)
     ydims = get_row_dims(var_dims, var_info)
     if xdims:
+        target_area = target_areas[get_dim_pair_by_dim(xdims[0], var_info)]
         target_coords = target_area.projection_x_coords
         dim_name = xdims[0]
     else:
+        target_area = target_areas[get_dim_pair_by_dim(ydims[0], var_info)]
         target_coords = target_area.projection_y_coords
         dim_name = ydims[0]
 
@@ -266,7 +269,7 @@ def resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str]
 def create_resampled_dimensions(
     resampled_dim_pairs: list[tuple[str, str]],
     dataset: Dataset,
-    target_area: AreaDefinition,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
 ):
     """Create dimensions for the target resampled grids."""
@@ -274,8 +277,12 @@ def create_resampled_dimensions(
         xdim = get_column_dims(set(dim_pair), var_info)[0]
         ydim = get_row_dims(set(dim_pair), var_info)[0]
 
-        create_dimension(dataset, xdim, target_area.projection_x_coords.shape[0])
-        create_dimension(dataset, ydim, target_area.projection_y_coords.shape[0])
+        create_dimension(
+            dataset, xdim, target_areas[dim_pair].projection_x_coords.shape[0]
+        )
+        create_dimension(
+            dataset, ydim, target_areas[dim_pair].projection_y_coords.shape[0]
+        )
 
 
 def unresampled_variables(var_info: VarInfoFromNetCDF4) -> set[str]:
@@ -305,29 +312,26 @@ def get_resampled_dimensions(var_info: VarInfoFromNetCDF4) -> set[str]:
 
 
 def cache_resamplers(
-    filepath: str, var_info: VarInfoFromNetCDF4, target_area: AreaDefinition
+    filepath: str,
+    var_info: VarInfoFromNetCDF4,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
 ) -> None:
     """Precompute the resampling weights.
 
-    Use the regridding target area in conjunction with each 2D horizontal
-    dimension pair in the input source file to create an resampler and precompute
-    the weights to be used when resampling.
+    Use the regridding target areas in conjunction with each 2D grid dimension
+    pair in the input source file to create an resampler and precompute the
+    weights to be used when resampling.
 
     """
     grid_cache = {}
-
-    dimension_vars_mapping = var_info.group_variables_by_horizontal_dimensions()
-
-    for dimensions in dimension_vars_mapping:
-        # create swath definitions from each unique 2D grid dimensions found in
-        # the input file.
-        if len(dimensions) == 2:
-            logger.debug(f'computing weights for dimensions {dimensions}')
-            source_swath = compute_source_swath(dimensions, filepath, var_info)
-            grid_cache[dimensions] = DaskEWAResampler(source_swath, target_area)
-            grid_cache[dimensions].precompute(
-                rows_per_scan=get_rows_per_scan(source_swath.shape[0]),
-            )
+    for dim_pair in get_resampled_dimension_pairs(var_info):
+        logger.debug(f'computing weights for dimensions {dim_pair}')
+        # create swath definitions for each grid in the source file.
+        source_swath = compute_source_swath(dim_pair, filepath, var_info)
+        grid_cache[dim_pair] = DaskEWAResampler(source_swath, target_areas[dim_pair])
+        grid_cache[dim_pair].precompute(
+            rows_per_scan=get_rows_per_scan(source_swath.shape[0]),
+        )
 
     return grid_cache
 
@@ -357,7 +361,7 @@ def compute_source_swath(
 def transfer_resampled_dimensions(
     source_ds: Dataset,
     target_ds: Dataset,
-    target_area: AreaDefinition,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
 ) -> None:
     """Transfer all dimensions from source to target.
@@ -373,26 +377,27 @@ def transfer_resampled_dimensions(
     copy_dimensions(unchanged_dimensions, source_ds, target_ds)
 
     create_resampled_dimensions(
-        resampled_dimension_pairs, target_ds, target_area, var_info
+        resampled_dimension_pairs, target_ds, target_areas, var_info
     )
 
 
 def copy_resampled_dimension_variables(
     source_ds: Dataset,
     target_ds: Dataset,
-    target_area: AreaDefinition,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
 ) -> set[str]:
     """Copy over dimension variables that are changed in the target file."""
     dim_var_names = resampled_dimension_variable_names(var_info)
+
     processed_vars = copy_1d_dimension_variables(
-        source_ds, target_ds, dim_var_names, target_area, var_info
+        source_ds, target_ds, dim_var_names, target_areas, var_info
     )
 
     bounds_vars = dim_var_names - processed_vars
     for bounds_var in bounds_vars:
         processed_vars |= copy_resampled_bounds_variable(
-            source_ds, target_ds, bounds_var, target_area, var_info
+            source_ds, target_ds, bounds_var, target_areas, var_info
         )
 
     return processed_vars
@@ -532,7 +537,7 @@ def copy_1d_dimension_variables(
     source_ds: Dataset,
     target_ds: Dataset,
     dim_var_names: set[str],
-    target_area: AreaDefinition,
+    target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
 ) -> set[str]:
     """Copy 1 dimensional dimension variables.
@@ -551,6 +556,8 @@ def copy_1d_dimension_variables(
     ydims = get_row_dims(one_d_vars, var_info)
 
     for dim_name in one_d_vars:
+        # Get correct area for this dimension.
+        target_area = target_areas[get_dim_pair_by_dim(dim_name, var_info)]
         if dim_name in xdims:
             target_coords = target_area.projection_x_coords
             standard_metadata = {
@@ -581,6 +588,18 @@ def copy_1d_dimension_variables(
         t_var[:] = target_coords
 
     return one_d_vars
+
+
+def get_dim_pair_by_dim(
+    dim_name: str,
+    var_info: VarInfoFromNetCDF4,
+) -> GridDimensionPair:
+    """Get the horizontal dimension pair containing a particular dimension."""
+    return next(
+        dim_pair
+        for dim_pair in get_resampled_dimension_pairs(var_info)
+        if dim_name in dim_pair
+    )
 
 
 def get_bounds_var(var_info: VarInfoFromNetCDF4, dim_name: str) -> str:

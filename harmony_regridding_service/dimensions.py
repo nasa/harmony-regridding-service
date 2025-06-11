@@ -1,19 +1,28 @@
 """Module for handling dimension variables."""
 
 from collections.abc import Iterable
+from typing import NamedTuple
 
 from varinfo import VarInfoFromNetCDF4
 
 
+class GridDimensionPair(NamedTuple):
+    """Horizontal grid dimensions."""
+
+    dim1: str
+    dim2: str
+
+
 def horizontal_dims_for_variable(
     var_info: VarInfoFromNetCDF4, var_name: str
-) -> tuple[str, str]:
+) -> GridDimensionPair:
     """Return the horizontal dimensions for desired variable."""
     group_vars = var_info.group_variables_by_horizontal_dimensions()
-    return next(
+    dim_pair = next(
         (dims for dims, var_names in group_vars.items() if var_name in var_names),
         None,
     )
+    return GridDimensionPair(*dim_pair) if dim_pair else None
 
 
 def get_row_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
@@ -56,14 +65,14 @@ def is_row_dim(dim: str, var_info: VarInfoFromNetCDF4) -> str:
 
 def get_resampled_dimension_pairs(
     var_info: VarInfoFromNetCDF4,
-) -> list[tuple[str, str]]:
+) -> list[GridDimensionPair]:
     """Return a list of the resampled horizontal spatial dimensions.
 
     Gives a list of the 2-element horizontal dimensions that are used in
     regridding this granule file.
     """
     return [
-        dims
+        GridDimensionPair(*dims)
         for dims in var_info.group_variables_by_horizontal_dimensions()
         if len(dims) == 2
     ]

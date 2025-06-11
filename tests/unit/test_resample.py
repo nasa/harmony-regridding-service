@@ -260,6 +260,7 @@ def test_copy_resampled_bounds_variable(
 ):
     target_file = test_file
     target_area = test_area_fxn()
+    target_areas = {('/Grid/lon', '/Grid/lat'): target_area}
     var_info = var_info_fxn(test_IMERG_ncfile)
     bnds_var = '/Grid/lat_bnds'
     var_copied = None
@@ -275,10 +276,10 @@ def test_copy_resampled_bounds_variable(
         Dataset(test_IMERG_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_areas, var_info)
 
         var_copied = copy_resampled_bounds_variable(
-            source_ds, target_ds, bnds_var, target_area, var_info
+            source_ds, target_ds, bnds_var, target_areas, var_info
         )
 
     assert {bnds_var} == var_copied
@@ -328,13 +329,11 @@ def test_create_resampled_dimensions_root_dimensions(
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     width = 36
     height = 18
-    _generate_test_area = test_area_fxn(width=width, height=height)
+    test_areas = {('/lat', '/lon'): test_area_fxn(width=width, height=height)}
     target_file = test_file
 
     with Dataset(target_file, mode='w') as target_ds:
-        create_resampled_dimensions(
-            [('/lat', '/lon')], target_ds, _generate_test_area, var_info
-        )
+        create_resampled_dimensions([('/lat', '/lon')], target_ds, test_areas, var_info)
 
     with Dataset(target_file, mode='r') as validate:
         assert validate.dimensions['lat'].size == 18
@@ -348,13 +347,13 @@ def test_create_resampled_dimensions_group_level_dimensions(
     test_file,
 ):
     var_info = var_info_fxn(test_IMERG_ncfile)
-    _generate_test_area = test_area_fxn()
+    test_areas = {('/Grid/lon', '/Grid/lat'): test_area_fxn()}
     target_file = test_file
     with Dataset(target_file, mode='w') as target_ds:
         create_resampled_dimensions(
             [('/Grid/lon', '/Grid/lat')],
             target_ds,
-            _generate_test_area,
+            test_areas,
             var_info,
         )
 
@@ -431,16 +430,14 @@ def test_transfer_resampled_dimensions(
     """
     width = 36
     height = 18
-    _generate_test_area = test_area_fxn(width=width, height=height)
+    test_areas = {('/lon', '/lat'): test_area_fxn(width=width, height=height)}
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     target_file = test_file
     with (
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(
-            source_ds, target_ds, _generate_test_area, var_info
-        )
+        transfer_resampled_dimensions(source_ds, target_ds, test_areas, var_info)
 
     with Dataset(target_file, mode='r') as validate:
         assert validate.dimensions['bnds'].size == 2
@@ -459,7 +456,7 @@ def test_copy_resampled_dimension_variables(
     target_file = test_file
     width = 300
     height = 150
-    target_area = test_area_fxn(width=width, height=height)
+    target_areas = {('/lat', '/lon'): test_area_fxn(width=width, height=height)}
     var_info = var_info_fxn(test_MERRA2_ncfile)
     expected_vars_copied = {'/lon', '/lat'}
 
@@ -467,10 +464,10 @@ def test_copy_resampled_dimension_variables(
         Dataset(test_MERRA2_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_areas, var_info)
 
         vars_copied = copy_resampled_dimension_variables(
-            source_ds, target_ds, target_area, var_info
+            source_ds, target_ds, target_areas, var_info
         )
 
         assert expected_vars_copied == vars_copied
@@ -572,6 +569,7 @@ def test_copy_1d_dimension_variables(
 ):
     target_file = test_file
     target_area = test_area_fxn()
+    target_areas = {('/lon', '/lat'): target_area}
     var_info = var_info_fxn(test_1D_dimensions_ncfile)
     dim_var_names = {'/lon', '/lat'}
     expected_attributes = {'long_name', 'standard_name', 'units'}
@@ -580,9 +578,9 @@ def test_copy_1d_dimension_variables(
         Dataset(test_1D_dimensions_ncfile, mode='r') as source_ds,
         Dataset(target_file, mode='w') as target_ds,
     ):
-        transfer_resampled_dimensions(source_ds, target_ds, target_area, var_info)
+        transfer_resampled_dimensions(source_ds, target_ds, target_areas, var_info)
         vars_copied = copy_1d_dimension_variables(
-            source_ds, target_ds, dim_var_names, target_area, var_info
+            source_ds, target_ds, dim_var_names, target_areas, var_info
         )
 
     assert dim_var_names == vars_copied

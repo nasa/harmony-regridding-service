@@ -21,6 +21,7 @@ from pyresample.geometry import AreaDefinition
 from varinfo import VarInfoFromNetCDF4
 
 from harmony_regridding_service.dimensions import (
+    GridDimensionPair,
     get_column_dims,
     get_resampled_dimension_pairs,
     get_row_dims,
@@ -41,21 +42,36 @@ from harmony_regridding_service.message_utilities import (
 logger = getLogger(__name__)
 
 
-def compute_target_area(
+def compute_target_areas(
     message: HarmonyMessage,
     filepath: str,
     var_info: VarInfoFromNetCDF4,
-) -> AreaDefinition:
-    """Define the output area for your regridding operation.
+) -> dict[GridDimensionPair, AreaDefinition]:
+    """Define the output areas for your regridding operations.
 
-    Parse the harmony message and build a target AreaDefinition.  All
-    multi-dimensional variables will be regridded to this target area.
+    This function computes the target areas for resampling.
+
+    First The HarmonyMessage is searched for grid information, if this is
+    found this grid is used for all resampling operations in the file.
+
+    If there is no grid information in the HarmonyMessage, a target area is
+    generated from each horizontal grid pair in the source granule. That is,
+    we generate a target area for each unique grid in the input data.
+
+    We return a dictionary of the grid dimension pair pointing to their
+    AreaDefinitions
+
     """
     if any(
         (has_scale_extents(message), has_scale_sizes(message), has_dimensions(message))
     ):
-        # If there's any parts to a grid, get it from the message.
+        # If there's any grid parts, get the target area from the message and
+        # store it on every grid in the source.
         area_definition = get_area_definition_from_message(message)
+        area_definitions = {
+            dim_pair: area_definition
+            for dim_pair in get_resampled_dimension_pairs(var_info)
+        }
 
     elif same_source_and_target_crs(message, var_info):
         # Don't resample if you the source and target have the same CRS
@@ -64,11 +80,20 @@ def compute_target_area(
             'source and target CRS and no grid parameters.'
         )
     else:
-        # compute a target grid from the source data
+        # compute target grids from the source data
         target_crs = CRS(get_message_crs(message) or 'epsg:4326')
-        area_definition = create_target_area_from_source(filepath, var_info, target_crs)
+        area_definitions = create_target_areas_from_source(
+            filepath, var_info, target_crs
+        )
 
-    return area_definition
+    logger.debug('Using TARGET Area Definitions:')
+    for dim_pair, area in area_definitions.items():
+        logger.debug(f'dim_pair: {dim_pair}')
+        logger.debug(f'target Area: {area}')
+        logger.debug(f'target Area_extent: {area.area_extent}')
+        logger.debug(f'target crs: {area.crs.to_proj4()}')
+
+    return area_definitions
 
 
 def same_source_and_target_crs(
@@ -89,24 +114,31 @@ def same_source_and_target_crs(
     return target_crs.equals(source_crs, ignore_axis_order=True)
 
 
-def create_target_area_from_source(
+def create_target_areas_from_source(
     filepath: str, var_info: VarInfoFromNetCDF4, target_crs: CRS
-) -> AreaDefinition:
-    """Create the target area using the source grid information.
+) -> dict[GridDimensionPair, AreaDefinition]:
+    """Create the target areas using the source grid information.
 
-    TODO: Create area definition for every dimension pair, if the collection
-    had more than one grid.
+    Loop over the source grids generating the correct target areas for each.
+
+    return a dictionary of the grid dimension pairs to their corresponding
+    AreaDefinitions.
+
     """
     dimension_pairs = get_resampled_dimension_pairs(var_info)
-    projected_area = create_area_definition_for_projected_source_grid(
-        filepath, dimension_pairs[0], var_info
-    )
+    target_areas = {}
+    for dim_pair in dimension_pairs:
+        logger.info(f'Generating Target Areas from Source for: {dim_pair}')
+        projected_area = create_area_definition_for_projected_source_grid(
+            filepath, dim_pair, var_info
+        )
+        # I have the correct projected AreaDefinition, but I want to convert it to
+        # a geographic area
+        target_areas[dim_pair] = convert_projected_area_to_geographic(
+            projected_area, target_crs
+        )
 
-    # I have the correct projected areaDefinition, but I want to convert it to
-    # a geographic area
-    geographic_area = convert_projected_area_to_geographic(projected_area, target_crs)
-
-    return geographic_area
+    return target_areas
 
 
 def convert_projected_area_to_geographic(
@@ -116,23 +148,58 @@ def convert_projected_area_to_geographic(
 
     For now the target_crs is always going to be CRS('epsg:4326')
 
-    This is the "simple case" where we know that the x/y corners transform
-    directly to lon/lat corners. ***This does not handle polar grids.***
-    to handle polar you may be able to use area.boundary().
+    The geographic extent is found by looking at the lat/lon values of every
+    grid cell in the projected area and computing the min/max of those to get
+    an extent.
+
+    The geographic resolution is computed in degrees using a conversion from
+    meters at the equator.
+
+    create_area_def will adjust the area by rounding to the nearest whole
+    number columns and rows and adjusting the resolution accordingly.
 
     """
+    geographic_extent = get_geographic_area_extent(projected_area)
+    resolution = get_geographic_resolution(projected_area)
+
     geographic_area = create_area_def(
         'Geographic Area',
         target_crs,
-        area_extent=reorder_extents(*projected_area.area_extent_ll),
-        width=projected_area.width,
-        height=projected_area.height,
-        shape=projected_area.shape,
+        area_extent=geographic_extent,
+        resolution=resolution,
     )
     logger.debug(f'Source projected Area: {projected_area}')
     logger.debug(f'Converted Geographic Area: {geographic_area}')
 
     return geographic_area
+
+
+def get_geographic_area_extent(
+    projected_area: AreaDefinition,
+) -> tuple[float, float, float, float]:
+    """Return the geographic area extent.
+
+    Compute the latitude and longitude for every grid cell in the
+    projected_area's grid and return the area extent in lon and lat.
+
+    """
+    lons, lats = projected_area.get_lonlats()
+    return (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+
+
+def get_geographic_resolution(projected_area: AreaDefinition) -> tuple[float, float]:
+    """Given a projected area, compute the equivalent geographic resolution.
+
+    The projected grid resolution in x/y meters is converted to an equivalent
+    lon/lat in degrees using the conversion from meters to degrees at the
+    equator using the WGS84 equatorial radius of 6,378,137 meters.
+
+    """
+    meters_per_degree = 111320.0
+    return tuple(
+        cell_dimension / meters_per_degree
+        for cell_dimension in projected_area.resolution
+    )
 
 
 def reorder_extents(min_x, min_y, max_x, max_y):
@@ -183,6 +250,13 @@ def get_area_definition_from_message(
     width = grid_width(message)
 
     projection = message.format.crs or 'EPSG:4326'
+
+    logger.info(
+        f'Creating target area from message:\n'
+        f'proj:{projection}\n'
+        f'area_extent:{area_extent}\n'
+        f'height:{height}\nwidth:{width}'
+    )
 
     return AreaDefinition(
         'target_area_id',
