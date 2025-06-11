@@ -593,7 +593,7 @@ def copy_1d_dimension_variables(
 def get_dim_pair_by_dim(
     dim_name: str,
     var_info: VarInfoFromNetCDF4,
-):
+) -> GridDimensionPair:
     """Get the horizontal dimension pair containing a particular dimension."""
     return next(
         dim_pair

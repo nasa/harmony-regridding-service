@@ -673,7 +673,7 @@ def test_convert_projected_area_to_geographic_ease_grid_global(mock_create_area_
     assert actual_geographic_area.height == 517
 
     # creating an area definition by extent and resolution does not ensure
-    # whole numbers of gridcells and pyresample adjusts the resolution
+    # whole numbers of grid cells and pyresample adjusts the resolution
     # accordingly.
     assert actual_geographic_area.resolution != expected_resolution
 
@@ -726,7 +726,7 @@ def test_convert_projected_area_to_geographic_ease_grid_polar(mock_create_area_d
     assert actual_geographic_area.height == 529
 
     # creating an area definition by extent and resolution does not ensure
-    # whole numbers of gridcells and pyresample adjusts the resolution
+    # whole numbers of grid cells and pyresample adjusts the resolution
     # accordingly.
     assert actual_geographic_area.resolution != expected_resolution
 

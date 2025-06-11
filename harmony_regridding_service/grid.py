@@ -132,7 +132,7 @@ def create_target_areas_from_source(
         projected_area = create_area_definition_for_projected_source_grid(
             filepath, dim_pair, var_info
         )
-        # I have the correct projected areaDefinition, but I want to convert it to
+        # I have the correct projected AreaDefinition, but I want to convert it to
         # a geographic area
         target_areas[dim_pair] = convert_projected_area_to_geographic(
             projected_area, target_crs
@@ -152,7 +152,7 @@ def convert_projected_area_to_geographic(
     grid cell in the projected area and computing the min/max of those to get
     an extent.
 
-    The geographic resolution is computed in degrees at using a conversion from
+    The geographic resolution is computed in degrees using a conversion from
     meters at the equator.
 
     create_area_def will adjust the area by rounding to the nearest whole
