@@ -11,7 +11,7 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 - Implicit grids are now determined by their source grid information.
 
     + This includes multiple target areas for collections that have multiple
-    horzontal grids (polar and global for example).  The target grid areas are
+    horizontal grids (polar and global for example).  The target grid areas are
     determined by the min/max values of the source data's longitude and
     latitude values of their cell centers.  The geographic resolution, width or
     height of a gridcell in degrees is estimated by converting the projected
