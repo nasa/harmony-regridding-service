@@ -209,6 +209,82 @@ def test_compute_target_areas_with_only_CRS_parameter(
     assert CRS.from_proj4(actual_area.proj_str).equals(crs, ignore_axis_order=True)
 
 
+@patch(
+    'harmony_regridding_service.grid.create_target_areas_from_source',
+    wraps=create_target_areas_from_source,
+)
+@patch(
+    'harmony_regridding_service.grid.get_area_definition_from_message',
+    wraps=get_area_definition_from_message,
+)
+def test_compute_target_areas_with_mulitple_grids_no_params(
+    mock_get_area_definition_from_message,
+    mock_create_target_areas_from_source,
+    test_spl3ftp_ncfile,
+    var_info_fxn,
+):
+    """Ensure Area Definition generated from source for both grids.
+
+    This test uses an empty Harmony Message, and verifies
+    that the resulting target areas from compute_target_areas are generated from the
+    source grid.
+
+    """
+    var_info = var_info_fxn(test_spl3ftp_ncfile)
+    crs = CRS.from_epsg(4326)
+
+    message = HarmonyMessage({})
+
+    expected_global_grid = GridDimensionPair(
+        '/Freeze_Thaw_Retrieval_Data_Global/y', '/Freeze_Thaw_Retrieval_Data_Global/x'
+    )
+    expected_global = {
+        'width': 186,
+        'height': 73,
+        'extent': (-70.02074, 60.128553, -9.89626, 83.63197),
+    }
+    expected_polar_grid = GridDimensionPair(
+        '/Freeze_Thaw_Retrieval_Data_Polar/y', '/Freeze_Thaw_Retrieval_Data_Polar/x'
+    )
+    expected_polar = {
+        'width': 263,
+        'height': 122,
+        'extent': (-86.361813, 48.6998, -1.5823, 88.0526),
+    }
+
+    actual_area_definitions = compute_target_areas(
+        message, test_spl3ftp_ncfile, var_info
+    )
+
+    mock_create_target_areas_from_source.assert_called_once_with(
+        test_spl3ftp_ncfile, var_info, crs
+    )
+    mock_get_area_definition_from_message.assert_not_called()
+
+    # Assert both grids present in the area definitions.
+    assert expected_polar_grid in actual_area_definitions
+    actual_polar_area = actual_area_definitions[expected_polar_grid]
+    assert actual_polar_area.shape == (
+        expected_polar['height'],
+        expected_polar['width'],
+    )
+    assert actual_polar_area.area_extent == approx(expected_polar['extent'], abs=1e-4)
+    assert CRS.from_proj4(actual_polar_area.proj_str).equals(
+        crs, ignore_axis_order=True
+    )
+
+    assert expected_global_grid in actual_area_definitions
+    actual_global_area = actual_area_definitions[expected_global_grid]
+    assert actual_global_area.shape == (
+        expected_global['height'],
+        expected_global['width'],
+    )
+    assert actual_global_area.area_extent == approx(expected_global['extent'], abs=1e-4)
+    assert CRS.from_proj4(actual_global_area.proj_str).equals(
+        crs, ignore_axis_order=True
+    )
+
+
 @patch('harmony_regridding_service.grid.AreaDefinition', wraps=AreaDefinition)
 def test_get_area_definition_from_message(mock_area_definition):
     crs = '+datum=WGS84 +no_defs +proj=longlat +type=crs'
