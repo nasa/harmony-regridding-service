@@ -46,7 +46,7 @@ def resample_variable_data(
     var_info: VarInfoFromNetCDF4,
     var_name: str,
     fill_value: np.number | None,
-) -> None:
+) -> np.ndarray:
     """Recursively resample variable data in N-dimensions.
 
     A recursive function that reduces an N-dimensional variable to the base
@@ -118,12 +118,12 @@ def resample_n_dimensional_variables(
 
 
 def resample_layer(
-    source_plane: np.array,
+    source_plane: np.ndarray,
     resampler: DaskEWAResampler,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
     fill_value: np.number | None,
-) -> np.array:
+) -> np.ndarray:
     """Prepare the input layer, resample and return the results."""
     # pyresample only uses float64 so cast all data before resampling and
     # then back to your original data size.
@@ -267,7 +267,7 @@ def resampled_dimension_variable_names(var_info: VarInfoFromNetCDF4) -> set[str]
 
 
 def create_resampled_dimensions(
-    resampled_dim_pairs: list[tuple[str, str]],
+    resampled_dim_pairs: list[GridDimensionPair],
     dataset: Dataset,
     target_areas: dict[GridDimensionPair, AreaDefinition],
     var_info: VarInfoFromNetCDF4,
@@ -315,7 +315,7 @@ def cache_resamplers(
     filepath: str,
     var_info: VarInfoFromNetCDF4,
     target_areas: dict[GridDimensionPair, AreaDefinition],
-) -> None:
+) -> dict[GridDimensionPair, DaskEWAResampler]:
     """Precompute the resampling weights.
 
     Use the regridding target areas in conjunction with each 2D grid dimension
@@ -421,11 +421,11 @@ def get_rows_per_scan(total_rows: int) -> int:
 
 
 def prepare_data_plane(
-    data: np.array,
+    data: np.ndarray,
     var_info: VarInfoFromNetCDF4,
     var_name: str,
     cast_to: np.dtype | None,
-) -> np.array:
+) -> np.ndarray:
     """Perform Type casting and transpose 2d data array when necessary.
 
     Also perform a transposition if the data dimension organization requires.

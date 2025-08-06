@@ -53,7 +53,7 @@ def regrid(
 
     var_info = VarInfoFromNetCDF4(
         input_filepath,
-        short_name=source.shortName,
+        short_name=source.shortName,  # pyright: ignore[reportAttributeAccessIssue]
         config_file=HRS_VARINFO_CONFIG_FILENAME,
     )
 
