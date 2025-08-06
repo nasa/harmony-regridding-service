@@ -1,6 +1,4 @@
-"""Test the utilities module."""
-
-from unittest import TestCase
+"""Test the File IO module."""
 
 from harmony_service_lib.message import Message
 from netCDF4 import Dataset
@@ -23,52 +21,56 @@ from harmony_regridding_service.resample import (
 )
 
 
-class TestUtilities(TestCase):
-    """A class testing the harmony_regridding_service.utilities module.
+class TestGetFileMimeType:
+    """Test get_file_mime_type function."""
 
-    TODO: Update this to pytest.
+    def test_file_with_known_mime_type(self):
+        """Ensure a MIME type can be retrieved from an input file path."""
+        assert get_file_mime_type('file.nc') == 'application/x-netcdf'
+
+    def test_file_with_mime_type_from_dictionary(self):
+        """File with MIME type retrieved from dictionary."""
+        assert get_file_mime_type('file.nc4') == 'application/x-netcdf4'
+
+    def test_file_with_unknown_mime_type(self):
+        """File with entirely unknown MIME type."""
+        assert get_file_mime_type('file.xyzzyx') is None
+
+    def test_upper_case_letters_handled(self):
+        """Upper case letters handled."""
+        assert get_file_mime_type('file.HDF5') == 'application/x-hdf5'
+
+
+class TestHasValidInterpolation:
+    """Test has_valid_interpolation function.
+
+    Ensure that the function correctly determines if the supplied
+    Harmony message either omits the `format.interpolation` attribute,
+    or specifies EWA via a fully spelled-out string. The TRT-210 MVP
+    only allows for interpolation using EWA.
     """
 
-    def test_get_file_mime_type(self):
-        """Ensure a MIME type can be retrieved from an input file path."""
-        with self.subTest('File with MIME type known by Python.'):
-            self.assertEqual(get_file_mime_type('file.nc'), 'application/x-netcdf')
+    def test_format_none_returns_true(self):
+        """Format = None returns True."""
+        test_message = Message({})
+        assert has_valid_interpolation(test_message) is True
 
-        with self.subTest('File with MIME type retrieved from dictionary.'):
-            self.assertEqual(get_file_mime_type('file.nc4'), 'application/x-netcdf4')
+    def test_format_interpolation_none_returns_true(self):
+        """format.interpolation = None returns True."""
+        test_message = Message({'format': {}})
+        assert has_valid_interpolation(test_message) is True
 
-        with self.subTest('File with entirely unknown MIME type.'):
-            self.assertIsNone(get_file_mime_type('file.xyzzyx'))
+    def test_ewa_spelled_fully_returns_true(self):
+        """EWA (spelled fully) returns True."""
+        test_message = Message(
+            {'format': {'interpolation': 'Elliptical Weighted Averaging'}}
+        )
+        assert has_valid_interpolation(test_message) is True
 
-        with self.subTest('Upper case letters handled.'):
-            self.assertEqual(get_file_mime_type('file.HDF5'), 'application/x-hdf5')
-
-    def test_has_valid_interpolation(self):
-        """Test has_valid_interpolation.
-
-        Ensure that the function correctly determines if the supplied
-        Harmony message either omits the `format.interpolation` attribute,
-        or specifies EWA via a fully spelled-out string. The TRT-210 MVP
-        only allows for interpolation using EWA.
-
-        """
-        with self.subTest('format = None returns True'):
-            test_message = Message({})
-            self.assertTrue(has_valid_interpolation(test_message))
-
-        with self.subTest('format.interpolation = None returns True'):
-            test_message = Message({'format': {}})
-            self.assertTrue(has_valid_interpolation(test_message))
-
-        with self.subTest('EWA (spelled fully) returns True'):
-            test_message = Message(
-                {'format': {'interpolation': 'Elliptical Weighted Averaging'}}
-            )
-            self.assertTrue(has_valid_interpolation(test_message))
-
-        with self.subTest('Unexpected interpolation returns False'):
-            test_message = Message({'format': {'interpolation': 'Bilinear'}})
-            self.assertFalse(has_valid_interpolation(test_message))
+    def test_unexpected_interpolation_returns_false(self):
+        """Unexpected interpolation returns False."""
+        test_message = Message({'format': {'interpolation': 'Bilinear'}})
+        assert has_valid_interpolation(test_message) is False
 
 
 def test_walk_groups(test_file):
@@ -83,8 +85,8 @@ def test_walk_groups(test_file):
 
     actual_visited = set()
     with Dataset(target_path, mode='r') as validate:
-        for groups in walk_groups(validate):
-            for group in groups:
+        for wgroups in walk_groups(validate):
+            for group in wgroups:
                 actual_visited.update([group.name])
 
     assert expected_visited == actual_visited
