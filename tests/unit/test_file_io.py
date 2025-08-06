@@ -10,6 +10,7 @@ from harmony_regridding_service.file_io import (
     copy_var_without_metadata,
     get_file_mime_type,
     get_or_create_variable_in_dataset,
+    input_grid_mappings,
     transfer_metadata,
     walk_groups,
 )
@@ -203,3 +204,66 @@ def test_get_or_create_variable_in_dataset(test_ATL14_ncfile):
         var_flat = get_or_create_variable_in_dataset(source_ds, '/ice_area')
         expected_flat = source_ds.variables['ice_area']
         assert expected_flat == var_flat
+
+
+def test_collect_grid_mappings_expected(test_spl3ftp_ncfile):
+    expected_grid_mappings = {
+        '/EASE2_global_projection_36km',
+        '/EASE2_north_polar_projection_36km',
+    }
+
+    test_vars = {
+        'Freeze_Thaw_Retrieval_Data_Global/longitude',
+        'Freeze_Thaw_Retrieval_Data_Global/latitude',
+        'Freeze_Thaw_Retrieval_Data_Global/transition_direction'
+        'Freeze_Thaw_Retrieval_Data_Polar/longitude',
+        'Freeze_Thaw_Retrieval_Data_Polar/latitude',
+        'Freeze_Thaw_Retrieval_Data_Polar/transition_direction',
+    }
+
+    with Dataset(test_spl3ftp_ncfile, mode='r') as source_ds:
+        actual_grid_mappings = input_grid_mappings(source_ds, test_vars)
+        assert actual_grid_mappings == expected_grid_mappings
+
+
+def test_collect_grid_mappings_limited_vars(test_spl3ftp_ncfile):
+    expected_grid_mappings = {
+        '/EASE2_global_projection_36km',
+    }
+
+    test_vars = {
+        'Freeze_Thaw_Retrieval_Data_Global/longitude',
+        'Freeze_Thaw_Retrieval_Data_Global/latitude',
+        'Freeze_Thaw_Retrieval_Data_Global/transition_direction',
+    }
+
+    with Dataset(test_spl3ftp_ncfile, mode='r') as source_ds:
+        actual_grid_mappings = input_grid_mappings(source_ds, test_vars)
+        assert actual_grid_mappings == expected_grid_mappings
+
+
+def test_collect_grid_mappings_vars_has_no_mapping(test_spl3ftp_ncfile):
+    expected_grid_mappings = set()
+
+    test_vars = {
+        'Freeze_Thaw_Retrieval_Data_Global/am_pm',
+        'Freeze_Thaw_Retrieval_Data_Polar/am_pm',
+    }
+
+    with Dataset(test_spl3ftp_ncfile, mode='r') as source_ds:
+        actual_grid_mappings = input_grid_mappings(source_ds, test_vars)
+        assert actual_grid_mappings == expected_grid_mappings
+
+
+def test_collect_grid_mappings_var_does_not_exist(test_spl3ftp_ncfile):
+    expected_grid_mappings = set()
+
+    test_vars = {
+        'Freeze_Thaw_Retrieval_Data_Polar/ThisVariableIsFake',
+        'FakeFreeze_Thaw_Retrieval_Data_Global/am_pm',
+        'Freeze_Thaw_Retrieval_Data_Polar/am_pm',
+    }
+
+    with Dataset(test_spl3ftp_ncfile, mode='r') as source_ds:
+        actual_grid_mappings = input_grid_mappings(source_ds, test_vars)
+        assert actual_grid_mappings == expected_grid_mappings

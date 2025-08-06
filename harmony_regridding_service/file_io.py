@@ -164,3 +164,27 @@ def get_or_create_variable_in_dataset(dataset: Dataset, variable_name: str) -> V
 def is_compressible(dtype: np.dtype) -> bool:
     """Returns false if the variable has a non-compressible type."""
     return not (np.issubdtype(dtype, np.str_) or np.issubdtype(dtype, np.object_))
+
+
+def input_grid_mappings(dataset: Dataset, variables: set[str]) -> set[str]:
+    """Collect all grid_mapping attribute values from the given variables.
+
+    Args:
+        dataset: The NetCDF4 Dataset to search
+        variables: Set of full variable paths to check (e.g., 'group/subgroup/variable')
+
+    Returns:
+        Set of the values of any grid_mapping attribute found
+    """
+    grid_mappings = set()
+
+    for var_path in variables:
+        try:
+            var = dataset[var_path]
+            if hasattr(var, 'grid_mapping'):
+                grid_mappings.add(var.grid_mapping)
+        except (KeyError, IndexError):
+            # Variable, Group doesn't exist, skip it
+            continue
+
+    return grid_mappings
