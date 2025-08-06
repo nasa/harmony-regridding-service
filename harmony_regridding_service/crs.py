@@ -11,7 +11,7 @@ from harmony_regridding_service.dimensions import (
     horizontal_dims_for_variable,
 )
 from harmony_regridding_service.file_io import (
-    get_variable_from_dataset,
+    get_or_create_variable_in_dataset,
 )
 
 
@@ -70,5 +70,5 @@ def add_grid_mapping_metadata(
     """Link regridded variables to the correct crs variable."""
     for var_name in variables:
         crs_variable_name = crs_map[horizontal_dims_for_variable(var_info, var_name)]
-        var = get_variable_from_dataset(target_ds, var_name)
+        var = get_or_create_variable_in_dataset(target_ds, var_name)
         var.setncattr('grid_mapping', crs_variable_name)
