@@ -4,6 +4,14 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.5.0] - 2025-08-11
+
+### Changed
+
+- Source files that have grid_mapping values pointing to variables will have
+  those variables removed in the output file as they are no longer valid.
+
+
 ## [v1.4.0] - 2025-06-09
 
 ### Changed
