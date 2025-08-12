@@ -188,3 +188,41 @@ def input_grid_mappings(dataset: Dataset, variables: set[str]) -> set[str]:
             continue
 
     return grid_mappings
+
+
+def filter_grid_mappings_to_variables(grid_mapping_values: set[str]) -> set[str]:
+    """Return the grid mapping variable names from grid_mapping values.
+
+    In CF the  grid_mapping attribute can take two formats:
+    https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#grid-mappings-and-projections
+
+    In the first format, it is a single word, which names a grid mapping variable.
+
+    In the second format, it is a blank-separated list of words:
+
+
+    <gridMappingVariable>: <coordinatesVariable> [<coordinatesVariable>...]
+    [<gridMappingVariable>: <coordinatesVariable> [<coordinatesVariable>...]..]
+
+    Which identifies one or more grid mapping variables, and with each grid
+    mapping associates one or more coordinatesVariables, i.e. coordinate
+    variables or auxiliary coordinate variables.
+
+    This function will return a list of the grid mapping variable names,
+    dropping any  coordinate variables.
+    """
+    grid_mapping_variables = set()
+
+    for grid_mapping_value in grid_mapping_values:
+        if ':' in grid_mapping_value:
+            # find variable names in the second form
+            # "var: coord1 coord2 var2: coord3 coord4"
+            grid_mapping_variables.update(
+                var_part[:-1]
+                for var_part in grid_mapping_value.split()
+                if var_part.endswith(':')
+            )
+        else:
+            grid_mapping_variables.add(grid_mapping_value)
+
+    return grid_mapping_variables

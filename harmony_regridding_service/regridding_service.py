@@ -21,6 +21,7 @@ from harmony_regridding_service.exceptions import (
 )
 from harmony_regridding_service.file_io import (
     clone_variables,
+    filter_grid_mappings_to_variables,
     input_grid_mappings,
     transfer_metadata,
 )
@@ -80,13 +81,15 @@ def regrid(
 
         vars_to_process = var_info.get_all_variables()
         unresampled_vars = unresampled_variables(var_info)
-        grid_mappings = input_grid_mappings(source_ds, vars_to_process)
+        grid_mapping_variable_names = filter_grid_mappings_to_variables(
+            input_grid_mappings(source_ds, vars_to_process)
+        )
 
-        logger.info(f'dropping grid_mappings: {grid_mappings}')
-        vars_to_process -= grid_mappings
+        logger.info(f'dropping grid_mappings: {grid_mapping_variable_names}')
+        vars_to_process -= grid_mapping_variable_names
 
         cloned_vars = clone_variables(
-            source_ds, target_ds, unresampled_vars - grid_mappings
+            source_ds, target_ds, unresampled_vars - grid_mapping_variable_names
         )
         logger.info(f'cloned variables: {cloned_vars}')
         vars_to_process -= cloned_vars

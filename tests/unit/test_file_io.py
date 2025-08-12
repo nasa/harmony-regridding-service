@@ -8,6 +8,7 @@ from harmony_regridding_service.file_io import (
     clone_variables,
     copy_var_with_attrs,
     copy_var_without_metadata,
+    filter_grid_mappings_to_variables,
     get_file_mime_type,
     get_or_create_variable_in_dataset,
     input_grid_mappings,
@@ -267,3 +268,27 @@ def test_collect_grid_mappings_var_does_not_exist(test_spl3ftp_ncfile):
     with Dataset(test_spl3ftp_ncfile, mode='r') as source_ds:
         actual_grid_mappings = input_grid_mappings(source_ds, test_vars)
         assert actual_grid_mappings == expected_grid_mappings
+
+
+def test_filter_grid_mappings_to_variables():
+    test_mapping_values = {
+        'crsName',
+        'anotherCrsName',
+        'crs1: coord1 coord2 crs2: coord3 coord4',
+        'crs3: coord1 coord2',
+        'crs4: coord5 coord6 crs4: coord5 coord6',
+    }
+
+    expected_filtered_variables = {
+        'crsName',
+        'anotherCrsName',
+        'crs1',
+        'crs2',
+        'crs3',
+        'crs4',
+    }
+    actual_grid_mapping_variables = filter_grid_mappings_to_variables(
+        test_mapping_values
+    )
+
+    assert actual_grid_mapping_variables == expected_filtered_variables
