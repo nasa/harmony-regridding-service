@@ -272,20 +272,23 @@ def test_collect_grid_mappings_var_does_not_exist(test_spl3ftp_ncfile):
 
 def test_filter_grid_mappings_to_variables():
     test_mapping_values = {
-        'crsName',
+        '/crsName',
         'anotherCrsName',
         'crs1: coord1 coord2 crs2: coord3 coord4',
         'crs3: coord1 coord2',
         'crs4: coord5 coord6 crs4: coord5 coord6',
+        '/crs5: coord6 /crs6: coord6',
     }
 
     expected_filtered_variables = {
-        'crsName',
-        'anotherCrsName',
-        'crs1',
-        'crs2',
-        'crs3',
-        'crs4',
+        '/crsName',
+        '/anotherCrsName',
+        '/crs1',
+        '/crs2',
+        '/crs3',
+        '/crs4',
+        '/crs5',
+        '/crs6',
     }
     actual_grid_mapping_variables = filter_grid_mappings_to_variables(
         test_mapping_values

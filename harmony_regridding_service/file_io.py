@@ -209,7 +209,9 @@ def filter_grid_mappings_to_variables(grid_mapping_values: set[str]) -> set[str]
     variables or auxiliary coordinate variables.
 
     This function will return a list of the grid mapping variable names,
-    dropping any  coordinate variables.
+    dropping any coordinate variables.  It will ensure the first character of
+    any is a slash.
+
     """
     grid_mapping_variables = set()
 
@@ -217,12 +219,13 @@ def filter_grid_mappings_to_variables(grid_mapping_values: set[str]) -> set[str]
         if ':' in grid_mapping_value:
             # find variable names in the second form
             # "var: coord1 coord2 var2: coord3 coord4"
+            # "/var: coord ...."
             grid_mapping_variables.update(
-                var_part[:-1]
+                f'/{var_part[:-1].lstrip("/")}'
                 for var_part in grid_mapping_value.split()
                 if var_part.endswith(':')
             )
         else:
-            grid_mapping_variables.add(grid_mapping_value)
+            grid_mapping_variables.add(f'/{grid_mapping_value.lstrip("/")}')
 
     return grid_mapping_variables
