@@ -425,7 +425,7 @@ def compute_array_bounds(values: np.ndarray) -> tuple[np.float64, np.float64]:
     each end of the vector.
 
     Args:
-      values: np.array of regularly spaced values with length > 1 representing
+      values: np.ndarray of regularly spaced values with length > 1 representing
       cell centers of a gridcell.
 
     Returns:

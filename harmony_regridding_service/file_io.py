@@ -105,7 +105,7 @@ def copy_var_without_metadata(
 
     """
     var = PurePath(variable_name)
-    s_var = get_variable_from_dataset(source_ds, variable_name)
+    s_var = get_or_create_variable_in_dataset(source_ds, variable_name)
 
     # Create target variable
     t_group = target_ds.createGroup(var.parent)
@@ -151,7 +151,7 @@ def clone_variables(
     return variables
 
 
-def get_variable_from_dataset(dataset: Dataset, variable_name: str) -> Variable:
+def get_or_create_variable_in_dataset(dataset: Dataset, variable_name: str) -> Variable:
     """Return a variable from a fully qualified variable name.
 
     This will return an existing or create a new variable.
@@ -164,3 +164,68 @@ def get_variable_from_dataset(dataset: Dataset, variable_name: str) -> Variable:
 def is_compressible(dtype: np.dtype) -> bool:
     """Returns false if the variable has a non-compressible type."""
     return not (np.issubdtype(dtype, np.str_) or np.issubdtype(dtype, np.object_))
+
+
+def input_grid_mappings(dataset: Dataset, variables: set[str]) -> set[str]:
+    """Collect all grid_mapping attribute values from the given variables.
+
+    Args:
+        dataset: The NetCDF4 Dataset to search
+        variables: Set of full variable paths to check (e.g., 'group/subgroup/variable')
+
+    Returns:
+        Set of the values of any grid_mapping attribute found
+    """
+    grid_mappings = set()
+
+    for var_path in variables:
+        try:
+            var = dataset[var_path]
+            if hasattr(var, 'grid_mapping'):
+                grid_mappings.add(var.grid_mapping)
+        except (KeyError, IndexError):
+            # Variable, Group doesn't exist, skip it
+            continue
+
+    return grid_mappings
+
+
+def filter_grid_mappings_to_variables(grid_mapping_values: set[str]) -> set[str]:
+    """Return the grid mapping variable names from grid_mapping values.
+
+    In CF the  grid_mapping attribute can take two formats:
+    https://cfconventions.org/Data/cf-conventions/cf-conventions-1.12/cf-conventions.html#grid-mappings-and-projections
+
+    In the first format, it is a single word, which names a grid mapping variable.
+
+    In the second format, it is a blank-separated list of words:
+
+
+    <gridMappingVariable>: <coordinatesVariable> [<coordinatesVariable>...]
+    [<gridMappingVariable>: <coordinatesVariable> [<coordinatesVariable>...]..]
+
+    Which identifies one or more grid mapping variables, and with each grid
+    mapping associates one or more coordinatesVariables, i.e. coordinate
+    variables or auxiliary coordinate variables.
+
+    This function will return a list of the grid mapping variable names,
+    dropping any coordinate variables.  It will ensure the first character of
+    any is a slash.
+
+    """
+    grid_mapping_variables = set()
+
+    for grid_mapping_value in grid_mapping_values:
+        if ':' in grid_mapping_value:
+            # find variable names in the second form
+            # "var: coord1 coord2 var2: coord3 coord4"
+            # "/var: coord ...."
+            grid_mapping_variables.update(
+                f'/{var_part[:-1].lstrip("/")}'
+                for var_part in grid_mapping_value.split()
+                if var_part.endswith(':')
+            )
+        else:
+            grid_mapping_variables.add(f'/{grid_mapping_value.lstrip("/")}')
+
+    return grid_mapping_variables

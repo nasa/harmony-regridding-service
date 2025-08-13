@@ -46,5 +46,4 @@ def regrid_cli_entry(
 
     """
     harmony_message = get_harmony_message_from_params(params)
-    source = HarmonySource(source)
-    return regrid(harmony_message, source_filename, source, call_logger)
+    return regrid(harmony_message, source_filename, HarmonySource(source), call_logger)

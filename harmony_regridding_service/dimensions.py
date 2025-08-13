@@ -15,7 +15,7 @@ class GridDimensionPair(NamedTuple):
 
 def horizontal_dims_for_variable(
     var_info: VarInfoFromNetCDF4, var_name: str
-) -> GridDimensionPair:
+) -> GridDimensionPair | None:
     """Return the horizontal dimensions for desired variable."""
     group_vars = var_info.group_variables_by_horizontal_dimensions()
     dim_pair = next(
@@ -25,7 +25,7 @@ def horizontal_dims_for_variable(
     return GridDimensionPair(*dim_pair) if dim_pair else None
 
 
-def get_row_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> str:
+def get_row_dims(dims: Iterable[str], var_info: VarInfoFromNetCDF4) -> list[str]:
     """Return name for vertical grid dimension [row/latitude/y].
 
     This is the up/down dimension for a normal grid.
