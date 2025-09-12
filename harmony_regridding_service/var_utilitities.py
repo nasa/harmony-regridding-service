@@ -1,6 +1,7 @@
 """Variable helper functions.
 
-A collection of functions for getting information about variables.
+A collection of functions for getting information about variables, mostly with
+varinfo.
 
 """
 
