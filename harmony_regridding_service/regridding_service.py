@@ -33,6 +33,7 @@ from harmony_regridding_service.resample import (
     transfer_resampled_dimensions,
     unresampled_variables,
 )
+from harmony_regridding_service.var_utilitities import get_unprocessable_variables
 
 logger = getLogger(__name__)
 
@@ -81,6 +82,7 @@ def regrid(
 
         vars_to_process = var_info.get_all_variables()
         unresampled_vars = unresampled_variables(var_info)
+
         grid_mapping_variable_names = filter_grid_mappings_to_variables(
             input_grid_mappings(source_ds, vars_to_process)
         )
@@ -100,8 +102,12 @@ def regrid(
         logger.info(f'processed dimension variables: {dimension_vars}')
         vars_to_process -= dimension_vars
 
+        unprocessable_variables = get_unprocessable_variables(var_info, vars_to_process)
+        logger.info(f'Dropping unprocessable variables: {unprocessable_variables}')
+        vars_to_process -= unprocessable_variables
+
         resampled_vars = resample_n_dimensional_variables(
-            source_ds, target_ds, var_info, resampler_cache, set(vars_to_process)
+            source_ds, target_ds, var_info, resampler_cache, vars_to_process
         )
         vars_to_process -= resampled_vars
         logger.info(f'resampled variables: {resampled_vars}')
