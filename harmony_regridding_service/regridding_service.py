@@ -87,8 +87,9 @@ def regrid(
             input_grid_mappings(source_ds, vars_to_process)
         )
 
-        logger.info(f'dropping grid_mappings: {grid_mapping_variable_names}')
-        vars_to_process -= grid_mapping_variable_names
+        if grid_mapping_variable_names:
+            logger.info(f'dropping grid_mappings: {grid_mapping_variable_names}')
+            vars_to_process -= grid_mapping_variable_names
 
         cloned_vars = clone_variables(
             source_ds, target_ds, unresampled_vars - grid_mapping_variable_names
@@ -103,8 +104,9 @@ def regrid(
         vars_to_process -= dimension_vars
 
         unprocessable_variables = get_unprocessable_variables(var_info, vars_to_process)
-        logger.info(f'Dropping unprocessable variables: {unprocessable_variables}')
-        vars_to_process -= unprocessable_variables
+        if unprocessable_variables:
+            logger.info(f'Dropping unprocessable variables: {unprocessable_variables}')
+            vars_to_process -= unprocessable_variables
 
         resampled_vars = resample_n_dimensional_variables(
             source_ds, target_ds, var_info, resampler_cache, vars_to_process
