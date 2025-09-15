@@ -64,3 +64,11 @@ class InvalidCRSResampling(RegridderException):
 
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class InvalidVariableRequest(RegridderException):
+    """Raised when a user requests an unprocessable variable."""
+
+    def __init__(self, bad_vars: set[str]):
+        message = f'Request for unprocessable variable(s): {bad_vars}.'
+        super().__init__(message)

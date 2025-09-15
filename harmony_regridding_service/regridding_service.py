@@ -18,6 +18,7 @@ from harmony_regridding_service.dimensions import (
 )
 from harmony_regridding_service.exceptions import (
     InvalidCRSResampling,
+    InvalidVariableRequest,
 )
 from harmony_regridding_service.file_io import (
     clone_variables,
@@ -37,9 +38,10 @@ from harmony_regridding_service.var_utilitities import get_unprocessable_variabl
 
 logger = getLogger(__name__)
 
-HRS_VARINFO_CONFIG_FILENAME = str(
-    Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json')
-)
+
+def varinfo_config_filename() -> str:
+    """Return a path to the varinfo config."""
+    return str(Path(Path(__file__).parent, 'config', 'HRS_varinfo_config.json'))
 
 
 def regrid(
@@ -54,10 +56,12 @@ def regrid(
     logger.info(f'Format:\n {message.format}')
     logger.info(f'Source:\n {source}')
 
+    user_requested_variables = {f'/{v.name.lstrip("/")}' for v in source.variables}
+
     var_info = VarInfoFromNetCDF4(
         input_filepath,
         short_name=source.shortName,  # pyright: ignore[reportAttributeAccessIssue]
-        config_file=HRS_VARINFO_CONFIG_FILENAME,
+        config_file=varinfo_config_filename(),
     )
 
     try:
@@ -105,6 +109,10 @@ def regrid(
 
         unprocessable_variables = get_unprocessable_variables(var_info, vars_to_process)
         if unprocessable_variables:
+            if unprocessable_variables & user_requested_variables:
+                raise InvalidVariableRequest(
+                    unprocessable_variables & user_requested_variables
+                )
             logger.info(f'Dropping unprocessable variables: {unprocessable_variables}')
             vars_to_process -= unprocessable_variables
 

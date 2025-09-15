@@ -5,7 +5,7 @@ import pytest
 from netCDF4 import Dataset
 from varinfo import VarInfoFromNetCDF4
 
-from harmony_regridding_service.regridding_service import HRS_VARINFO_CONFIG_FILENAME
+from harmony_regridding_service.regridding_service import varinfo_config_filename
 from harmony_regridding_service.var_utilitities import (
     get_unprocessable_variables,
     is_excluded_science_variable,
@@ -48,7 +48,7 @@ def test_is_excluded_science_var(test_variables_nc_file):
     var_info = VarInfoFromNetCDF4(
         test_variables_nc_file,
         short_name='SPL3TEST',
-        config_file=HRS_VARINFO_CONFIG_FILENAME,
+        config_file=varinfo_config_filename(),
     )
 
     assert not is_excluded_science_variable(var_info, '/string_variable')
@@ -61,7 +61,7 @@ def test_get_unprocessed_variables(test_variables_nc_file):
     var_info = VarInfoFromNetCDF4(
         test_variables_nc_file,
         short_name='SPL3TEST',
-        config_file=HRS_VARINFO_CONFIG_FILENAME,
+        config_file=varinfo_config_filename(),
     )
 
     assert {
