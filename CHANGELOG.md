@@ -4,6 +4,14 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.6.0] - 2025-09-12
+
+### Changed
+
+- Unprocessable variables are excluded from output. These include any string
+  variable or any variable configured for exclusion via earthata-varinfo's
+  ExcludedScienceVariables.
+
 ## [v1.5.0] - 2025-08-11
 
 ### Changed
@@ -136,6 +144,8 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.6.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.6.0
+[v1.5.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.5.0
 [v1.4.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.4.0
 [v1.3.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.3.0
 [v1.2.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.2.0

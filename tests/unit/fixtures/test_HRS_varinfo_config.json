@@ -1,0 +1,19 @@
+{
+  "Identification": "harmony_regridding_service_test_varinfo_config",
+  "Version": 1,
+  "CollectionShortNamePath": [ ],
+  "Mission": {
+    "SPL[34].+": "SMAP"
+  },
+  "ExcludedScienceVariables": [
+    {
+      "Applicability": {
+        "Mission": "SMAP"
+      },
+      "VariablePattern": [
+	"/.*altitude_dem.*"
+      ]
+    }
+  ],
+  "MetadataOverrides": []
+}
