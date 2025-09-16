@@ -109,9 +109,9 @@ def regrid(
 
         unprocessable_variables = get_unprocessable_variables(var_info, vars_to_process)
         if unprocessable_variables:
-            if unprocessable_variables & user_requested_variables:
+            if unprocessable_variables.intersection(user_requested_variables):
                 raise InvalidVariableRequest(
-                    unprocessable_variables & user_requested_variables
+                    unprocessable_variables.intersection(user_requested_variables)
                 )
             logger.info(f'Dropping unprocessable variables: {unprocessable_variables}')
             vars_to_process -= unprocessable_variables

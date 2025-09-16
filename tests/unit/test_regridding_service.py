@@ -1,5 +1,6 @@
 """Tests the regridding service module."""
 
+import logging
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -37,7 +38,7 @@ def test_regrid_projected_data_end_to_end(
     """Test the full regrid process for projected input data."""
     input_filename = str(smap_projected_netcdf_file)
     output_filename = str(tmp_path / 'regridded_output.nc')
-    logger_mock = MagicMock()
+    logger = logging.getLogger()
 
     # Define a target CRS [and optionally grid parameters]
     params = {
@@ -58,7 +59,7 @@ def test_regrid_projected_data_end_to_end(
         'harmony_regridding_service.regridding_service.generate_output_filename',
         return_value=output_filename,
     ):
-        result_filename = regrid(message, input_filename, source, logger_mock)
+        result_filename = regrid(message, input_filename, source, logger)
 
     assert result_filename == output_filename
     assert Path(output_filename).exists()
@@ -90,7 +91,7 @@ def test_regrid_smap_file(
     """Test the full regrid process for projected input data."""
     input_filename = str(test_spl3ftp_ncfile)
     output_filename = str(tmp_path / 'regridded_output.nc')
-    logger_mock = MagicMock()
+    logger = logging.getLogger()
 
     # Define a target CRS [and optionally grid parameters]
     params = {
@@ -108,7 +109,7 @@ def test_regrid_smap_file(
         'harmony_regridding_service.regridding_service.generate_output_filename',
         return_value=output_filename,
     ):
-        result_filename = regrid(message, input_filename, source, logger_mock)
+        result_filename = regrid(message, input_filename, source, logger)
 
     assert result_filename == output_filename
     assert Path(output_filename).exists()
@@ -157,7 +158,7 @@ def test_regrid_smap_excluded_variable_file(
     """
     input_filename = str(test_spl3ftp_ncfile)
     output_filename = str(tmp_path / 'regridded_output.nc')
-    logger_mock = MagicMock()
+    logger = logging.getLogger()
 
     # Define a target CRS [and optionally grid parameters]
     params = {
@@ -183,7 +184,7 @@ def test_regrid_smap_excluded_variable_file(
             ),
         ),
     ):
-        result_filename = regrid(message, input_filename, source, logger_mock)
+        result_filename = regrid(message, input_filename, source, logger)
 
     assert result_filename == output_filename
     assert Path(output_filename).exists()
@@ -232,7 +233,7 @@ def test_regrid_smap_bad_user_requested_variable_data_end_to_end(
     """
     input_filename = str(test_spl3ftp_ncfile)
     output_filename = str(tmp_path / 'regridded_output.nc')
-    logger_mock = MagicMock()
+    logger = MagicMock()
 
     # Define a user selected variable
     user_var = {
@@ -272,7 +273,7 @@ def test_regrid_smap_bad_user_requested_variable_data_end_to_end(
         #     "{'/Freeze_Thaw_Retrieval_Data_Global/altitude_dem'}."
         # )
         # with pytest.raises(InvalidVariableRequest, match=expected_message):
-        #     regrid(message, input_filename, source, logger_mock)
+        #     regrid(message, input_filename, source, logger)
 
         expected_message = (
             'Request for unprocessable variable(s): '
@@ -280,6 +281,6 @@ def test_regrid_smap_bad_user_requested_variable_data_end_to_end(
         )
 
         with pytest.raises(InvalidVariableRequest) as exception_info:
-            regrid(message, input_filename, source, logger_mock)
+            regrid(message, input_filename, source, logger)
 
         assert exception_info.value.message == expected_message
