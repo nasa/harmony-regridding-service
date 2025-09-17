@@ -1,6 +1,7 @@
 """Tests the regridding service module."""
 
 import logging
+import re
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -267,20 +268,9 @@ def test_regrid_smap_bad_user_requested_variable_data_end_to_end(
             ),
         ),
     ):
-        # when harmony-service-lib is updated use this.
-        # expected_message = re.escape(
-        #     r"Request for unprocessable variable(s): "
-        #     "{'/Freeze_Thaw_Retrieval_Data_Global/altitude_dem'}."
-        # )
-        # with pytest.raises(InvalidVariableRequest, match=expected_message):
-        #     regrid(message, input_filename, source, logger)
-
-        expected_message = (
-            'Request for unprocessable variable(s): '
+        expected_message = re.escape(
+            r'Request for unprocessable variable(s): '
             "{'/Freeze_Thaw_Retrieval_Data_Global/altitude_dem'}."
         )
-
-        with pytest.raises(InvalidVariableRequest) as exception_info:
+        with pytest.raises(InvalidVariableRequest, match=expected_message):
             regrid(message, input_filename, source, logger)
-
-        assert exception_info.value.message == expected_message

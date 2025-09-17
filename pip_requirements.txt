@@ -1,9 +1,9 @@
 # Open source packages available from PyPI
-dask~=2025.2.0
+dask~=2025.9.1
 earthdata-varinfo~=3.3.0
-harmony-service-lib~=2.7.1
+harmony-service-lib~=2.8.0
 netCDF4~=1.7.2
-numpy~=2.2.4
-pyproj~=3.7.1
-pyresample~=1.34.0
+numpy~=2.2.6
+pyproj~=3.7.2
+pyresample~=1.34.2
 xarray~=2025.9.0
