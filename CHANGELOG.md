@@ -6,9 +6,9 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 ## [unreleased] - 2025-09-17
 
-###
+### Changed
 
-- python dependency updates
+- Python dependency updates.
 
 ## [v1.6.0] - 2025-09-12
 
