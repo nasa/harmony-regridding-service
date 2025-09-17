@@ -4,6 +4,12 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [unreleased] - 2025-09-17
+
+### Changed
+
+- Python dependency updates.
+
 ## [v1.6.0] - 2025-09-12
 
 ### Changed
@@ -11,6 +17,8 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 - Unprocessable variables are excluded from output. These include any string
   variable or any variable configured for exclusion via earthata-varinfo's
   ExcludedScienceVariables.
+- When an unprocessable variable was explicitly requested by the user, the
+  request will fail with an error.
 
 ## [v1.5.0] - 2025-08-11
 
