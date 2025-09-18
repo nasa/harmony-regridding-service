@@ -9,9 +9,7 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 ### Changed
 
 - Python dependency updates.
-- Changes service exceptions to throw Harmony No Retry errors for cases that will not
-  be resolved by a retry.
-
+- Changes service exceptions to throw Harmony No Retry errors for cases that will not be resolved by a retry.
 
 ## [v1.6.0] - 2025-09-12
 
