@@ -4,11 +4,14 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [unreleased] - 2025-09-17
+## [1.7.0] - 2025-09-17
 
 ### Changed
 
 - Python dependency updates.
+- Changes service exceptions to throw Harmony No Retry errors for cases that will not
+  be resolved by a retry.
+
 
 ## [v1.6.0] - 2025-09-12
 
