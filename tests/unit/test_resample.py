@@ -13,7 +13,7 @@ from numpy.testing import assert_array_equal
 from pyresample.geometry import SwathDefinition
 
 from harmony_regridding_service.exceptions import (
-    RegridderException,
+    RegridderNoRetryException,
     SourceDataError,
 )
 from harmony_regridding_service.resample import (
@@ -895,7 +895,7 @@ def test_order_source_variable_1d_input_errors():
     """A 1D var raises Exception."""
     source = np.random.rand(50)
     with pytest.raises(
-        RegridderException, match='Attempted to resample a 1-D Variable'
+        RegridderNoRetryException, match='Attempted to resample a 1-D Variable'
     ):
         order_source_variable(source, Any, 'temperature')
 

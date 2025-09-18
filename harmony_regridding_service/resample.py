@@ -22,7 +22,7 @@ from harmony_regridding_service.dimensions import (
     is_row_dim,
 )
 from harmony_regridding_service.exceptions import (
-    RegridderException,
+    RegridderNoRetryException,
     SourceDataError,
 )
 from harmony_regridding_service.file_io import (
@@ -112,7 +112,7 @@ def resample_n_dimensional_variables(
         except Exception as e:
             logger.error(f'Failed to process: {var_name}')
             logger.error(e)
-            raise RegridderException(f'Failed to process: {var_name}') from e
+            raise RegridderNoRetryException(f'Failed to process: {var_name}') from e
 
     return processed
 
@@ -195,7 +195,7 @@ def copy_resampled_bounds_variable(
         dim_name = ydims[0]
 
     if not var_dims[0] == dim_name:
-        raise RegridderException(f'_bnds var {var_dims} with unexpected shape')
+        raise RegridderNoRetryException(f'_bnds var {var_dims} with unexpected shape')
 
     # create the bounds variable and fill it with the correct values.
     (_, t_var) = copy_var_without_metadata(source_ds, target_ds, bounds_var)
@@ -227,14 +227,14 @@ def order_source_variable(
         Array with dimensions reordered if needed (horizontal dims last)
 
     Raises:
-        RegridderException: If the variable has only one dimension
+        RegridderNoRetryException: If the variable has only one dimension
 
     """
     if len(source.shape) == 2:
         return source
 
     if len(source.shape) == 1:
-        raise RegridderException('Attempted to resample a 1-D Variable.')
+        raise RegridderNoRetryException('Attempted to resample a 1-D Variable.')
 
     correct_dims = get_fully_qualified_preferred_ordered_dimensions(var_info, var_name)
 
@@ -573,7 +573,7 @@ def copy_1d_dimension_variables(
                 'units': 'degrees_north',
             }
         else:
-            raise RegridderException(
+            raise RegridderNoRetryException(
                 f'dim_name: {dim_name} not found in projection dimensions'
             )
 
