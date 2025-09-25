@@ -130,9 +130,10 @@ def test_compute_target_areas_without_parameters(
     message = HarmonyMessage({})
 
     # values from our SMAP fixture.
-    expected_width = 5
-    expected_height = 9
-    expected_area_extent = (-161.2811, 58.2848, -160.9077, 58.9562)
+    expected_width = 6
+    expected_height = 10
+
+    expected_area_extent = (-161.3278, 58.2183, -160.8610, 59.0241)
 
     actual_areas = compute_target_areas(message, smap_projected_netcdf_file, var_info)
     actual_area_definition = actual_areas[('/y', '/x')]

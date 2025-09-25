@@ -14,7 +14,7 @@ from harmony_service_lib.message_utility import (
     has_self_consistent_grid,
 )
 from netCDF4 import Dataset
-from pyproj import CRS
+from pyproj import CRS, Transformer
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition
@@ -160,6 +160,7 @@ def convert_projected_area_to_geographic(
 
     """
     geographic_extent = get_geographic_area_extent(projected_area)
+    print(geographic_extent)
     resolution = get_geographic_resolution(projected_area)
 
     geographic_area = create_area_def(
@@ -179,12 +180,43 @@ def get_geographic_area_extent(
 ) -> tuple[float, float, float, float]:
     """Return the geographic area extent.
 
-    Compute the latitude and longitude for every grid cell in the
-    projected_area's grid and return the area extent in lon and lat.
+    Compute the latitude and longitude for the center and each corner for every
+    grid cell in the projected_area's grid and return the area extent in lon
+     and lat.
 
     """
-    lons, lats = projected_area.get_lonlats()
-    return (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    target_crs = CRS(4326)
+    tf = Transformer.from_crs(projected_area.crs, target_crs, always_xy=True)
+
+    center_x_1d_coords, center_y_1d_coords = projected_area.get_proj_vectors()
+
+    right_x_1d_coords = center_x_1d_coords - projected_area.resolution[0] / 2.0
+    left_x_1d_coords = center_x_1d_coords + projected_area.resolution[0] / 2.0
+
+    top_y_1d_coords = center_y_1d_coords + projected_area.resolution[1] / 2.0
+    bottom_y_1d_coords = center_y_1d_coords - projected_area.resolution[1] / 2.0
+
+    round_to = 6
+    x_coords = np.unique(
+        (
+            np.round(right_x_1d_coords, round_to),
+            np.round(center_x_1d_coords, round_to),
+            np.round(left_x_1d_coords, round_to),
+        )
+    )
+
+    y_coords = np.unique(
+        (
+            np.round(top_y_1d_coords, round_to),
+            np.round(center_y_1d_coords, round_to),
+            np.round(bottom_y_1d_coords, round_to),
+        )
+    )
+
+    xvals, yvals = np.meshgrid(x_coords, y_coords)
+
+    lons, lats = tf.transform(xvals, yvals)
+    return (np.nanmin(lons), np.nanmin(lats), np.nanmax(lons), np.nanmax(lats))
 
 
 def get_geographic_resolution(projected_area: AreaDefinition) -> tuple[float, float]:
@@ -374,7 +406,6 @@ def create_area_definition_for_projected_source_grid(
     try:
         with xr.open_datatree(
             filepath,
-            decode_cf=False,
             decode_coords=False,
             decode_timedelta=False,
             decode_times=False,
