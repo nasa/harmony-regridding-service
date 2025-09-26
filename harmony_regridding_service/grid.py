@@ -160,7 +160,6 @@ def convert_projected_area_to_geographic(
 
     """
     geographic_extent = get_geographic_area_extent(projected_area)
-    print(geographic_extent)
     resolution = get_geographic_resolution(projected_area)
 
     geographic_area = create_area_def(
