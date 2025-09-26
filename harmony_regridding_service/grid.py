@@ -14,7 +14,7 @@ from harmony_service_lib.message_utility import (
     has_self_consistent_grid,
 )
 from netCDF4 import Dataset
-from pyproj import CRS
+from pyproj import CRS, Transformer
 from pyproj.exceptions import CRSError
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition
@@ -179,12 +179,60 @@ def get_geographic_area_extent(
 ) -> tuple[float, float, float, float]:
     """Return the geographic area extent.
 
-    Compute the latitude and longitude for every grid cell in the
-    projected_area's grid and return the area extent in lon and lat.
+    Compute the latitude and longitude for the center and each corner for every
+    grid cell in the projected_area's grid and return the area extent in lon
+    and lat.
 
     """
-    lons, lats = projected_area.get_lonlats()
-    return (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    target_crs = CRS(4326)
+    tf = Transformer.from_crs(projected_area.crs, target_crs, always_xy=True)
+
+    # Get the projected 1D coordinates for the input grid.
+    center_x_1d_coords, center_y_1d_coords = projected_area.get_proj_vectors()
+
+    # get the right and left sides of each cell
+    right_x_1d_coords = center_x_1d_coords - projected_area.resolution[0] / 2.0
+    left_x_1d_coords = center_x_1d_coords + projected_area.resolution[0] / 2.0
+
+    # get the top and bottom sides of each cell
+    top_y_1d_coords = center_y_1d_coords + projected_area.resolution[1] / 2.0
+    bottom_y_1d_coords = center_y_1d_coords - projected_area.resolution[1] / 2.0
+
+    # Use only the unique values from the right, center, left values, since the
+    # right of cell 1 is the same as the left of cell2 this reduces the total
+    # number of points we need to transform.
+    round_to = 6
+    x_coords = np.unique(
+        (
+            np.round(right_x_1d_coords, round_to),
+            np.round(center_x_1d_coords, round_to),
+            np.round(left_x_1d_coords, round_to),
+        )
+    )
+
+    # Use only the unique values from the top, center, bottom y values
+    y_coords = np.unique(
+        (
+            np.round(top_y_1d_coords, round_to),
+            np.round(center_y_1d_coords, round_to),
+            np.round(bottom_y_1d_coords, round_to),
+        )
+    )
+
+    xvals, yvals = np.meshgrid(x_coords, y_coords)
+    lons, lats = tf.transform(xvals, yvals)
+
+    ##  The math defining EASE Grids was designed exactly include the poles on
+    ##  corners. But the computers round ever so slightly and we get values
+    ##  like (np.float64(-180.00000000000645)) which can cause later problems
+    ##  as that can appear to be over the dateline. We round to 7 decimal
+    ##  places and even that is more accurate than necessary or probably real,
+    ##  but this is enough to keep our bounds bounded.
+    return tuple(
+        np.round(
+            (np.nanmin(lons), np.nanmin(lats), np.nanmax(lons), np.nanmax(lats)), 7
+        )
+    )
 
 
 def get_geographic_resolution(projected_area: AreaDefinition) -> tuple[float, float]:
@@ -374,7 +422,6 @@ def create_area_definition_for_projected_source_grid(
     try:
         with xr.open_datatree(
             filepath,
-            decode_cf=False,
             decode_coords=False,
             decode_timedelta=False,
             decode_times=False,

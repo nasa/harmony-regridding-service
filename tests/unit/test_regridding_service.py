@@ -23,7 +23,7 @@ test_scale_extent = {
     'width, height, scale_extent, expected_width, expected_height, description',
     [
         (100, 50, test_scale_extent, 100, 50, 'Grid parameters are provided.'),
-        (None, None, None, 5, 9, 'Grid parameters are excluded from message.'),
+        (None, None, None, 6, 10, 'Grid parameters are excluded from message.'),
     ],
 )
 def test_regrid_projected_data_end_to_end(
@@ -121,12 +121,12 @@ def test_regrid_smap_file(
     ]
     expected = {
         '/Freeze_Thaw_Retrieval_Data_Polar': {
-            'width': 263,
-            'height': 122,
+            'width': 265,
+            'height': 124,
         },
         '/Freeze_Thaw_Retrieval_Data_Global': {
-            'width': 186,
-            'height': 73,
+            'width': 187,
+            'height': 78,
         },
     }
 
@@ -196,12 +196,12 @@ def test_regrid_smap_excluded_variable_file(
     ]
     expected = {
         '/Freeze_Thaw_Retrieval_Data_Polar': {
-            'width': 263,
-            'height': 122,
+            'width': 265,
+            'height': 124,
         },
         '/Freeze_Thaw_Retrieval_Data_Global': {
-            'width': 186,
-            'height': 73,
+            'width': 187,
+            'height': 78,
         },
     }
 

@@ -1,12 +1,12 @@
 """Tests the grid module."""
 
 import re
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 from harmony_service_lib.message import Message as HarmonyMessage
-from pyproj import CRS
+from pyproj import CRS, Transformer
 from pyresample import create_area_def
 from pyresample.geometry import AreaDefinition
 from pytest import approx
@@ -130,9 +130,9 @@ def test_compute_target_areas_without_parameters(
     message = HarmonyMessage({})
 
     # values from our SMAP fixture.
-    expected_width = 5
-    expected_height = 9
-    expected_area_extent = (-161.2811, 58.2848, -160.9077, 58.9562)
+    expected_width = 6
+    expected_height = 10
+    expected_area_extent = (-161.3278, 58.2183, -160.8610, 59.0241)
 
     actual_areas = compute_target_areas(message, smap_projected_netcdf_file, var_info)
     actual_area_definition = actual_areas[('/y', '/x')]
@@ -188,9 +188,9 @@ def test_compute_target_areas_with_only_CRS_parameter(
         }
     )
 
-    expected_width = 5
-    expected_height = 9
-    expected_area_extent = (-161.2811, 58.2848, -160.9077, 58.9562)
+    expected_width = 6
+    expected_height = 10
+    expected_area_extent = (-161.3278, 58.2183, -160.8610, 59.0241)
 
     actual_area_definitions = compute_target_areas(
         message, smap_projected_netcdf_file, var_info
@@ -239,17 +239,22 @@ def test_compute_target_areas_with_mulitple_grids_no_params(
         '/Freeze_Thaw_Retrieval_Data_Global/y', '/Freeze_Thaw_Retrieval_Data_Global/x'
     )
     expected_global = {
-        'width': 186,
-        'height': 73,
-        'extent': (-70.02074, 60.128553, -9.89626, 83.63197),
+        'width': 187,
+        'height': 78,
+        'extent': (-70.207468, 59.84903, -9.70954, 85.04456),
     }
     expected_polar_grid = GridDimensionPair(
         '/Freeze_Thaw_Retrieval_Data_Polar/y', '/Freeze_Thaw_Retrieval_Data_Polar/x'
     )
     expected_polar = {
-        'width': 263,
-        'height': 122,
-        'extent': (-86.361813, 48.6998, -1.5823, 88.0526),
+        'width': 265,
+        'height': 124,
+        'extent': (
+            -86.71075,
+            48.455174,
+            -1.259045,
+            88.264239,
+        ),
     }
 
     actual_area_definitions = compute_target_areas(
@@ -349,24 +354,58 @@ def test_grid_width_message_with_width(test_message_with_height_width):
     assert expected_grid_width == actual_grid_width
 
 
-def test_get_geographic_area_extent():
-    """Verify extent behavior.
+def test_get_geographic_area_extent_touches_pole():
+    """Verify getting geographic extent fetches corners of grid.
 
-    extent is just defined:
-    (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    Use a 2x3 100km grid with the lower left corner on the pole in the EASE2
+    Northern Projection
+
+    EASE2 Northern projection touches the north pole at (0., 0.)
 
     """
-    mock_area_def = Mock()
-    lats = np.array([-10, 0, 10, -20])
-    lons = np.array([-170, -175, -160, -170])
+    source_crs = CRS.from_epsg(code=6931)
 
-    mock_area_def.get_lonlats.return_value = (lons, lats)
+    #   LL, UR in meters.
+    area_extent = (0.0, 0.0, 300000.0, 200000.0)
+    area_definition = create_area_def(
+        'test area',
+        source_crs,
+        area_extent=area_extent,
+        shape=(2, 3),
+        resolution=(100000.0, 100000.0),
+    )
+    expected_geographic_extent = (0.0, 86.7714, 180.0, 90.0)
 
-    expected_area_extent = (-175, -20, -160, 10)
+    geographic_extent = get_geographic_area_extent(area_definition)
 
-    actual_area_extent = get_geographic_area_extent(mock_area_def)
+    ## Pole in included is at Latitude 90.
+    assert geographic_extent[3] == 90.0
+    assert geographic_extent == approx(expected_geographic_extent, abs=1e-4)
 
-    assert expected_area_extent == actual_area_extent
+
+def test_get_geographic_area_extent_surrounds_pole():
+    """Verify EASE Grid surrounding Pole will include it.
+
+    Use whole NL Grid for simplicity
+    """
+    source_crs = CRS.from_epsg(code=6931)
+
+    #   LL, UR in meters.
+    area_extent = (-9000000.0, -9000000.0, 9000000.0, 9000000.0)
+    area_definition = create_area_def(
+        'test area',
+        source_crs,
+        area_extent=area_extent,
+        shape=(180, 180),
+        resolution=(100000.0, 100000.0),
+    )
+    expected_geographic_extent = (-179.68169, -84.63404, 180.0, 90.0)
+
+    geographic_extent = get_geographic_area_extent(area_definition)
+
+    ## Pole in included is at Latitude 90.
+    assert geographic_extent[3] == 90.0
+    assert geographic_extent == approx(expected_geographic_extent, abs=1e-4)
 
 
 def test_get_geographic_resolution():
@@ -651,8 +690,16 @@ def test_convert_projected_area_to_geographic_ease_grid_global(mock_create_area_
         resolution=ease_resolution,
     )
 
-    lons, lats = projected_area.get_lonlats()
-    expected_geo_extent = (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    # Project the Area Extent to geographic to get the expected call values
+
+    # This works because it's global grid and we're only finding the outer
+    # edges of our projected_area.area_extent
+    target_crs = CRS.from_epsg(4326)
+    tf = Transformer.from_crs(projected_crs, target_crs, always_xy=True)
+    lon_min, lat_min = tf.transform(*projected_area.area_extent[:2])
+    lon_max, lat_max = tf.transform(*projected_area.area_extent[2:])
+    expected_geo_extent = tuple(np.round((lon_min, lat_min, lon_max, lat_max), 7))
+
     expected_resolution = (ease_resolution[0] / 111320.0, ease_resolution[1] / 111320.0)
 
     target_crs = CRS.from_epsg(4326)
@@ -669,8 +716,8 @@ def test_convert_projected_area_to_geographic_ease_grid_global(mock_create_area_
 
     assert isinstance(actual_geographic_area, AreaDefinition)
     assert actual_geographic_area.crs == target_crs
-    assert actual_geographic_area.width == 1112
-    assert actual_geographic_area.height == 517
+    assert actual_geographic_area.width == 1113
+    assert actual_geographic_area.height == 526
 
     # creating an area definition by extent and resolution does not ensure
     # whole numbers of grid cells and pyresample adjusts the resolution
@@ -678,8 +725,8 @@ def test_convert_projected_area_to_geographic_ease_grid_global(mock_create_area_
     assert actual_geographic_area.resolution != expected_resolution
 
     lon_min, lat_min, lon_max, lat_max = actual_geographic_area.area_extent
-    assert -180 < lon_min < lon_max < 180
-    assert -90 < lat_min < lat_max < 90
+    assert -180 <= lon_min < lon_max <= 180
+    assert -90 <= lat_min < lat_max <= 90
 
 
 @patch('harmony_regridding_service.grid.create_area_def', wraps=create_area_def)
@@ -703,16 +750,15 @@ def test_convert_projected_area_to_geographic_ease_grid_polar(mock_create_area_d
         upper_left_extent=ease_upper_left,
         resolution=ease_resolution,
     )
+    target_crs = CRS.from_epsg(4326)
 
-    lons, lats = projected_area.get_lonlats()
-    expected_geo_extent = (np.min(lons), np.min(lats), np.max(lons), np.max(lats))
+    expected_geo_extent = get_geographic_area_extent(projected_area)
+
     expected_resolution = (ease_resolution[0] / 111320.0, ease_resolution[1] / 111320.0)
 
-    target_crs = CRS.from_epsg(4326)
     actual_geographic_area = convert_projected_area_to_geographic(
         projected_area, target_crs
     )
-
     mock_create_area_def.assert_called_once_with(
         'Geographic Area',
         target_crs,
@@ -723,7 +769,7 @@ def test_convert_projected_area_to_geographic_ease_grid_polar(mock_create_area_d
     assert isinstance(actual_geographic_area, AreaDefinition)
     assert actual_geographic_area.crs == target_crs
     assert actual_geographic_area.width == 1113
-    assert actual_geographic_area.height == 529
+    assert actual_geographic_area.height == 540
 
     # creating an area definition by extent and resolution does not ensure
     # whole numbers of grid cells and pyresample adjusts the resolution
@@ -731,5 +777,5 @@ def test_convert_projected_area_to_geographic_ease_grid_polar(mock_create_area_d
     assert actual_geographic_area.resolution != expected_resolution
 
     lon_min, lat_min, lon_max, lat_max = actual_geographic_area.area_extent
-    assert -180 < lon_min < lon_max < 180
-    assert -90 < lat_min < lat_max < 90
+    assert -180 <= lon_min < lon_max <= 180
+    assert -90 <= lat_min < lat_max <= 90

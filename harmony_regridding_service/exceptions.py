@@ -9,15 +9,12 @@ from harmony_service_lib.exceptions import NoRetryException
 
 
 class RegridderNoRetryException(NoRetryException):
-    """Regridding service exception.
+    """Regridding No Retry Service Exception.
 
-    This exception is inhertited by errors that should not be retried by
+    Regridder base exception inhertited by errors that should not be retried by
     Harmony Service.
 
     """
-
-    def __init__(self, message=None):
-        super().__init__(message)
 
 
 class SourceDataError(RegridderNoRetryException):

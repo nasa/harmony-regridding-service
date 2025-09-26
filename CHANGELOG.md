@@ -4,6 +4,13 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [1.8.0] - 2025-09-26
+
+### Changed
+
+- Changes how implicit grids are determined. To determine the limits of an implicit grid in geographic space, each cell center and all four corners are transformed from the projected space into longitude, latitude and those values are used to determine the limits of the output grid, preventing an accidental cut off of the grid cell edges. Previously, only cell centers were used.
+
+
 ## [1.7.1] - 2025-09-22
 
 ### Changed
