@@ -181,20 +181,26 @@ def get_geographic_area_extent(
 
     Compute the latitude and longitude for the center and each corner for every
     grid cell in the projected_area's grid and return the area extent in lon
-     and lat.
+    and lat.
 
     """
     target_crs = CRS(4326)
     tf = Transformer.from_crs(projected_area.crs, target_crs, always_xy=True)
 
+    # Get the projected 1D coordinates for the input grid.
     center_x_1d_coords, center_y_1d_coords = projected_area.get_proj_vectors()
 
+    # get the right and left sides of each cell
     right_x_1d_coords = center_x_1d_coords - projected_area.resolution[0] / 2.0
     left_x_1d_coords = center_x_1d_coords + projected_area.resolution[0] / 2.0
 
+    # get the top and bottom sides of each cell
     top_y_1d_coords = center_y_1d_coords + projected_area.resolution[1] / 2.0
     bottom_y_1d_coords = center_y_1d_coords - projected_area.resolution[1] / 2.0
 
+    # Use only the unique values from the right, center, left values, since the
+    # right of cell 1 is the same as the left of cell2 this reduces the total
+    # number of points we need to transform.
     round_to = 6
     x_coords = np.unique(
         (
@@ -204,6 +210,7 @@ def get_geographic_area_extent(
         )
     )
 
+    # Use only the unique values from the top, center, bottom y values
     y_coords = np.unique(
         (
             np.round(top_y_1d_coords, round_to),
@@ -213,7 +220,6 @@ def get_geographic_area_extent(
     )
 
     xvals, yvals = np.meshgrid(x_coords, y_coords)
-
     lons, lats = tf.transform(xvals, yvals)
 
     ##  The math defining EASE Grids was designed exactly include the poles on
