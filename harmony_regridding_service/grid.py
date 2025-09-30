@@ -219,8 +219,24 @@ def get_geographic_area_extent(
         )
     )
 
-    xvals, yvals = np.meshgrid(x_coords, y_coords)
-    lons, lats = tf.transform(xvals, yvals)
+    # Process the x and y coordinates in chunks (max of 4000000 points at a time.)
+    coord_chunk_size = 2000
+    n_x_chunks = len(x_coords) // coord_chunk_size + 1
+    n_y_chunks = len(y_coords) // coord_chunk_size + 1
+
+    lon_min = np.inf
+    lat_min = np.inf
+    lon_max = -np.inf
+    lat_max = -np.inf
+
+    for x_coord_chunk in np.array_split(x_coords, n_x_chunks):
+        for y_coord_chunk in np.array_split(y_coords, n_y_chunks):
+            x_chunk_grid, y_chunk_grid = np.meshgrid(x_coord_chunk, y_coord_chunk)
+            chunk_lons, chunk_lats = tf.transform(x_chunk_grid, y_chunk_grid)
+            lon_min = np.nanmin([lon_min, np.nanmin(chunk_lons)])
+            lat_min = np.nanmin([lat_min, np.nanmin(chunk_lats)])
+            lon_max = np.nanmax([lon_max, np.nanmax(chunk_lons)])
+            lat_max = np.nanmax([lat_max, np.nanmax(chunk_lats)])
 
     ##  The math defining EASE Grids was designed exactly include the poles on
     ##  corners. But the computers round ever so slightly and we get values
@@ -228,11 +244,7 @@ def get_geographic_area_extent(
     ##  as that can appear to be over the dateline. We round to 7 decimal
     ##  places and even that is more accurate than necessary or probably real,
     ##  but this is enough to keep our bounds bounded.
-    return tuple(
-        np.round(
-            (np.nanmin(lons), np.nanmin(lats), np.nanmax(lons), np.nanmax(lats)), 7
-        )
-    )
+    return tuple(np.round((lon_min, lat_min, lon_max, lat_max), 7))
 
 
 def get_geographic_resolution(projected_area: AreaDefinition) -> tuple[float, float]:
