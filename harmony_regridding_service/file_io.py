@@ -1,6 +1,5 @@
 """Module that handles source file copy and writing to target output."""
 
-from logging import getLogger
 from mimetypes import guess_type as guess_mime_type
 from os.path import splitext
 from pathlib import PurePath
@@ -13,8 +12,7 @@ from netCDF4 import (
 )
 
 from harmony_regridding_service.exceptions import SourceDataError
-
-logger = getLogger(__name__)
+from harmony_regridding_service.log_context import get_logger
 
 KNOWN_MIME_TYPES = {
     '.nc4': 'application/x-netcdf4',
@@ -145,7 +143,7 @@ def clone_variables(
             if s_var.dtype == str and s_var.shape == ():
                 t_var[0] = s_var[0]
             else:
-                logger.error('Unable to clone variable {s_var}')
+                get_logger().error('Unable to clone variable {s_var}')
                 raise SourceDataError('Unhandled variable clone') from vlen_error
 
     return variables

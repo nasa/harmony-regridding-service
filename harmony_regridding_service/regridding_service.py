@@ -1,6 +1,6 @@
 """Regridding service code."""
 
-from logging import Logger, getLogger
+from logging import Logger
 from pathlib import Path
 
 from harmony_service_lib.message import Message as HarmonyMessage
@@ -27,6 +27,7 @@ from harmony_regridding_service.file_io import (
     transfer_metadata,
 )
 from harmony_regridding_service.grid import compute_target_areas
+from harmony_regridding_service.log_context import get_logger
 from harmony_regridding_service.resample import (
     cache_resamplers,
     copy_resampled_dimension_variables,
@@ -35,8 +36,6 @@ from harmony_regridding_service.resample import (
     unresampled_variables,
 )
 from harmony_regridding_service.var_utilitities import get_unprocessable_variables
-
-logger = getLogger(__name__)
 
 
 def varinfo_config_filename() -> str:
@@ -48,11 +47,10 @@ def regrid(
     message: HarmonyMessage,
     input_filepath: str,
     source: HarmonySource,
-    call_logger: Logger,
+    logger: Logger | None = None,
 ) -> str:
     """Regrid the input data at input_filepath."""
-    global logger
-    logger = call_logger or logger
+    logger = logger or get_logger()
     logger.info(f'Format:\n {message.format}')
     logger.info(f'Source:\n {source}')
 

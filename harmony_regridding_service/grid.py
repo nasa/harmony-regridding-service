@@ -1,7 +1,6 @@
 """Module for accessing and creating grid parameters."""
 
 from collections.abc import Iterable
-from logging import getLogger
 from typing import Any
 
 import numpy as np
@@ -34,12 +33,11 @@ from harmony_regridding_service.exceptions import (
     InvalidTargetGrid,
     SourceDataError,
 )
+from harmony_regridding_service.log_context import get_logger
 from harmony_regridding_service.message_utilities import (
     get_message_crs,
     target_crs_from_message,
 )
-
-logger = getLogger(__name__)
 
 
 def compute_target_areas(
@@ -86,6 +84,7 @@ def compute_target_areas(
             filepath, var_info, target_crs
         )
 
+    logger = get_logger()
     logger.debug('Using TARGET Area Definitions:')
     for dim_pair, area in area_definitions.items():
         logger.debug(f'dim_pair: {dim_pair}')
@@ -128,7 +127,7 @@ def create_target_areas_from_source(
     dimension_pairs = get_resampled_dimension_pairs(var_info)
     target_areas = {}
     for dim_pair in dimension_pairs:
-        logger.info(f'Generating Target Areas from Source for: {dim_pair}')
+        get_logger().info(f'Generating Target Areas from Source for: {dim_pair}')
         projected_area = create_area_definition_for_projected_source_grid(
             filepath, dim_pair, var_info
         )
@@ -168,6 +167,7 @@ def convert_projected_area_to_geographic(
         area_extent=geographic_extent,
         resolution=resolution,
     )
+    logger = get_logger()
     logger.debug(f'Source projected Area: {projected_area}')
     logger.debug(f'Converted Geographic Area: {geographic_area}')
 
@@ -311,7 +311,7 @@ def get_area_definition_from_message(
 
     projection = message.format.crs or 'EPSG:4326'
 
-    logger.info(
+    get_logger().info(
         f'Creating target area from message:\n'
         f'proj:{projection}\n'
         f'area_extent:{area_extent}\n'
@@ -375,6 +375,7 @@ def compute_horizontal_source_grids(
     """
     row_dim = get_row_dims(grid_dimensions, var_info)[0]
     column_dim = get_column_dims(grid_dimensions, var_info)[0]
+    logger = get_logger()
     logger.info(f'found row_dim: {row_dim}')
     logger.info(f'found column_dim: {column_dim}')
 
@@ -452,7 +453,7 @@ def create_area_definition_for_projected_source_grid(
                 resolution=(cell_width, cell_height),
             )
     except Exception as e:
-        logger.error(e)
+        get_logger().error(e)
         raise SourceDataError('cannot compute projected source grids') from e
 
 
