@@ -15,4 +15,4 @@ matplotlib==3.10.1
 netCDF4==1.7.2
 notebook==7.4.2
 panel==1.6.3
-xarray==2025.4.0
+xarray==2025.9.0
