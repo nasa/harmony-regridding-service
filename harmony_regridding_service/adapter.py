@@ -46,7 +46,6 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
     def __init__(self, message, catalog=None, config=None):
         """Initialize the custom adapter."""
         super().__init__(message, catalog=catalog, config=config)
-        log_context.set_logger(self.logger)
         self.cache = {'grids': {}}
 
     def invoke(self) -> Catalog:
@@ -86,6 +85,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """Processes a single input STAC item."""
         try:
+            log_context.set_logger(self.logger)
             working_directory = mkdtemp()
             results = item.clone()
             results.assets = {}
