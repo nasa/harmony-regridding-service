@@ -10,8 +10,8 @@ _LOGGER = None
 
 
 def set_logger(logger):
-    """Set the logger for this request."""
-    global _logger
+    """Set the logger for this requests session."""
+    global _LOGGER
     _LOGGER = logger
 
 
