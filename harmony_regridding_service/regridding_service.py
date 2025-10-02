@@ -1,6 +1,6 @@
 """Regridding service code."""
 
-from logging import Logger
+from logging import Logger, LoggerAdapter
 from pathlib import Path
 
 from harmony_service_lib.message import Message as HarmonyMessage
@@ -47,7 +47,7 @@ def regrid(
     message: HarmonyMessage,
     input_filepath: str,
     source: HarmonySource,
-    logger: Logger | None = None,
+    logger: Logger | LoggerAdapter | None = None,
 ) -> str:
     """Regrid the input data at input_filepath."""
     logger = logger or get_logger()
