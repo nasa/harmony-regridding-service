@@ -26,6 +26,7 @@ from harmony_service_lib.util import (
 )
 from pystac import Asset, Catalog, Item
 
+from harmony_regridding_service import log_context
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
@@ -84,6 +85,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
     def process_item(self, item: Item, source: HarmonySource) -> Item:
         """Processes a single input STAC item."""
         try:
+            log_context.set_logger(self.logger)
             working_directory = mkdtemp()
             results = item.clone()
             results.assets = {}

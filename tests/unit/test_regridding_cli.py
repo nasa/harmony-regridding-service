@@ -25,9 +25,8 @@ def test_regrid_cli_entry(mock_regrid, message_params):
     args, kwargs = mock_regrid.call_args
 
     # Assert the arguments
-    harmony_message_arg, input_filename_arg, source_arg, logger_arg = args
+    harmony_message_arg, input_filename_arg, source_arg = args
 
     assert isinstance(harmony_message_arg, HarmonyMessage)
     assert isinstance(source_arg, HarmonySource)
     assert input_filename_arg == source_filename
-    assert logger_arg == call_logger

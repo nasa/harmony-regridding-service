@@ -1,6 +1,5 @@
 """Module for resampling functions."""
 
-from logging import getLogger
 from pathlib import PurePath
 
 import numpy as np
@@ -35,8 +34,7 @@ from harmony_regridding_service.grid import (
     dims_are_lon_lat,
     dims_are_projected_x_y,
 )
-
-logger = getLogger(__name__)
+from harmony_regridding_service.log_context import get_logger
 
 
 def resample_variable_data(
@@ -78,7 +76,7 @@ def resample_n_dimensional_variables(
 ) -> set[str]:
     """Function to resample any projected variable."""
     processed = set()
-
+    logger = get_logger()
     for var_name in variables:
         logger.debug(f'resampling {var_name}')
         try:
@@ -325,7 +323,7 @@ def cache_resamplers(
     """
     grid_cache = {}
     for dim_pair in get_resampled_dimension_pairs(var_info):
-        logger.debug(f'computing weights for dimensions {dim_pair}')
+        get_logger().debug(f'computing weights for dimensions {dim_pair}')
         # create swath definitions for each grid in the source file.
         source_swath = compute_source_swath(dim_pair, filepath, var_info)
         grid_cache[dim_pair] = DaskEWAResampler(source_swath, target_areas[dim_pair])
@@ -416,7 +414,7 @@ def get_rows_per_scan(total_rows: int) -> int:
         if total_rows % row_number == 0:
             return row_number
 
-    logger.info(f'returning all rows for rows_per_scan = {total_rows}')
+    get_logger().info(f'returning all rows for rows_per_scan = {total_rows}')
     return total_rows
 
 
@@ -468,7 +466,7 @@ def needs_rotation(var_info: VarInfoFromNetCDF4, variable: str) -> bool:
         None,
     )
     if row_loc > column_loc:
-        logger.info(f'Incorrect dimension order on {variable}, needs rotation.')
+        get_logger().info(f'Incorrect dimension order on {variable}, needs rotation.')
         variable_needs_rotation = True
 
     return variable_needs_rotation
