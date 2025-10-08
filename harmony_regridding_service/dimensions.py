@@ -5,6 +5,8 @@ from typing import NamedTuple
 
 from varinfo import VarInfoFromNetCDF4
 
+from .exceptions import SourceDataError
+
 
 class GridDimensionPair(NamedTuple):
     """Horizontal grid dimensions."""
@@ -71,8 +73,12 @@ def get_resampled_dimension_pairs(
     Gives a list of the 2-element horizontal dimensions that are used in
     regridding this granule file.
     """
-    return [
+    dim_pairs = [
         GridDimensionPair(*dims)
         for dims in var_info.group_variables_by_horizontal_dimensions()
         if len(dims) == 2
     ]
+    if not dim_pairs:
+        raise SourceDataError('No horizontal dimension pairs could be determined.')
+
+    return dim_pairs
