@@ -144,7 +144,11 @@
       "Attributes": [
         {
           "Name": "dimensions",
-          "Value": "/time /longitude /latitude"
+          "Value": "/time /latitude /longitude"
+        },
+	{
+          "Name": "coordinates",
+          "Value": "time latitude longitude"
         }
       ],
       "_Description": "Ensure TEMPO gridded cloud fraction and pressure (O2-O2 dimer) V03 (PROVISIONAL) variables point to the correct coordinate variables in the root group."
