@@ -174,6 +174,7 @@ see legacy-CHANGELOG.md.
 
 [v1.9.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.0
 [v1.8.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.8.0
+[v1.7.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.7.1
 [v1.7.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.7.0
 [v1.6.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.6.0
 [v1.5.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.5.0
