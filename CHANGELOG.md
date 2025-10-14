@@ -4,11 +4,18 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
-## [v1.8.1] - 2025-10-02
+## [v1.9.1] - 2025-10-14
 
 ### Changed
 
 - Changed internal handling of logging to ensure all logs are included with appropriate metadata when running as a harmony service.
+
+
+## [v1.9.0] - 2025-10-08
+
+### Added
+
+- Configuration fix the metadata in `TEMPO_CLDO4_L3` files, allowing them to be regridded.
 
 ## [v1.8.0] - 2025-09-26
 
@@ -16,14 +23,12 @@ Changelog](http://keepachangelog.com/en/1.0.0/).
 
 - Changes how implicit grids are determined. To determine the limits of an implicit grid in geographic space, each cell center and all four corners are transformed from the projected space into longitude, latitude and those values are used to determine the limits of the output grid, preventing an accidental cut off of the grid cell edges. Previously, only cell centers were used.
 
-
 ## [v1.7.1] - 2025-09-22
 
 ### Changed
 
 - No user facing changes.
   - Updates GitHub workflow actions to allow correct release note extraction.
-
 
 ## [v1.7.0] - 2025-09-17
 
@@ -174,7 +179,8 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
-[v1.8.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.8.1
+[v1.9.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.1
+[v1.9.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.0
 [v1.8.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.8.0
 [v1.7.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.7.1
 [v1.7.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.7.0

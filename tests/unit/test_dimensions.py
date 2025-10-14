@@ -1,12 +1,20 @@
 """Tests the dimensions module."""
 
+from unittest.mock import Mock
+
+import pytest
+from varinfo import VarInfoFromNetCDF4
+
 from harmony_regridding_service.dimensions import (
+    GridDimensionPair,
     get_column_dims,
+    get_resampled_dimension_pairs,
     get_row_dims,
     horizontal_dims_for_variable,
     is_column_dim,
     is_row_dim,
 )
+from harmony_regridding_service.exceptions import SourceDataError
 
 
 def test_horizontal_dims_for_variable_grouped(test_IMERG_ncfile, var_info_fxn):
@@ -103,3 +111,33 @@ def test__get_row_dims_y_dims_multiple_values(test_1D_dimensions_ncfile, var_inf
 
     actual = get_row_dims(dims, var_info)
     assert expected_dim == actual
+
+
+def test_get_resampled_dimension_pairs_no_values():
+    """Test that SourceDataError is raised when no horizontal dimension pairs exist."""
+    mock_var_info = Mock(spec=VarInfoFromNetCDF4)
+    mock_var_info.group_variables_by_horizontal_dimensions.return_value = [
+        ('time',),
+        ('time', 'lat', 'lon'),
+    ]
+
+    with pytest.raises(
+        SourceDataError, match='No horizontal dimension pairs could be determined.'
+    ):
+        get_resampled_dimension_pairs(mock_var_info)
+
+
+def test_get_resampled_dimension_pairs():
+    """Test that horizontal pairs are returned."""
+    mock_var_info = Mock(spec=VarInfoFromNetCDF4)
+    mock_var_info.group_variables_by_horizontal_dimensions.return_value = [
+        ('time',),
+        ('time', 'lat', 'lon'),
+        ('x', 'y'),
+        ('lat', 'lon'),
+    ]
+
+    expected_pairs = [GridDimensionPair('x', 'y'), GridDimensionPair('lat', 'lon')]
+
+    actual_pairs = get_resampled_dimension_pairs(mock_var_info)
+    assert actual_pairs == expected_pairs
