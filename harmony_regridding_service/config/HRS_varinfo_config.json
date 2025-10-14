@@ -1,6 +1,6 @@
 {
   "Identification": "harmony_regridding_service_varinfo_config",
-  "Version": 5,
+  "Version": 6,
   "CollectionShortNamePath": [
     "/HDF5_GLOBAL/short_name",
     "/NC_GLOBAL/short_name",
@@ -15,7 +15,8 @@
   ],
   "Mission": {
     "ATL\\d{2}": "ICESat2",
-    "SPL[34].+": "SMAP"
+    "SPL[34].+": "SMAP",
+    "TEMPO_CLDO4_L3" :"TEMPO"
   },
   "ExcludedScienceVariables": [
     {
@@ -133,6 +134,24 @@
         }
       ],
       "_Description": "Ensure SMAP L4 variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "TEMPO",
+        "ShortNamePath": "TEMPO_CLDO4_L3",
+	"VariablePattern": "^/(product|geolocation|support_data)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/time /latitude /longitude"
+        },
+	{
+          "Name": "coordinates",
+          "Value": "time latitude longitude"
+        }
+      ],
+      "_Description": "Ensure TEMPO gridded cloud fraction and pressure (O2-O2 dimer) V03 (PROVISIONAL) variables point to the correct coordinate variables in the root group."
     }
   ]
 }
