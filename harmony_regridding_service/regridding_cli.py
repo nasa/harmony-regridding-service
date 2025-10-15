@@ -4,6 +4,7 @@ from logging import Logger
 
 from harmony_service_lib.message import Source as HarmonySource
 
+from harmony_regridding_service.log_context import set_logger
 from harmony_regridding_service.message_utilities import get_harmony_message_from_params
 from harmony_regridding_service.regridding_service import regrid
 
@@ -45,5 +46,7 @@ def regrid_cli_entry(
     call_logger: [Logger], a configured logging object.
 
     """
+    if call_logger:
+        set_logger(call_logger)
     harmony_message = get_harmony_message_from_params(params)
-    return regrid(harmony_message, source_filename, HarmonySource(source), call_logger)
+    return regrid(harmony_message, source_filename, HarmonySource(source))

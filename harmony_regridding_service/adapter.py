@@ -26,6 +26,7 @@ from harmony_service_lib.util import (
 )
 from pystac import Asset, Catalog, Item
 
+from harmony_regridding_service import log_context
 from harmony_regridding_service.exceptions import (
     InvalidInterpolationMethod,
     InvalidTargetCRS,
@@ -45,6 +46,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
     def __init__(self, message, catalog=None, config=None):
         """Initialize the custom adapter."""
         super().__init__(message, catalog=catalog, config=config)
+        log_context.set_logger(self.logger)
         self.cache = {'grids': {}}
 
     def invoke(self) -> Catalog:
