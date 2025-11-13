@@ -97,7 +97,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4CMDL",
-	"VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
+	      "VariablePattern": "^/(EC|GEO|GPP|NEE|QA|RH|SOC)/.*"
       },
       "Attributes": [
         {
@@ -111,7 +111,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMGP",
-	"VariablePattern": "^/Geophysical_Data/.*"
+	      "VariablePattern": "^/Geophysical_Data/.*"
       },
       "Attributes": [
         {
@@ -125,7 +125,7 @@
       "Applicability": {
         "Mission": "SMAP",
         "ShortNamePath": "SPL4SMLM",
-	"VariablePattern": "^/Land-Model-Constants_Data/.*"
+	      "VariablePattern": "^/Land-Model-Constants_Data/.*"
       },
       "Attributes": [
         {
@@ -137,16 +137,114 @@
     },
     {
       "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3SMP$",
+        "VariablePattern": "/Soil_Moisture_Retrieval_Data_(AM|PM)?/(?!landcover.*$).+$"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SPL3SMP variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3SMP$",
+        "VariablePattern": ".*landcover.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x, /lc_type"
+        }
+      ],
+      "_Description": "Ensure SPL3SMP variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3SMP_E",
+        "VariablePattern": "/Soil_Moisture_Retrieval_Data_(AM|PM)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y_global, /x_global"
+        }
+      ],
+      "_Description": "Ensure SPL3SMP_E variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3SMP_E",
+        "VariablePattern": "/Soil_Moisture_Retrieval_Data_Polar_(AM|PM)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y_polar, /x_polar"
+        }
+      ],
+      "_Description": "Ensure SPL3SMP_E variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3FTA",
+        "VariablePattern": "/(Freeze_Thaw_Retrieval_Data|Radar_Data|Ancillary_Data)/(?!transition_state_flag$|transition_direction$).+$"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/am_pm, /y, /x"
+        }
+      ],
+      "_Description": "Ensure SPL3FTA variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3FTA",
+        "VariablePattern": "/Freeze_Thaw_Retrieval_Data/(transition_direction|transition_state_flag)$"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SPL3FTA variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
+        "Mission": "SMAP",
+        "ShortNamePath": "SPL3SMA$",
+        "VariablePattern": "/(Soil_Moisture_Retrieval_Data|Radar_Data|Ancillary_Data)/.*"
+      },
+      "Attributes": [
+        {
+          "Name": "dimensions",
+          "Value": "/y, /x"
+        }
+      ],
+      "_Description": "Ensure SPL3SMA variables point to the correct dimension variables in the root group."
+    },
+    {
+      "Applicability": {
         "Mission": "TEMPO",
         "ShortNamePath": "TEMPO_CLDO4_L3",
-	"VariablePattern": "^/(product|geolocation|support_data)/.*"
+	      "VariablePattern": "^/(product|geolocation|support_data)/.*"
       },
       "Attributes": [
         {
           "Name": "dimensions",
           "Value": "/time /latitude /longitude"
         },
-	{
+	      {
           "Name": "coordinates",
           "Value": "time latitude longitude"
         }
