@@ -4,6 +4,12 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.10.0] - 2025-11-13
+
+### Changed
+
+- Add configuration for SPL3SMP, SPL3SMP_E, SPL3SMA, and SPL3FTA to support root-level dimensions.
+
 ## [v1.9.1] - 2025-10-14
 
 ### Changed
@@ -179,6 +185,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
+[v1.10.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.10.0
 [v1.9.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.1
 [v1.9.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.0
 [v1.8.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.8.0
