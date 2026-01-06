@@ -25,10 +25,10 @@ GPM/IMERGHH and MERRA collections.
 ```
 
 * `.snyk` - A file used by the Snyk webhook to ensure the correct version of
-  Python is used when installing the full dependency tree for the Swath
-  Projector. This file is duplicated in each directory that contains a
-  requirements file. (`./docs`, `./tests`) **This file, and all copies, must be
-  updated when the version of Python is updated in the service Docker image.**
+  Python is used when installing the full dependency tree for the project. This
+  file is duplicated in each directory that contains a requirements
+  file. (`./docs`, `./tests`) **This file, and all copies, must be updated when
+  the version of Python is updated in the service Docker image.**
   * `CHANGELOG.md` - This file contains a record of changes applied to each new
   public release of a service Docker image. Any release of a new service
   version since migrating to GitHub should have a record of what was changed in
