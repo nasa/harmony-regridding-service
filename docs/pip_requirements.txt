@@ -3,7 +3,7 @@
 #
 # Example conda environment creation:
 #
-# conda create --name regridder-docs python=3.12 --channel conda-forge
+# conda create --name regridder-docs python=3.13 --channel conda-forge
 #
 # pip install -r pip_requirements.txt
 #
