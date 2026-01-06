@@ -4,6 +4,12 @@ The Harmony Regridding Service follows semantic versioning. All notable changes
 to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
+## [v1.10.1] - 2026-01-06
+
+### Changed
+
+- Python service lib updated to 3.13.
+
 ## [v1.10.0] - 2025-11-13
 
 ### Changed

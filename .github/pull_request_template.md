@@ -12,6 +12,6 @@ A short description of the changes in this PR.
 * [ ] Jira ticket acceptance criteria met.
 * [ ] `CHANGELOG.md` updated to include high level summary of PR changes and link to release.
 * [ ] `docker/service_version.txt` updated if publishing a release.
-* [ ] Jira Smart Checklist item `harmony-regridder-X.Y.Z` added Ticket
+* [ ] Fix version added to ticket - harmony-regridder-X.Y.Z.
 * [ ] Tests added/updated and passing.
 * [ ] Documentation updated (if needed).
