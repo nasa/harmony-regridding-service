@@ -21,19 +21,9 @@ def get_unprocessable_variables(
     Science variables that are excluded explicitly by varInfo are also removed
     """
     string_vars = {var for var in var_list if is_string_variable(var_info, var)}
-    excluded_vars = {
-        var for var in var_list if is_excluded_science_variable(var_info, var)
-    }
+    excluded_vars = var_info.get_excluded_science_variables()
 
     return string_vars | excluded_vars
-
-
-def is_excluded_science_variable(var_info: VarInfoFromNetCDF4, var) -> bool:
-    """Returns True if variable is explicitly excluded by VarInfo configuration."""
-    exclusions_pattern = re.compile(
-        '|'.join(var_info.cf_config.excluded_science_variables)
-    )
-    return var_info.variable_is_excluded(var, exclusions_pattern)
 
 
 def is_string_variable(var_info: VarInfoFromNetCDF4, var_name: str) -> bool:
