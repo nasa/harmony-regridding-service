@@ -5,8 +5,6 @@ varinfo.
 
 """
 
-import re
-
 from varinfo import VarInfoFromNetCDF4
 
 
