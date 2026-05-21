@@ -16,4 +16,4 @@ netCDF4==1.7.2
 notebook==7.5.6
 panel==1.6.3
 xarray==2025.9.0
-jupyter_bokeh>=3.0.7,<4.0.0
+jupyter_bokeh>=3.0.7
