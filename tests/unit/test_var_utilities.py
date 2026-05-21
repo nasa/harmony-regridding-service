@@ -43,19 +43,6 @@ def test_is_string_variable(test_variables_nc_file):
     assert not is_string_variable(var_info, '/nuked_time_utc_float')
 
 
-def test_is_excluded_science_var(test_variables_nc_file):
-    var_info = VarInfoFromNetCDF4(
-        test_variables_nc_file,
-        short_name='SPL3TEST',
-        config_file=varinfo_config_filename(),
-    )
-
-    assert not var_info.is_excluded_science_variable('/string_variable')
-    assert not var_info.is_excluded_science_variable('/numeric_variable')
-    assert var_info.is_excluded_science_variable('/nuked_time_utc_str')
-    assert var_info.is_excluded_science_variable('/nuked_time_utc_float')
-
-
 def test_get_unprocessed_variables(test_variables_nc_file):
     var_info = VarInfoFromNetCDF4(
         test_variables_nc_file,
@@ -68,16 +55,3 @@ def test_get_unprocessed_variables(test_variables_nc_file):
         '/nuked_time_utc_str',
         '/nuked_time_utc_float',
     } == get_unprocessable_variables(var_info, var_info.get_all_variables())
-
-
-def test_get_excluded_science_variables(test_variables_nc_file):
-    var_info = VarInfoFromNetCDF4(
-        test_variables_nc_file,
-        short_name='SPL3TEST',
-        config_file=varinfo_config_filename(),
-    )
-
-    assert {
-        '/nuked_time_utc_str',
-        '/nuked_time_utc_float',
-    } == var_info.get_excluded_science_variables()
