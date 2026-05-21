@@ -13,6 +13,7 @@ harmony-py==1.2.0
 hvplot==0.11.3
 matplotlib==3.10.1
 netCDF4==1.7.2
-notebook==7.4.2
+notebook==7.5.1
 panel==1.6.3
 xarray==2025.9.0
+jupyter_bokeh>=4.0.0
