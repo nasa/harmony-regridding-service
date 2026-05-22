@@ -8,7 +8,6 @@ from varinfo import VarInfoFromNetCDF4
 from harmony_regridding_service.regridding_service import varinfo_config_filename
 from harmony_regridding_service.var_utilitities import (
     get_unprocessable_variables,
-    is_excluded_science_variable,
     is_string_variable,
 )
 
@@ -42,19 +41,6 @@ def test_is_string_variable(test_variables_nc_file):
     assert is_string_variable(var_info, '/nuked_time_utc_str')
     assert not is_string_variable(var_info, '/numeric_variable')
     assert not is_string_variable(var_info, '/nuked_time_utc_float')
-
-
-def test_is_excluded_science_var(test_variables_nc_file):
-    var_info = VarInfoFromNetCDF4(
-        test_variables_nc_file,
-        short_name='SPL3TEST',
-        config_file=varinfo_config_filename(),
-    )
-
-    assert not is_excluded_science_variable(var_info, '/string_variable')
-    assert not is_excluded_science_variable(var_info, '/numeric_variable')
-    assert is_excluded_science_variable(var_info, '/nuked_time_utc_str')
-    assert is_excluded_science_variable(var_info, '/nuked_time_utc_float')
 
 
 def test_get_unprocessed_variables(test_variables_nc_file):
