@@ -5,7 +5,7 @@ to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
-## [v1.11.0] - 2026-05-14
+## [v1.10.2] - 2026-05-14
 
 ### Changed
 
@@ -200,7 +200,7 @@ include updated documentation and files outlined by the
 For more information on internal releases prior to NASA open-source approval,
 see legacy-CHANGELOG.md.
 
-[v1.11.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.11.0
+[v1.10.2]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.10.2
 [v1.10.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.10.1
 [v1.10.0]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.10.0
 [v1.9.1]: https://github.com/nasa/harmony-regridding-service/releases/tag/1.9.1
