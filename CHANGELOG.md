@@ -5,6 +5,13 @@ to this project will be documented in this file. The format is based on [Keep a
 Changelog](http://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Fixed
+
+- Derive resampled coordinate bounds from the target pixel sizes so one-row and
+  one-column output grids can be written without indexing a nonexistent cell.
+
 ## [v1.10.2] - 2026-05-14
 
 ### Changed

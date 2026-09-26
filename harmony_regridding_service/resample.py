@@ -186,10 +186,12 @@ def copy_resampled_bounds_variable(
     if xdims:
         target_area = target_areas[get_dim_pair_by_dim(xdims[0], var_info)]
         target_coords = target_area.projection_x_coords
+        bounds_width = target_area.pixel_size_x / 2
         dim_name = xdims[0]
     else:
         target_area = target_areas[get_dim_pair_by_dim(ydims[0], var_info)]
         target_coords = target_area.projection_y_coords
+        bounds_width = -target_area.pixel_size_y / 2
         dim_name = ydims[0]
 
     if not var_dims[0] == dim_name:
@@ -197,7 +199,7 @@ def copy_resampled_bounds_variable(
 
     # create the bounds variable and fill it with the correct values.
     (_, t_var) = copy_var_without_metadata(source_ds, target_ds, bounds_var)
-    bounds_width = (target_coords[1] - target_coords[0]) / 2
+    # Pixel sizes remain defined when an output axis has only one cell.
     lower_bounds = target_coords - bounds_width
     upper_bounds = target_coords + bounds_width
     t_var[:, 0] = lower_bounds
