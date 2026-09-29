@@ -106,7 +106,7 @@ class RegriddingServiceAdapter(BaseHarmonyAdapter):
             )
 
             transformed_file_name = regrid(
-                self.message, input_filepath, source, self.logger
+                self.message, input_filepath, source, self.logger, source_url=asset.href
             )
 
             # Stage the transformed output:

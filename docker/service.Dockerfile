@@ -23,6 +23,7 @@ RUN pip3 install --no-input -r pip_requirements.txt
 
 # Copy service code.
 COPY ./harmony_regridding_service harmony_regridding_service
+COPY ./docker/service_version.txt ./docker/service_version.txt
 
 # Configure a container to be executable via the `docker run` command.
 ENTRYPOINT ["python", "-m", "harmony_regridding_service"]

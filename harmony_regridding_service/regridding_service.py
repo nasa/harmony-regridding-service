@@ -28,6 +28,7 @@ from harmony_regridding_service.file_io import (
 )
 from harmony_regridding_service.grid import compute_target_areas
 from harmony_regridding_service.log_context import get_logger
+from harmony_regridding_service.provenance import update_history_metadata
 from harmony_regridding_service.resample import (
     cache_resamplers,
     copy_resampled_dimension_variables,
@@ -48,8 +49,16 @@ def regrid(
     input_filepath: str,
     source: HarmonySource,
     logger: Logger | LoggerAdapter | None = None,
+    source_url: str | None = None,
 ) -> str:
-    """Regrid the input data at input_filepath."""
+    """Regrid the input data at input_filepath.
+
+    The optional `source_url` is the location of the input granule before it
+    was downloaded. It is recorded as the `derived_from` value in the output
+    provenance metadata when the input file does not identify an upstream
+    request URL.
+
+    """
     logger = logger or get_logger()
     logger.info(f'Format:\n {message.format}')
     logger.info(f'Source:\n {source}')
@@ -77,6 +86,9 @@ def regrid(
         Dataset(target_filepath, mode='w', format='NETCDF4') as target_ds,
     ):
         transfer_metadata(source_ds, target_ds)
+        update_history_metadata(
+            source_ds, target_ds, message, source_url or input_filepath
+        )
         transfer_resampled_dimensions(source_ds, target_ds, target_areas, var_info)
         crs_map = write_grid_mappings(
             target_ds, get_resampled_dimension_pairs(var_info), target_areas

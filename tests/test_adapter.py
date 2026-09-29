@@ -130,9 +130,13 @@ class TestAdapter(TestCase):
             access_token=self.access_token,
         )
 
-        # Ensure regrid was called with the input filepath.
+        # Ensure regrid was called with the input filepath and source URL.
         mock_regrid.assert_called_once_with(
-            message, expected_downloaded_file, ANY, regridder.logger
+            message,
+            expected_downloaded_file,
+            ANY,
+            regridder.logger,
+            source_url=self.granule_url,
         )
 
         # Ensure the file was staged as expected:
