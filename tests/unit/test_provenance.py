@@ -94,31 +94,30 @@ def test_get_request_url_other_forms(tmp_path, record, expected_url):
         assert get_request_url(dataset) == expected_url
 
 
-@pytest.mark.parametrize(
-    'message_content, expected_parameters',
-    [
-        (
-            None,
-            {
-                'crs': 'EPSG:4326',
-                'scaleExtent': SCALE_EXTENT,
-                'height': 180,
-                'width': 360,
-            },
-        ),
-        ({}, {}),
-        ({'format': {'mime': 'application/x-netcdf4'}}, {}),
-    ],
-    ids=['grid_parameters', 'no_format', 'no_grid_parameters'],
-)
-def test_get_regridding_parameters(
-    regrid_message, message_content, expected_parameters
-):
-    """Only specified, grid-determining parameters are returned."""
-    message = (
-        regrid_message if message_content is None else HarmonyMessage(message_content)
-    )
-    assert get_regridding_parameters(message) == expected_parameters
+def test_get_regridding_parameters(regrid_message):
+    """Only specified grid-determining parameters are returned.
+
+    The `mime` and `srs` properties and the `interpolation` value of None in
+    the message are not included.
+
+    """
+    assert get_regridding_parameters(regrid_message) == {
+        'crs': 'EPSG:4326',
+        'scaleExtent': SCALE_EXTENT,
+        'height': 180,
+        'width': 360,
+    }
+
+
+def test_get_regridding_parameters_no_format():
+    """A message without a `format` object returns no parameters."""
+    assert get_regridding_parameters(HarmonyMessage({})) == {}
+
+
+def test_get_regridding_parameters_no_grid_parameters():
+    """A `format` object without grid-determining properties returns none."""
+    message = HarmonyMessage({'format': {'mime': 'application/x-netcdf4'}})
+    assert get_regridding_parameters(message) == {}
 
 
 @pytest.mark.parametrize(

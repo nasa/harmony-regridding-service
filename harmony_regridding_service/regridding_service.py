@@ -53,10 +53,9 @@ def regrid(
 ) -> str:
     """Regrid the input data at input_filepath.
 
-    The optional `source_url` is the location of the input granule before it
-    was downloaded. It is recorded as the `derived_from` value in the output
-    provenance metadata when the input file does not identify an upstream
-    request URL.
+    `source_url` is passed through to `update_history_metadata`. It is always
+    set through the adapter, but `regridder_cli.py` and tests may call `regrid()`
+    without it.
 
     """
     logger = logger or get_logger()
