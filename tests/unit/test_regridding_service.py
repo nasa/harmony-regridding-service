@@ -1,5 +1,6 @@
 """Tests the regridding service module."""
 
+import json
 import logging
 import re
 from pathlib import Path
@@ -11,6 +12,7 @@ from harmony_service_lib.message import Message as HarmonyMessage
 from harmony_service_lib.message import Source as HarmonySource
 
 from harmony_regridding_service.exceptions import InvalidVariableRequest
+from harmony_regridding_service.provenance import PROGRAM, get_semantic_version
 from harmony_regridding_service.regridding_service import regrid
 
 test_scale_extent = {
@@ -142,6 +144,81 @@ def test_regrid_smap_file(
             assert 'longitude' in dt[group], f'failed: {group}'
             assert 'latitude' in dt[group], f'failed: {group}'
             assert 'altitude_dem' in dt[group], f'failed: {group}'
+
+
+@pytest.mark.parametrize(
+    'use_spl3ftp, expected_record_count, expected_derived_from',
+    [
+        (
+            True,
+            2,
+            'https://opendap.uat.earthdata.nasa.gov/collections/C1268617120-EEDTEST/'
+            'granules/SC:SPL3FTP.004:296000525.dap.nc4',
+        ),
+        (False, 1, 'https://archive.example.com/SMAP_L4_SM_aup.h5'),
+    ],
+    ids=['input_with_provenance', 'input_without_provenance'],
+)
+def test_regrid_writes_provenance(
+    use_spl3ftp,
+    expected_record_count,
+    expected_derived_from,
+    test_spl3ftp_ncfile,
+    smap_projected_netcdf_file,
+    tmp_path,
+):
+    """Regridded output carries history and history_json provenance.
+
+    With SPL3FTP input, the upstream OPeNDAP and Metadata Annotator provenance
+    is preserved and the OPeNDAP request URL is the `derived_from` value.
+    With input that has no provenance, the supplied source URL is recorded without
+    its query string.
+
+    """
+    input_filename = str(
+        test_spl3ftp_ncfile if use_spl3ftp else smap_projected_netcdf_file
+    )
+    short_name = 'SPL3FTP' if use_spl3ftp else 'SPL4SMAU'
+    output_filename = str(tmp_path / 'regridded_output.nc')
+
+    message = HarmonyMessage(
+        {
+            'format': {'mime': 'application/x-netcdf', 'crs': 'EPSG:4326'},
+            'sources': [{'collection': 'C123-TEST', 'shortName': short_name}],
+        }
+    )
+    source = HarmonySource({'collection': 'C123-TEST', 'shortName': short_name})
+
+    # Mock generate_output_filename to control the output path
+    with patch(
+        'harmony_regridding_service.regridding_service.generate_output_filename',
+        return_value=output_filename,
+    ):
+        regrid(
+            message,
+            input_filename,
+            source,
+            logging.getLogger(),
+            source_url='https://archive.example.com/SMAP_L4_SM_aup.h5?token=abc',
+        )
+
+    with xr.open_datatree(output_filename) as dt:
+        history = dt.attrs['history']
+        history_json = json.loads(dt.attrs['history_json'])
+
+    assert len(history_json) == expected_record_count
+    assert history_json[-1]['program'] == PROGRAM
+    assert history_json[-1]['version'] == get_semantic_version()
+    assert history_json[-1]['parameters'] == {'crs': 'EPSG:4326'}
+    assert history_json[-1]['derived_from'] == expected_derived_from
+    assert history.split('\n')[-1] == (
+        f'{history_json[-1]["date_time"]} {PROGRAM} {get_semantic_version()} '
+        '{"crs": "EPSG:4326"}'
+    )
+
+    if use_spl3ftp:
+        assert history_json[0]['program'] == 'hyrax'
+        assert 'Harmony Metadata Annotator 1.0.1' in history
 
 
 def test_regrid_smap_excluded_variable_file(
