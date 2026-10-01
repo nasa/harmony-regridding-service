@@ -53,9 +53,7 @@ def regrid(
 ) -> str:
     """Regrid the input data at input_filepath.
 
-    `source_url` is passed through to `update_history_metadata`. It is always
-    set through the adapter, but `regridder_cli.py` and tests may call `regrid()`
-    without it.
+    `source_url` is passed through to `update_history_metadata`.
 
     """
     logger = logger or get_logger()
