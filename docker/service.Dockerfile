@@ -9,7 +9,7 @@
 # 2023-01-26: Added to repository.
 #
 ###############################################################################
-FROM python:3.13-slim-bookworm
+FROM python:3.13-slim
 
 WORKDIR "/home"
 
